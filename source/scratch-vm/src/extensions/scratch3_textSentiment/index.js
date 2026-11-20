@@ -48,6 +48,36 @@ class textSentiment {
             blockIconURI: blockIconURI,
             blocks: [
                 {
+                    opcode: 'preloadModel',
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        LANG: {
+                            type: ArgumentType.STRING,
+                            menu: 'modelMenu',
+                            defaultValue: 'all'
+                        }
+                    },
+                    text: msg.preloadModel[theLocale]
+                },
+                {
+                    opcode: 'isModelReady',
+                    blockType: BlockType.BOOLEAN,
+                    arguments: {
+                        LANG: {
+                            type: ArgumentType.STRING,
+                            menu: 'modelMenu',
+                            defaultValue: 'all'
+                        }
+                    },
+                    text: msg.modelReady[theLocale]
+                },
+                {
+                    opcode: 'getModelStatus',
+                    blockType: BlockType.REPORTER,
+                    text: msg.modelStatus[theLocale]
+                },
+                '---',
+                {
                     opcode: 'inputText',
                     blockType: BlockType.COMMAND,
                     arguments: {
@@ -63,38 +93,21 @@ class textSentiment {
                     blockType: BlockType.COMMAND,
                     text: msg.startTextSentiment[theLocale]
                 },
-                {
-                    opcode: 'getConfidence',
-                    blockType: BlockType.REPORTER,
-                    text: msg.confidence[theLocale]
-                },
+                '---',
                 {
                     opcode: 'getSentiment',
                     blockType: BlockType.REPORTER,
                     text: msg.sentiment[theLocale]
                 },
                 {
+                    opcode: 'getConfidence',
+                    blockType: BlockType.REPORTER,
+                    text: msg.confidence[theLocale]
+                },
+                {
                     opcode: 'getLanguage',
                     blockType: BlockType.REPORTER,
                     text: msg.language[theLocale]
-                },
-                '---',
-                {
-                    opcode: 'preloadModel',
-                    blockType: BlockType.COMMAND,
-                    arguments: {
-                        LANG: {
-                            type: ArgumentType.STRING,
-                            menu: 'modelMenu',
-                            defaultValue: 'all'
-                        }
-                    },
-                    text: msg.preloadModel[theLocale]
-                },
-                {
-                    opcode: 'getModelStatus',
-                    blockType: BlockType.REPORTER,
-                    text: msg.modelStatus[theLocale]
                 }
             ],
             menus: {
@@ -141,6 +154,12 @@ class textSentiment {
         })));
     }
 
+    /** 模型是否已可使用（只查詢，不會開始載入）；可搭配「等待直到」 */
+    isModelReady (args) {
+        const langs = args.LANG === 'all' ? ['zh', 'en'] : [args.LANG];
+        return this.analyzer.isReady(langs);
+    }
+
     getConfidence () {
         return Number(this.confidence.toFixed(2));
     }
@@ -165,6 +184,9 @@ class textSentiment {
             switch (s.state) {
             case 'loading':
                 state = `${msg.statusLoading[theLocale]} ${s.progress}%`;
+                break;
+            case 'initializing':
+                state = msg.statusInitializing[theLocale];
                 break;
             case 'ready':
                 state = msg.statusReady[theLocale];

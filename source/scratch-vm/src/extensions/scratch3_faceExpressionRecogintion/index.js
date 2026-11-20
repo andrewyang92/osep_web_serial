@@ -14,6 +14,30 @@ const blockIconURI = menuIconURI;
 const defaultId = 'default';
 let theLocale = null;
 
+// 表情代碼 → 顯示文字（依介面語言）
+const EMOTION_KEYS = ['neutral', 'happy', 'sad', 'angry', 'fearful', 'disgusted', 'surprised'];
+
+// 狀態代碼（對應 translation.js 的 status_*）
+const STATUS = {
+    IDLE: 'idle',
+    LOADING: 'loading',
+    CAMERA: 'camera',
+    RUNNING: 'running',
+    STOPPED: 'stopped',
+    VIDEO_OFF: 'videoOff',
+    ERR_CAMERA: 'errCamera',
+    ERR_MODEL: 'errModel',
+    ERR_WEBGL: 'errWebgl',
+    ERR_OTHER: 'errOther'
+};
+
+const makeError = (code, cause) => {
+    const err = new Error(code);
+    err.statusCode = code;
+    err.cause = cause;
+    return err;
+};
+
 class faceExpressionRecogintion{
     constructor(runtime) {
         theLocale = this._setLocale();
@@ -29,9 +53,13 @@ class faceExpressionRecogintion{
         this.write = this.write.bind(this);
 
         this._initialized = false;
+        this._initPromise = null;      // 初始化進行中時共用同一個 Promise，避免重複載入
         this._detecting = false;
+        this._videoOpenedByStart = false; // 視訊是不是由「開始」積木自動打開的
         this.facialEmotion = "";
         this.confidence = 0;
+        this._status = STATUS.IDLE;
+        this._errorDetail = '';
     }
 
     onclose() {
@@ -127,6 +155,11 @@ class faceExpressionRecogintion{
                     opcode: 'getConfidence',
                     blockType: BlockType.REPORTER,
                     text: msg.confidence[theLocale]
+                },
+                {
+                    opcode: 'getStatus',
+                    blockType: BlockType.REPORTER,
+                    text: msg.status[theLocale]
                 }
             ],
             menus: {
@@ -143,159 +176,215 @@ class faceExpressionRecogintion{
         ];
     }
 
+    _t(key) {
+        const entry = msg[key];
+        if (!entry) return key;
+        return entry[theLocale] || entry.en;
+    }
+
+    _setStatus(code, detail) {
+        this._status = code;
+        this._errorDetail = detail || '';
+    }
+
+    _clearResult() {
+        this.confidence = 0;
+    }
+
     videoToggle(args) {
-        let state = args.VIDEO_STATE;
+        const state = args.VIDEO_STATE;
+        const video = this.runtime.ioDevices.video;
         if (state === 'off') {
-            this.runtime.ioDevices.video.disableVideo();
+            this._videoOpenedByStart = false;
+            video.disableVideo();
         } else {
-            this.runtime.ioDevices.video.enableVideo().then(() => {
-                this.video = this.runtime.ioDevices.video.provider.video;
-            });
-            this.runtime.ioDevices.video.mirror = state === "on";
+            // 使用者自己開啟視訊，停止辨識時不要幫他關掉
+            this._videoOpenedByStart = false;
+            video.mirror = state === "on";
+            const p = video.enableVideo();
+            if (p) return p.then(() => {});
         }
     }
 
-    setupTensorFlow() {
-        return new Promise((resolve, reject) => {
-            try {
-                if (typeof tf === 'undefined') {
-                    throw new Error('TensorFlow.js 未載入');
-                }
-                tf.setBackend('webgl').then(() => {
-                    tf.ready().then(() => {
-                        const backend = tf.getBackend();
-                        if (backend !== 'webgl') {
-                            throw new Error(`無法使用 WebGL 後端，目前使用: ${backend}`);
-                        }
-                        resolve();
-                    });
-                });
-            } catch (error) {
-                console.error('TensorFlow 設定失敗:', error);
-                reject(error);
-            }
-        });
+    _getVideoElement() {
+        const video = this.runtime.ioDevices.video;
+        if (!video || !video.provider || !video.videoReady) return null;
+        return video.provider.video;
     }
 
-    startVideo() {
-        return new Promise((resolve, reject) => {
-            this.video.width = 640;
-            this.video.height = 480;
-            navigator.mediaDevices.getUserMedia({
-                video: { width: 640, height: 480, facingMode: 'user' }
-            }).then(stream => {
-                this.video.srcObject = stream;
-                this.video.onloadeddata = () => {
-                    this.video.play();
-                    resolve();
-                };
-            }).catch(error => {
-                console.error('無法存取攝影機:', error);
-                reject(error);
+    _isVideoEnabled() {
+        const video = this.runtime.ioDevices.video;
+        return Boolean(video && video.provider && video.provider.enabled);
+    }
+
+    setupTensorFlow() {
+        if (typeof tf === 'undefined') {
+            return Promise.reject(makeError(STATUS.ERR_WEBGL, new Error('TensorFlow.js 未載入')));
+        }
+        return tf.setBackend('webgl')
+            .then(() => tf.ready())
+            .then(() => {
+                const backend = tf.getBackend();
+                if (backend !== 'webgl') {
+                    throw new Error(`無法使用 WebGL 後端，目前使用: ${backend}`);
+                }
+            })
+            .catch(error => {
+                console.error('TensorFlow 設定失敗:', error);
+                throw makeError(STATUS.ERR_WEBGL, error);
             });
+    }
+
+    // 使用 Scratch 本身的視訊（會套用使用者選的攝影機與翻轉設定），不另外開攝影機
+    _openVideo() {
+        const video = this.runtime.ioDevices.video;
+        if (!video || !video.provider) {
+            return Promise.reject(makeError(STATUS.ERR_CAMERA, new Error('找不到視訊裝置')));
+        }
+        if (!this._isVideoEnabled()) {
+            this._videoOpenedByStart = true;
+            video.mirror = true;
+        }
+        // enableVideo 在使用者拒絕攝影機時不會 reject，只會讓 provider.video 是 null
+        return Promise.resolve(video.enableVideo()).then(() => {
+            if (!video.provider.video) {
+                throw makeError(STATUS.ERR_CAMERA, new Error('攝影機無法開啟'));
+            }
         });
     }
 
     loadModels() {
-        return new Promise((resolve, reject) => {
-            console.log('開始載入模型...');
-            const modelPath = './static/FERmodels/';
-            Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
-                faceapi.nets.faceExpressionNet.loadFromUri(modelPath)
-            ]).then(() => {
-                console.log('所有模型載入完成');
-                resolve();
-            }).catch(error => {
-                console.error('模型載入失敗:', error);
-                reject(error);
-            });
+        console.log('開始載入模型...');
+        const modelPath = './static/FERmodels/';
+        return Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(modelPath),
+            faceapi.nets.faceExpressionNet.loadFromUri(modelPath)
+        ]).then(() => {
+            console.log('所有模型載入完成');
+        }).catch(error => {
+            console.error('模型載入失敗:', error);
+            throw makeError(STATUS.ERR_MODEL, error);
         });
     }
 
     _initFaceRecognition() {
-        return this.runtime.ioDevices.video.enableVideo().then(() => {
-            this.video = this.runtime.ioDevices.video.provider.video;
-            return this.setupTensorFlow();
-        })
-        .then(() => this.loadModels())
-        .then(() => this.startVideo())
-        .then(() => {
-            this._initialized = true;
-            console.log('初始化完成，開始進行臉部表情辨識...');
-        });
+        if (this._initialized) return Promise.resolve();
+        if (this._initPromise) return this._initPromise;
+
+        this._setStatus(STATUS.LOADING);
+        this._initPromise = this.setupTensorFlow()
+            .then(() => this.loadModels())
+            .then(() => {
+                this._initialized = true;
+                console.log('模型初始化完成');
+            })
+            .then(() => {
+                this._initPromise = null;
+            }, error => {
+                this._initPromise = null;
+                throw error;
+            });
+        return this._initPromise;
     }
 
+    _handleError(error) {
+        const code = (error && error.statusCode) || STATUS.ERR_OTHER;
+        const cause = (error && error.cause) || error;
+        const detail = cause && cause.message ? cause.message : String(cause);
+        console.error('臉部表情辨識錯誤:', error);
+        this._detecting = false;
+        this._clearResult();
+        this._setStatus(code, detail);
+        // 「開始」積木自動打開的視訊，出錯時一併關掉
+        if (this._videoOpenedByStart) {
+            this._videoOpenedByStart = false;
+            this.runtime.ioDevices.video.disableVideo();
+        }
+    }
+
+    // 回傳 Promise：積木會等到初始化完成（或失敗）才往下執行，之後可以馬上讀「狀態」
     startFaceRecognition() {
-        if (!this._initialized) {
-            this._initFaceRecognition().then(() => {
+        if (this._detecting) {
+            if (!this._isVideoEnabled()) {
+                // 辨識中但視訊被關掉了 → 重新打開
+                this._setStatus(STATUS.CAMERA);
+                return this._openVideo().catch(error => this._handleError(error));
+            }
+            return;
+        }
+        return this._initFaceRecognition()
+            .then(() => {
+                this._setStatus(STATUS.CAMERA);
+                return this._openVideo();
+            })
+            .then(() => {
+                if (this._detecting) return; // 另一個「開始」已經啟動偵測
+                this._setStatus(STATUS.RUNNING);
                 this._detecting = true;
                 this.detectEmotions();
             })
-            .catch(error => {
-                console.error('初始化失敗:', error);
-            });
-        } else {
-            if (!this._detecting) {
-                this._detecting = true;
-                this.detectEmotions();
-            }
-        }
+            .catch(error => this._handleError(error));
     }
 
     stopFaceRecognition() {
         this._detecting = false;
-        this.facialEmotion = "已停止臉部表情辨識";
+        this.facialEmotion = this._t('emotion_stopped');
+        this._clearResult();
+        this._setStatus(STATUS.STOPPED);
+        // 如果視訊是「開始」積木自動打開的，停止時一起關掉攝影機
+        if (this._videoOpenedByStart) {
+            this._videoOpenedByStart = false;
+            this.runtime.ioDevices.video.disableVideo();
+        }
+    }
+
+    _applyDetections(detections) {
+        if (detections && detections.length > 0 && detections[0].expressions) {
+            const emotions = detections[0].expressions;
+            const mainEmotion = EMOTION_KEYS
+                .filter(key => typeof emotions[key] === 'number')
+                .map(key => [key, emotions[key]])
+                .sort((a, b) => b[1] - a[1])[0];
+            if (mainEmotion) {
+                this.facialEmotion = this._t(`emotion_${mainEmotion[0]}`);
+                this.confidence = Number(mainEmotion[1].toFixed(2));
+                return;
+            }
+        }
+        this.facialEmotion = this._t('emotion_noFace');
+        this._clearResult();
     }
 
     detectEmotions() {
-        const detect = async () => {
+        const options = new faceapi.TinyFaceDetectorOptions({
+            inputSize: 224,
+            scoreThreshold: 0.5
+        });
+        const next = () => {
+            if (this._detecting) requestAnimationFrame(detect);
+        };
+        const detect = () => {
             if (!this._detecting) return;
-            try {
-                if (this.video.readyState !== 4) {
-                    requestAnimationFrame(detect);
-                    return;
+            // 每次都重新取得 video 元素：視訊關掉再打開時會換成新的元素
+            const videoEl = this._getVideoElement();
+            if (!videoEl || videoEl.readyState !== 4) {
+                if (!this._isVideoEnabled()) {
+                    this._setStatus(STATUS.VIDEO_OFF);
+                    this._clearResult();
                 }
-                const options = new faceapi.TinyFaceDetectorOptions({
-                    inputSize: 224,
-                    scoreThreshold: 0.5
-                });
-                const detections = await faceapi
-                    .detectAllFaces(this.video, options)
-                    .withFaceExpressions();
-                if (detections && detections.length > 0) {
-                    const detection = detections[0];
-                    if (detection && detection.expressions) {
-                        const emotions = detection.expressions;
-                        const emotionLabels = {
-                            neutral: '平靜',
-                            happy: '開心',
-                            sad: '難過',
-                            angry: '生氣',
-                            fearful: '害怕',
-                            disgusted: '厭惡',
-                            surprised: '驚訝'
-                        };
-                        const mainEmotion = Object.entries(emotions)
-                            .sort((a, b) => b[1] - a[1])[0];
-                        const emotionName = emotionLabels[mainEmotion[0]] || mainEmotion[0];
-                        const confidence = mainEmotion[1].toFixed(2);
-
-                        this.facialEmotion = emotionName;
-                        this.confidence = confidence;
-                    }
-                } else {
-                    this.facialEmotion = "無法偵測到臉部";
-                }
-                if (this._detecting) {
-                    requestAnimationFrame(detect);
-                }
-            } catch (error) {
-                console.error('偵測錯誤:', error);
-                if (this._detecting) {
-                    requestAnimationFrame(detect);
-                }
+                next();
+                return;
             }
+            if (this._status !== STATUS.RUNNING) this._setStatus(STATUS.RUNNING);
+            Promise.resolve()
+                .then(() => faceapi.detectAllFaces(videoEl, options).withFaceExpressions())
+                .then(detections => {
+                    if (this._detecting) this._applyDetections(detections);
+                })
+                .catch(error => {
+                    console.error('偵測錯誤:', error);
+                })
+                .then(next);
         };
         detect();
     }
@@ -306,6 +395,14 @@ class faceExpressionRecogintion{
 
     getConfidence(){
         return this.confidence;
+    }
+
+    getStatus(){
+        const text = this._t(`status_${this._status}`);
+        if (this._errorDetail && this._status.indexOf('err') === 0) {
+            return `${text}（${this._errorDetail}）`;
+        }
+        return text;
     }
 }
 

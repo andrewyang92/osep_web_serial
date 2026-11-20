@@ -28,6 +28,7 @@ const MODELS = {
 };
 
 const MAX_CHARS = 500; // 模型上限 512 tokens，過長的輸入先截斷
+const LARGE_FILE_BYTES = 5 * 1024 * 1024; // 超過此大小視為模型權重檔
 
 const CJK_RE = /[㐀-䶿一-鿿豈-﫿]/g;
 const LATIN_WORD_RE = /[A-Za-z]+/g;
@@ -108,6 +109,15 @@ class SentimentAnalyzer {
     }
 
     /**
+     * 指定語言的模型是否都已可用（不會觸發載入）。
+     * @param {string[]} langs 語言列表
+     * @returns {boolean} 全部就緒才回傳 true
+     */
+    isReady (langs) {
+        return langs.every(lang => this.status[lang] && this.status[lang].state === 'ready');
+    }
+
+    /**
      * 載入（或取得已載入的）某語言模型。同一語言只會下載一次。
      * @param {'zh'|'en'} lang 語言
      * @returns {Promise<Function>} classifier
@@ -117,17 +127,32 @@ class SentimentAnalyzer {
         if (!cfg) return Promise.reject(new Error(`Unsupported language: ${lang}`));
         if (this._classifiers[lang]) return this._classifiers[lang];
 
+        // 模型由多個檔案組成（設定檔、tokenizer、ONNX 權重），會陸續開始下載。
+        // 若只用「目前已知的檔案」計算，小檔先下載完時會短暫顯示 99%，
+        // 之後大檔出現又掉回去。因此：
+        //   1. 在大檔（模型權重）出現前不顯示百分比
+        //   2. 百分比只增不減
+        //   3. 所有檔案下載完後改顯示「初始化中」，直到模型真的可用
         const files = {}; // file -> {loaded, total}
+        let sawLargeFile = false;
         const onProgress = p => {
             if (!p || !p.file || p.status !== 'progress' || !p.total) return;
+            if (this.status[lang].state === 'ready' || this.status[lang].state === 'error') return;
             files[p.file] = {loaded: p.loaded, total: p.total};
+            if (p.total >= LARGE_FILE_BYTES) sawLargeFile = true;
+            if (!sawLargeFile) return;
             let loaded = 0;
             let total = 0;
             for (const f of Object.values(files)) {
-                loaded += f.loaded;
+                loaded += Math.min(f.loaded, f.total);
                 total += f.total;
             }
-            this._setStatus(lang, {progress: Math.min(99, Math.floor((100 * loaded) / total))});
+            if (loaded >= total) {
+                this._setStatus(lang, {state: 'initializing', progress: 100});
+                return;
+            }
+            const pct = Math.min(99, Math.floor((100 * loaded) / total));
+            if (pct > this.status[lang].progress) this._setStatus(lang, {progress: pct});
         };
 
         this._setStatus(lang, {state: 'loading', progress: 0, error: null});

@@ -38,6 +38,11 @@ export const preloadModel = {
     'zh-tw': '預先載入[LANG]模型'
 };
 
+export const modelReady = {
+    'en': '[LANG] model ready?',
+    'zh-tw': '[LANG]模型已就緒？'
+};
+
 export const modelStatus = {
     'en': 'Model status',
     'zh-tw': '模型狀態'
@@ -81,6 +86,11 @@ export const statusIdle = {
 export const statusLoading = {
     'en': 'loading',
     'zh-tw': '載入中'
+};
+
+export const statusInitializing = {
+    'en': 'initializing',
+    'zh-tw': '初始化中'
 };
 
 export const statusReady = {
