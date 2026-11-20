@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * MediaPipe 載入設定
  * 要離線使用時，把 wasm 資料夾與 face_landmarker.task 放到網站的 static 底下，

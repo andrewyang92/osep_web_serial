@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * Claude Messages API 用戶端（不依賴 Scratch，可在 Node 測試）
  *

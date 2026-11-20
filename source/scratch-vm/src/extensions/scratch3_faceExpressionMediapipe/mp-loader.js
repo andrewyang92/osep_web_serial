@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 載入 MediaPipe Face Landmarker（先試 GPU，失敗改用 CPU）
  * 不可使用 async/await。

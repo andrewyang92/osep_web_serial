@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 決策樹核心（不依賴 Scratch，可在 Node 測試）
  *

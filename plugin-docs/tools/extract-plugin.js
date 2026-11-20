@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 從 Scratch 插件原始碼產生（或更新）插件說明資料檔。
  *

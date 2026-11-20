@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 export const name = {
     'en': 'Claude',
     'zh-tw': 'Claude AI'

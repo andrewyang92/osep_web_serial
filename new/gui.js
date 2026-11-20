@@ -84693,6 +84693,8 @@ module.exports = ScratchLinkDeviceAdapter;
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * Claude AI 插件（Anthropic Messages API）
  *
@@ -85034,6 +85036,8 @@ module.exports = Scratch3Claude;
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * Claude Messages API 用戶端（不依賴 Scratch，可在 Node 測試）
  *
@@ -85363,6 +85367,8 @@ module.exports = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * Claude 插件設定
  *
@@ -85386,6 +85392,8 @@ module.exports = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 exports.name = {
     'en': 'Claude',
     'zh-tw': 'Claude AI'
@@ -85591,6 +85599,8 @@ exports.error_prefix = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// 原始插件：estea8968/osep_web_serial 的 textSentiment（TYiC）；2026 年由 Andrew Yang 改寫
+// SPDX-License-Identifier: BSD-3-Clause
 const ArgumentType = __webpack_require__(/*! ../../extension-support/argument-type */ "./node_modules/scratch-vm/src/extension-support/argument-type.js");
 const BlockType = __webpack_require__(/*! ../../extension-support/block-type */ "./node_modules/scratch-vm/src/extension-support/block-type.js");
 const formatMessage = __webpack_require__(/*! format-message */ "./node_modules/format-message/index.js");
@@ -85805,6 +85815,8 @@ module.exports = textSentiment;
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 文字情緒辨識核心（與 Scratch 無關，可在 Node 中單獨測試）
  *
@@ -86022,6 +86034,8 @@ module.exports = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// 對照表資料由 OpenCC 字典產生，依 OpenCC 的授權
+// SPDX-License-Identifier: Apache-2.0
 /**
  * 繁體 → 簡體「單字」對照表（僅供情緒模型前處理使用）
  * 由 OpenCC 字典 TSCharacters + TWVariantsRev 自動產生（opencc-js 1.4.2）
@@ -86055,6 +86069,8 @@ module.exports = {toSimplified};
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// 原始插件：estea8968/osep_web_serial 的 textSentiment（TYiC）；2026 年由 Andrew Yang 改寫
+// SPDX-License-Identifier: BSD-3-Clause
 exports.title = {
     'en': 'Text Sentiment',
     'zh-tw': '文字情緒辨識'
@@ -86167,6 +86183,8 @@ exports.statusError = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 臉部表情辨識（MediaPipe 版）
  *
@@ -86629,6 +86647,8 @@ module.exports = Scratch3FaceExpressionMediapipe;
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * MediaPipe 臉部表情辨識：與 Scratch 無關的純計算（可在 Node 測試）
  *
@@ -86881,6 +86901,8 @@ module.exports = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * MediaPipe 載入設定
  * 要離線使用時，把 wasm 資料夾與 face_landmarker.task 放到網站的 static 底下，
@@ -86904,6 +86926,8 @@ module.exports = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 載入 MediaPipe Face Landmarker（先試 GPU，失敗改用 CPU）
  * 不可使用 async/await。
@@ -86969,6 +86993,8 @@ module.exports = {createFaceLandmarker};
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /* 中英文字（CommonJS，可直接在 Node 測試） */
 const t = (en, zh) => ({'en': en, 'zh-tw': zh});
 
@@ -87047,6 +87073,8 @@ module.exports = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 決策樹插件
  *
@@ -87592,6 +87620,8 @@ module.exports = Scratch3DecisionTree;
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 決策樹核心（不依賴 Scratch，可在 Node 測試）
  *
@@ -88253,6 +88283,8 @@ module.exports = {
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 產生顯示決策樹的 HTML 頁面（給彈出視窗或頁面內浮動視窗使用）
  *
@@ -88529,6 +88561,8 @@ module.exports = {buildHtml, PALETTE, TEXTS};
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 範例資料：打網球（Quinlan 的經典決策樹教材資料，14 筆）
  * - tennis：原版，天氣、風是文字欄位；溫度（華氏）、濕度（%）是數字欄位
@@ -88609,6 +88643,8 @@ module.exports = {tennis, tennisYesNo};
 /*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
 (module, exports, __webpack_require__) {
 
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /* 中英文字（CommonJS，可直接在 Node 測試） */
 const t = (en, zh) => ({'en': en, 'zh-tw': zh});
 

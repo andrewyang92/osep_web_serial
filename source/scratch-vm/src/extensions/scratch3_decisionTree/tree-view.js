@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 產生顯示決策樹的 HTML 頁面（給彈出視窗或頁面內浮動視窗使用）
  *

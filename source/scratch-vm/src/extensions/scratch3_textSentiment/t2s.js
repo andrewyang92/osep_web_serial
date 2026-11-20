@@ -1,3 +1,5 @@
+// 對照表資料由 OpenCC 字典產生，依 OpenCC 的授權
+// SPDX-License-Identifier: Apache-2.0
 /**
  * 繁體 → 簡體「單字」對照表（僅供情緒模型前處理使用）
  * 由 OpenCC 字典 TSCharacters + TWVariantsRev 自動產生（opencc-js 1.4.2）

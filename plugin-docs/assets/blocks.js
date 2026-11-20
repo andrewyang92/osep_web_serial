@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /*
  * Scratch 風格積木繪製器（純 HTML + CSS，不需要外部函式庫）
  *

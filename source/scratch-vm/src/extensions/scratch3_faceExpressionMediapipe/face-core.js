@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * MediaPipe 臉部表情辨識：與 Scratch 無關的純計算（可在 Node 測試）
  *

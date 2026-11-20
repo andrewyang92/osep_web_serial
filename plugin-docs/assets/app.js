@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /*
  * OSEP 插件說明網站主程式
  * 不需要伺服器：直接雙擊 index.html 就能開（所有資料都用 <script> 載入）。

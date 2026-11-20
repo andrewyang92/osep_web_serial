@@ -37,3 +37,9 @@ node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_
 插件更新後再執行一次第 1 步，就能同步積木文字與參數，已寫好的說明會保留。
 
 需要 Node.js，而且插件資料夾要在 `osep_web_serial` 專案的 `node_modules` 裡（工具會用到專案的 `format-message` 套件）。
+
+## 授權
+
+網站程式依 `osep_web_serial` 的授權（BSD-3-Clause，見 repo 根目錄的 `LICENSE`），
+Copyright (c) 2026 Andrew Yang。用到的字型與各插件的第三方套件、模型，見 repo 根目錄的
+`THIRD_PARTY_NOTICES.md`。

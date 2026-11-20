@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /* 「新增插件」頁面的內容（純 HTML） */
 window.OSEP_GUIDE_HTML = `
 <h1>新增插件說明</h1>

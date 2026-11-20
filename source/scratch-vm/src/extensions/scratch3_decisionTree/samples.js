@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 範例資料：打網球（Quinlan 的經典決策樹教材資料，14 筆）
  * - tennis：原版，天氣、風是文字欄位；溫度（華氏）、濕度（%）是數字欄位

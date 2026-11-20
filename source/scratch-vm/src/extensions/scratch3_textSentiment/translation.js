@@ -1,3 +1,5 @@
+// 原始插件：estea8968/osep_web_serial 的 textSentiment（TYiC）；2026 年由 Andrew Yang 改寫
+// SPDX-License-Identifier: BSD-3-Clause
 export const title = {
     'en': 'Text Sentiment',
     'zh-tw': '文字情緒辨識'

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /* 中英文字（CommonJS，可直接在 Node 測試） */
 const t = (en, zh) => ({'en': en, 'zh-tw': zh});
 

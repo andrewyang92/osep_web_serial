@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
 /**
  * 文字情緒辨識核心（與 Scratch 無關，可在 Node 中單獨測試）
  *
