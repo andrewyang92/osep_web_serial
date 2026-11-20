@@ -63209,7 +63209,8 @@ const builtinExtensions = {
   //osep add (claude/textSentiment/faceExpressionMediapipe)
   claude: () => __webpack_require__(/*! ../extensions/scratch3_claude */ "./node_modules/scratch-vm/src/extensions/scratch3_claude/index.js"),
   textSentiment: () => __webpack_require__(/*! ../extensions/scratch3_textSentiment */ "./node_modules/scratch-vm/src/extensions/scratch3_textSentiment/index.js"),
-  faceExpressionMediapipe: () => __webpack_require__(/*! ../extensions/scratch3_faceExpressionMediapipe */ "./node_modules/scratch-vm/src/extensions/scratch3_faceExpressionMediapipe/index.js")
+  faceExpressionMediapipe: () => __webpack_require__(/*! ../extensions/scratch3_faceExpressionMediapipe */ "./node_modules/scratch-vm/src/extensions/scratch3_faceExpressionMediapipe/index.js"),
+  decisionTree: () => __webpack_require__(/*! ../extensions/scratch3_decisionTree */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/index.js")
 };
 
 /**
@@ -67850,14 +67851,6 @@ class Scratch3Claude {
             blockIconURI: blockIconURI,
             blocks: [
                 {
-                    opcode: 'setApiKey',
-                    blockType: BlockType.COMMAND,
-                    text: msg.set_api_key[L],
-                    arguments: {
-                        KEY: {type: ArgumentType.STRING, defaultValue: KEY_PLACEHOLDER}
-                    }
-                },
-                {
                     opcode: 'setAccessCode',
                     blockType: BlockType.COMMAND,
                     text: msg.set_access_code[L],
@@ -67866,11 +67859,28 @@ class Scratch3Claude {
                     }
                 },
                 {
+                    opcode: 'setApiKey',
+                    blockType: BlockType.COMMAND,
+                    text: msg.set_api_key[L],
+                    arguments: {
+                        KEY: {type: ArgumentType.STRING, defaultValue: KEY_PLACEHOLDER}
+                    }
+                },
+                {
                     opcode: 'setProxyUrl',
                     blockType: BlockType.COMMAND,
                     text: msg.set_proxy_url[L],
                     arguments: {
                         URL: {type: ArgumentType.STRING, defaultValue: 'https://script.google.com/macros/s/.../exec'}
+                    }
+                },
+                '---',
+                {
+                    opcode: 'setSystem',
+                    blockType: BlockType.COMMAND,
+                    text: msg.set_system[L],
+                    arguments: {
+                        SYSTEM: {type: ArgumentType.STRING, defaultValue: msg.default_system[L]}
                     }
                 },
                 {
@@ -67882,11 +67892,20 @@ class Scratch3Claude {
                     }
                 },
                 {
-                    opcode: 'setSystem',
+                    opcode: 'setMemory',
                     blockType: BlockType.COMMAND,
-                    text: msg.set_system[L],
+                    text: msg.set_memory[L],
                     arguments: {
-                        SYSTEM: {type: ArgumentType.STRING, defaultValue: msg.default_system[L]}
+                        ONOFF: {type: ArgumentType.STRING, menu: 'onoffMenu', defaultValue: 'on'}
+                    }
+                },
+                '---',
+                {
+                    opcode: 'setTemperature',
+                    blockType: BlockType.COMMAND,
+                    text: msg.set_temperature[L],
+                    arguments: {
+                        TEMP: {type: ArgumentType.NUMBER, defaultValue: 0.7}
                     }
                 },
                 {
@@ -67897,32 +67916,20 @@ class Scratch3Claude {
                         TOKENS: {type: ArgumentType.NUMBER, defaultValue: DEFAULT_MAX_TOKENS}
                     }
                 },
-                {
-                    opcode: 'setTemperature',
-                    blockType: BlockType.COMMAND,
-                    text: msg.set_temperature[L],
-                    arguments: {
-                        TEMP: {type: ArgumentType.NUMBER, defaultValue: 0.7}
-                    }
-                },
-                {
-                    opcode: 'setMemory',
-                    blockType: BlockType.COMMAND,
-                    text: msg.set_memory[L],
-                    arguments: {
-                        ONOFF: {type: ArgumentType.STRING, menu: 'onoffMenu', defaultValue: 'on'}
-                    }
-                },
-                {
-                    opcode: 'clearHistory',
-                    blockType: BlockType.COMMAND,
-                    text: msg.clear_history[L]
-                },
                 '---',
                 {
                     opcode: 'ask',
                     blockType: BlockType.COMMAND,
                     text: msg.ask[L],
+                    arguments: {
+                        QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_question[L]}
+                    }
+                },
+                {
+                    opcode: 'askReporter',
+                    blockType: BlockType.REPORTER,
+                    text: msg.ask_reporter[L],
+                    disableMonitor: true,
                     arguments: {
                         QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_question[L]}
                     }
@@ -67935,15 +67942,6 @@ class Scratch3Claude {
                         QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_stage_question[L]}
                     }
                 },
-                {
-                    opcode: 'askReporter',
-                    blockType: BlockType.REPORTER,
-                    text: msg.ask_reporter[L],
-                    disableMonitor: true,
-                    arguments: {
-                        QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_question[L]}
-                    }
-                },
                 '---',
                 {
                     opcode: 'getAnswer',
@@ -67951,14 +67949,14 @@ class Scratch3Claude {
                     text: msg.answer[L]
                 },
                 {
-                    opcode: 'getStatus',
-                    blockType: BlockType.REPORTER,
-                    text: msg.status[L]
-                },
-                {
                     opcode: 'isBusy',
                     blockType: BlockType.BOOLEAN,
                     text: msg.is_busy[L]
+                },
+                {
+                    opcode: 'getStatus',
+                    blockType: BlockType.REPORTER,
+                    text: msg.status[L]
                 },
                 {
                     opcode: 'copyText',
@@ -67967,6 +67965,11 @@ class Scratch3Claude {
                     arguments: {
                         TEXT: {type: ArgumentType.STRING, defaultValue: ' '}
                     }
+                },
+                {
+                    opcode: 'clearHistory',
+                    blockType: BlockType.COMMAND,
+                    text: msg.clear_history[L]
                 }
             ],
             menus: {
@@ -68736,6 +68739,36 @@ class textSentiment {
             blockIconURI: blockIconURI,
             blocks: [
                 {
+                    opcode: 'preloadModel',
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        LANG: {
+                            type: ArgumentType.STRING,
+                            menu: 'modelMenu',
+                            defaultValue: 'all'
+                        }
+                    },
+                    text: msg.preloadModel[theLocale]
+                },
+                {
+                    opcode: 'isModelReady',
+                    blockType: BlockType.BOOLEAN,
+                    arguments: {
+                        LANG: {
+                            type: ArgumentType.STRING,
+                            menu: 'modelMenu',
+                            defaultValue: 'all'
+                        }
+                    },
+                    text: msg.modelReady[theLocale]
+                },
+                {
+                    opcode: 'getModelStatus',
+                    blockType: BlockType.REPORTER,
+                    text: msg.modelStatus[theLocale]
+                },
+                '---',
+                {
                     opcode: 'inputText',
                     blockType: BlockType.COMMAND,
                     arguments: {
@@ -68751,38 +68784,21 @@ class textSentiment {
                     blockType: BlockType.COMMAND,
                     text: msg.startTextSentiment[theLocale]
                 },
-                {
-                    opcode: 'getConfidence',
-                    blockType: BlockType.REPORTER,
-                    text: msg.confidence[theLocale]
-                },
+                '---',
                 {
                     opcode: 'getSentiment',
                     blockType: BlockType.REPORTER,
                     text: msg.sentiment[theLocale]
                 },
                 {
+                    opcode: 'getConfidence',
+                    blockType: BlockType.REPORTER,
+                    text: msg.confidence[theLocale]
+                },
+                {
                     opcode: 'getLanguage',
                     blockType: BlockType.REPORTER,
                     text: msg.language[theLocale]
-                },
-                '---',
-                {
-                    opcode: 'preloadModel',
-                    blockType: BlockType.COMMAND,
-                    arguments: {
-                        LANG: {
-                            type: ArgumentType.STRING,
-                            menu: 'modelMenu',
-                            defaultValue: 'all'
-                        }
-                    },
-                    text: msg.preloadModel[theLocale]
-                },
-                {
-                    opcode: 'getModelStatus',
-                    blockType: BlockType.REPORTER,
-                    text: msg.modelStatus[theLocale]
                 }
             ],
             menus: {
@@ -68829,6 +68845,12 @@ class textSentiment {
         })));
     }
 
+    /** 模型是否已可使用（只查詢，不會開始載入）；可搭配「等待直到」 */
+    isModelReady (args) {
+        const langs = args.LANG === 'all' ? ['zh', 'en'] : [args.LANG];
+        return this.analyzer.isReady(langs);
+    }
+
     getConfidence () {
         return Number(this.confidence.toFixed(2));
     }
@@ -68853,6 +68875,9 @@ class textSentiment {
             switch (s.state) {
             case 'loading':
                 state = `${msg.statusLoading[theLocale]} ${s.progress}%`;
+                break;
+            case 'initializing':
+                state = msg.statusInitializing[theLocale];
                 break;
             case 'ready':
                 state = msg.statusReady[theLocale];
@@ -68908,6 +68933,7 @@ const MODELS = {
 };
 
 const MAX_CHARS = 500; // 模型上限 512 tokens，過長的輸入先截斷
+const LARGE_FILE_BYTES = 5 * 1024 * 1024; // 超過此大小視為模型權重檔
 
 const CJK_RE = /[㐀-䶿一-鿿豈-﫿]/g;
 const LATIN_WORD_RE = /[A-Za-z]+/g;
@@ -68988,6 +69014,15 @@ class SentimentAnalyzer {
     }
 
     /**
+     * 指定語言的模型是否都已可用（不會觸發載入）。
+     * @param {string[]} langs 語言列表
+     * @returns {boolean} 全部就緒才回傳 true
+     */
+    isReady (langs) {
+        return langs.every(lang => this.status[lang] && this.status[lang].state === 'ready');
+    }
+
+    /**
      * 載入（或取得已載入的）某語言模型。同一語言只會下載一次。
      * @param {'zh'|'en'} lang 語言
      * @returns {Promise<Function>} classifier
@@ -68997,17 +69032,32 @@ class SentimentAnalyzer {
         if (!cfg) return Promise.reject(new Error(`Unsupported language: ${lang}`));
         if (this._classifiers[lang]) return this._classifiers[lang];
 
+        // 模型由多個檔案組成（設定檔、tokenizer、ONNX 權重），會陸續開始下載。
+        // 若只用「目前已知的檔案」計算，小檔先下載完時會短暫顯示 99%，
+        // 之後大檔出現又掉回去。因此：
+        //   1. 在大檔（模型權重）出現前不顯示百分比
+        //   2. 百分比只增不減
+        //   3. 所有檔案下載完後改顯示「初始化中」，直到模型真的可用
         const files = {}; // file -> {loaded, total}
+        let sawLargeFile = false;
         const onProgress = p => {
             if (!p || !p.file || p.status !== 'progress' || !p.total) return;
+            if (this.status[lang].state === 'ready' || this.status[lang].state === 'error') return;
             files[p.file] = {loaded: p.loaded, total: p.total};
+            if (p.total >= LARGE_FILE_BYTES) sawLargeFile = true;
+            if (!sawLargeFile) return;
             let loaded = 0;
             let total = 0;
             for (const f of Object.values(files)) {
-                loaded += f.loaded;
+                loaded += Math.min(f.loaded, f.total);
                 total += f.total;
             }
-            this._setStatus(lang, {progress: Math.min(99, Math.floor((100 * loaded) / total))});
+            if (loaded >= total) {
+                this._setStatus(lang, {state: 'initializing', progress: 100});
+                return;
+            }
+            const pct = Math.min(99, Math.floor((100 * loaded) / total));
+            if (pct > this.status[lang].progress) this._setStatus(lang, {progress: pct});
         };
 
         this._setStatus(lang, {state: 'loading', progress: 0, error: null});
@@ -69143,6 +69193,11 @@ exports.preloadModel = {
     'zh-tw': '預先載入[LANG]模型'
 };
 
+exports.modelReady = {
+    'en': '[LANG] model ready?',
+    'zh-tw': '[LANG]模型已就緒？'
+};
+
 exports.modelStatus = {
     'en': 'Model status',
     'zh-tw': '模型狀態'
@@ -69186,6 +69241,11 @@ exports.statusIdle = {
 exports.statusLoading = {
     'en': 'loading',
     'zh-tw': '載入中'
+};
+
+exports.statusInitializing = {
+    'en': 'initializing',
+    'zh-tw': '初始化中'
 };
 
 exports.statusReady = {
@@ -69311,7 +69371,8 @@ class Scratch3FaceExpressionMediapipe {
                     }
                 },
                 {opcode: 'startRecognition', blockType: BlockType.COMMAND, text: this._t('start')},
-                {opcode: 'stopRecognition', blockType: BlockType.COMMAND, text: this._t('stop')},
+                {opcode: 'getStatus', blockType: BlockType.REPORTER, text: this._t('status')},
+                {opcode: 'isFaceDetected', blockType: BlockType.BOOLEAN, text: this._t('faceDetected')},
                 '---',
                 {
                     opcode: 'whenEmotion',
@@ -69320,7 +69381,6 @@ class Scratch3FaceExpressionMediapipe {
                     isEdgeActivated: true,
                     arguments: {EMOTION: emotionArg}
                 },
-                {opcode: 'isFaceDetected', blockType: BlockType.BOOLEAN, text: this._t('faceDetected')},
                 {
                     opcode: 'isEmotion',
                     blockType: BlockType.BOOLEAN,
@@ -69350,12 +69410,13 @@ class Scratch3FaceExpressionMediapipe {
                 },
                 {
                     opcode: 'getBlendshape',
+                    hideFromPalette: true, // 2026-11-17 隱藏（進階用，功能保留，舊專案仍可執行）
                     blockType: BlockType.REPORTER,
                     text: this._t('blendshape'),
                     arguments: {NAME: {type: ArgumentType.STRING, defaultValue: 'jawOpen'}}
                 },
                 '---',
-                {opcode: 'getStatus', blockType: BlockType.REPORTER, text: this._t('status')}
+                {opcode: 'stopRecognition', blockType: BlockType.COMMAND, text: this._t('stop')}
             ],
             menus: {
                 videoMenu: {
@@ -70075,6 +70136,1499 @@ module.exports = {
     status_errWasm: t('Error: cannot load MediaPipe WebAssembly files', '錯誤：無法載入 MediaPipe WebAssembly 檔案'),
     status_errModel: t('Error: cannot load the face model', '錯誤：無法載入臉部模型'),
     status_errOther: t('Error', '錯誤')
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/index.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+/**
+ * 決策樹插件
+ *
+ * - 資料：Google 試算表插件「讀取的 Google 資料」產生的 JSON（[{欄位: 值}, ...]）
+ * - 訓練：dt-core.js（C4.5 風格，文字欄位多分支、數字欄位自動找門檻）
+ * - 顯示：tree-view.js 產生 HTML，用 window.open 在新視窗顯示；
+ *   彈出視窗被瀏覽器擋住時，改在本頁用浮動視窗顯示
+ *
+ * 重要：不可使用 async/await（專案 babel 會產生需要 regeneratorRuntime 的程式，
+ * GUI 沒有載入它）。本插件全部是同步運算，也不需要 require('ml5')。
+ */
+const ArgumentType = __webpack_require__(/*! ../../extension-support/argument-type */ "./node_modules/scratch-vm/src/extension-support/argument-type.js");
+const BlockType = __webpack_require__(/*! ../../extension-support/block-type */ "./node_modules/scratch-vm/src/extension-support/block-type.js");
+const formatMessage = __webpack_require__(/*! format-message */ "./node_modules/format-message/index.js");
+const msg = __webpack_require__(/*! ./translation */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/translation.js");
+const core = __webpack_require__(/*! ./dt-core */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/dt-core.js");
+const view = __webpack_require__(/*! ./tree-view */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/tree-view.js");
+const samples = __webpack_require__(/*! ./samples */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/samples.js");
+
+// 原創圖示：紫色樹狀節點
+const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
+    '<circle cx="20" cy="20" r="19" fill="#6230B8"/>' +
+    '<path d="M20 12 L11 22 M20 12 L29 22 M29 22 L24 31 M29 22 L34 31" stroke="#E9DDFF" ' +
+    'stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+    '<rect x="14" y="7" width="12" height="8" rx="3" fill="#FFFFFF"/>' +
+    '<rect x="6" y="19" width="10" height="7" rx="3" fill="#59C059"/>' +
+    '<rect x="24" y="19" width="10" height="7" rx="3" fill="#FFFFFF"/>' +
+    '<rect x="19" y="28" width="9" height="7" rx="3" fill="#4C97FF"/>' +
+    '<rect x="30" y="28" width="8" height="7" rx="3" fill="#59C059"/>' +
+    '<circle cx="31" cy="9" r="2" fill="#FFD84D"/>' +
+    '</svg>';
+const menuIconURI = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+const blockIconURI = menuIconURI;
+
+const WINDOW_NAME = 'osepDecisionTree';
+const OVERLAY_ID = 'osep-decision-tree-overlay';
+
+let theLocale = 'en';
+
+const round1 = x => Math.round(x * 1000) / 10;
+
+class Scratch3DecisionTree {
+    /**
+     * @param {Runtime} runtime
+     * @param {object} [deps] 測試用：{win: 取代 window, doc: 取代 document}
+     */
+    constructor (runtime, deps = {}) {
+        this.runtime = runtime;
+        this._deps = deps;
+
+        this._data = null; // {rows, columns}
+        this._target = '';
+        this._features = null; // null = 全部
+        this._trainPercent = 70;
+        this._maxDepth = 5;
+        this._model = null;
+
+        this._input = {};
+        this._last = null; // 最後一次預測
+        this._shownKey = null; // 視窗目前顯示的內容（避免重複刷新）
+        this._win = null;
+
+        this._status = {key: 'st_noData'};
+        theLocale = this._setLocale();
+    }
+
+    _setLocale () {
+        const locale = formatMessage.setup().locale;
+        return locale === 'zh-tw' ? 'zh-tw' : 'en';
+    }
+
+    _t (key) {
+        const m = msg[key];
+        return m ? (m[theLocale] || m.en) : key;
+    }
+
+    _fmt (key, params) {
+        let s = this._t(key);
+        Object.keys(params || {}).forEach(k => {
+            s = s.split(`{${k}}`).join(params[k]);
+        });
+        return s;
+    }
+
+    _setStatus (key, params) {
+        this._status = {key, params: params || {}};
+    }
+
+    _window () {
+        return this._deps.win || (typeof window === 'undefined' ? null : window);
+    }
+
+    _document () {
+        return this._deps.doc || (typeof document === 'undefined' ? null : document);
+    }
+
+    getInfo () {
+        theLocale = this._setLocale();
+        const s = k => this._t(k);
+        return {
+            id: 'decisionTree',
+            name: s('title'),
+            color1: '#7B3FD9',
+            color2: '#6230B8',
+            color3: '#4E2696',
+            menuIconURI,
+            blockIconURI,
+            blocks: [
+                {opcode: 'useSample', blockType: BlockType.COMMAND, text: s('useSample')},
+                {
+                    opcode: 'setData', blockType: BlockType.COMMAND, text: s('setData'),
+                    arguments: {DATA: {type: ArgumentType.STRING, defaultValue: s('defData')}}
+                },
+                {
+                    opcode: 'setTarget', blockType: BlockType.COMMAND, text: s('setTarget'),
+                    arguments: {COL: {type: ArgumentType.STRING, defaultValue: s('defTarget')}}
+                },
+                {
+                    opcode: 'setFeatures', blockType: BlockType.COMMAND, text: s('setFeatures'),
+                    arguments: {COLS: {type: ArgumentType.STRING, defaultValue: s('defFeatures')}}
+                },
+                {opcode: 'getColumns', blockType: BlockType.REPORTER, text: s('columns')},
+                {opcode: 'getRowCount', blockType: BlockType.REPORTER, text: s('rowCount')},
+                '---',
+                {
+                    opcode: 'setTrainPercent', blockType: BlockType.COMMAND, text: s('setTrainPercent'),
+                    arguments: {P: {type: ArgumentType.NUMBER, defaultValue: 70}}
+                },
+                {
+                    opcode: 'setMaxDepth', blockType: BlockType.COMMAND, text: s('setMaxDepth'),
+                    arguments: {D: {type: ArgumentType.NUMBER, defaultValue: 5}}
+                },
+                {opcode: 'train', blockType: BlockType.COMMAND, text: s('train')},
+                {opcode: 'getStatus', blockType: BlockType.REPORTER, text: s('status')},
+                {opcode: 'getAccuracy', blockType: BlockType.REPORTER, text: s('accuracy')},
+                {
+                    opcode: 'getTreeInfo', blockType: BlockType.REPORTER, text: s('info'),
+                    arguments: {PROP: {type: ArgumentType.STRING, menu: 'prop', defaultValue: 'depth'}}
+                },
+                {opcode: 'getRules', blockType: BlockType.REPORTER, text: s('rules')},
+                '---',
+                {opcode: 'showTree', blockType: BlockType.COMMAND, text: s('showTree')},
+                {opcode: 'closeTree', blockType: BlockType.COMMAND, text: s('closeTree')},
+                '---',
+                {
+                    opcode: 'setInput', blockType: BlockType.COMMAND, text: s('setInput'),
+                    arguments: {
+                        COL: {type: ArgumentType.STRING, defaultValue: s('defCol')},
+                        VAL: {type: ArgumentType.STRING, defaultValue: s('defVal')}
+                    }
+                },
+                {opcode: 'clearInput', blockType: BlockType.COMMAND, text: s('clearInput')},
+                {opcode: 'predict', blockType: BlockType.REPORTER, text: s('predict')},
+                {
+                    opcode: 'predictText', blockType: BlockType.REPORTER, text: s('predictText'),
+                    arguments: {TEXT: {type: ArgumentType.STRING, defaultValue: s('defText')}}
+                },
+                {opcode: 'getConfidence', blockType: BlockType.REPORTER, text: s('confidence')},
+                {opcode: 'getPath', blockType: BlockType.REPORTER, text: s('path')}
+            ],
+            menus: {
+                prop: {
+                    acceptReporters: false,
+                    items: ['depth', 'leaves', 'nTrain', 'nTest', 'features', 'target']
+                        .map(v => ({text: s(`prop_${v}`), value: v}))
+                }
+            }
+        };
+    }
+
+    /* ---------- 資料 ---------- */
+
+    _loadData (input) {
+        const r = core.parseData(input);
+        this._model = null;
+        this._last = null;
+        if (r.error) {
+            this._data = null;
+            const key = {empty: 'st_dataEmpty', format: 'st_dataFormat', noRows: 'st_dataNoRows'}[r.error];
+            this._setStatus(key || 'st_dataFormat');
+            return false;
+        }
+        this._data = r;
+        this._setStatus('st_dataReady', {rows: r.rows.length, cols: r.columns.length});
+        return true;
+    }
+
+    useSample () {
+        const sample = samples.tennis(theLocale);
+        this._loadData(sample.rows);
+        this._target = sample.target;
+        this._features = null;
+    }
+
+    setData (args) {
+        this._loadData(args.DATA);
+    }
+
+    setTarget (args) {
+        this._target = String(args.COL).trim();
+        this._model = null;
+    }
+
+    setFeatures (args) {
+        this._features = core.isAllKeyword(args.COLS) ? null : core.splitList(args.COLS);
+        this._model = null;
+    }
+
+    getColumns () {
+        return this._data ? this._data.columns.join(', ') : '';
+    }
+
+    getRowCount () {
+        return this._data ? this._data.rows.length : 0;
+    }
+
+    /* ---------- 訓練 ---------- */
+
+    setTrainPercent (args) {
+        const p = Number(args.P);
+        if (isFinite(p)) this._trainPercent = Math.max(1, Math.min(100, p));
+    }
+
+    setMaxDepth (args) {
+        const d = Math.round(Number(args.D));
+        if (isFinite(d)) this._maxDepth = Math.max(1, Math.min(20, d));
+    }
+
+    train () {
+        this._model = null;
+        this._last = null;
+        if (!this._data) {
+            this._setStatus('st_noData');
+            return;
+        }
+        const cols = this._data.columns;
+        const target = this._target || cols[cols.length - 1];
+        if (cols.indexOf(target) < 0) {
+            this._setStatus('st_badTarget', {col: target, cols: cols.join(', ')});
+            return;
+        }
+        let features = cols.filter(c => c !== target);
+        if (this._features) {
+            const missing = this._features.filter(f => cols.indexOf(f) < 0);
+            if (missing.length) {
+                this._setStatus('st_badFeatures', {missing: missing.join(', '), cols: cols.join(', ')});
+                return;
+            }
+            features = this._features.filter(f => f !== target);
+        }
+        const m = core.train(this._data.rows, {
+            target, features, maxDepth: this._maxDepth, trainPercent: this._trainPercent
+        });
+        if (m.error) {
+            if (m.error === 'tooFewRows') this._setStatus('st_tooFewRows', {col: target});
+            else this._setStatus('st_noFeatures');
+            return;
+        }
+        this._model = m;
+        this._setStatus(m.nTest ? 'st_trained' : 'st_trainedNoTest', {
+            nTrain: m.nTrain, nTest: m.nTest, acc: round1(m.accuracy)
+        });
+        if (this._isShowing()) this._render();
+    }
+
+    getStatus () {
+        let text = this._fmt(this._status.key, this._status.params);
+        if (this._model && this._model.skipped.length &&
+            (this._status.key === 'st_trained' || this._status.key === 'st_trainedNoTest')) {
+            const list = this._model.skipped.map(sk =>
+                this._fmt(sk.reason === 'unique' ? 'skip_unique' : 'skip_constant', {col: sk.feature}));
+            text += this._fmt('st_skipped', {list: list.join('、')});
+        }
+        return text;
+    }
+
+    getAccuracy () {
+        return this._model ? round1(this._model.accuracy) : '';
+    }
+
+    getTreeInfo (args) {
+        const m = this._model;
+        if (!m) return '';
+        switch (args.PROP) {
+        case 'depth': return m.depth;
+        case 'leaves': return m.leaves;
+        case 'nTrain': return m.nTrain;
+        case 'nTest': return m.nTest;
+        case 'features': return m.usedFeatures.join(', ');
+        case 'target': return m.target;
+        default: return '';
+        }
+    }
+
+    getRules () {
+        if (!this._model) return '';
+        return core.rulesText(this._model, {
+            if: this._t('rule_if'), and: this._t('rule_and'), then: this._t('rule_then'),
+            always: this._t('rule_always'), rows: this._t('rule_rows')
+        });
+    }
+
+    /* ---------- 顯示 ---------- */
+
+    _html () {
+        return view.buildHtml(this._model, {locale: theLocale, highlight: this._last});
+    }
+
+    _key () {
+        return this._last ? this._last.nodeIds.join('-') + (this._last.unknown ? '?' : '') : '';
+    }
+
+    _overlay () {
+        const doc = this._document();
+        return doc ? doc.getElementById(OVERLAY_ID) : null;
+    }
+
+    _isShowing () {
+        return !!((this._win && !this._win.closed) || this._overlay());
+    }
+
+    showTree () {
+        if (!this._model) {
+            this._setStatus('st_noTree');
+            return;
+        }
+        const win = this._window();
+        let w = this._win && !this._win.closed ? this._win : null;
+        if (!w && win && win.open) {
+            const sw = (win.screen && win.screen.availWidth) || 1280;
+            const sh = (win.screen && win.screen.availHeight) || 800;
+            const width = Math.round(Math.min(1200, sw * 0.7));
+            const height = Math.round(Math.min(860, sh * 0.75));
+            try {
+                w = win.open('', WINDOW_NAME, `width=${width},height=${height},resizable=yes,scrollbars=no`);
+            } catch (e) {
+                w = null;
+            }
+        }
+        if (w && w.document) {
+            this._win = w;
+            this._removeOverlay();
+            this._writeWindow(w);
+            if (w.focus) w.focus();
+            return;
+        }
+        this._win = null;
+        this._showOverlay();
+        this._setStatus('st_popup');
+    }
+
+    _writeWindow (w) {
+        w.document.open();
+        w.document.write(this._html());
+        w.document.close();
+        this._shownKey = this._key();
+    }
+
+    /** 重新畫目前開著的視窗（訓練或預測後） */
+    _render () {
+        if (!this._model) return;
+        if (this._win && !this._win.closed) {
+            this._writeWindow(this._win);
+        } else if (this._overlay()) {
+            this._showOverlay();
+        }
+    }
+
+    _showOverlay () {
+        const doc = this._document();
+        if (!doc || !doc.body) return;
+        let ov = this._overlay();
+        if (!ov) {
+            ov = doc.createElement('div');
+            ov.id = OVERLAY_ID;
+            ov.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(30,15,85,.45);' +
+                'display:flex;align-items:center;justify-content:center;';
+            const panel = doc.createElement('div');
+            panel.style.cssText = 'width:88vw;height:84vh;background:#fff;border-radius:12px;overflow:hidden;' +
+                'display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.35);';
+            const bar = doc.createElement('div');
+            bar.style.cssText = 'display:flex;justify-content:flex-end;padding:4px 8px;background:#2E1A78;';
+            const btn = doc.createElement('button');
+            btn.textContent = `✕ ${theLocale === 'zh-tw' ? '關閉' : 'Close'}`;
+            btn.style.cssText = 'border:0;border-radius:14px;padding:4px 12px;cursor:pointer;' +
+                'background:rgba(255,255,255,.2);color:#fff;font-size:13px;';
+            btn.onclick = () => this._removeOverlay();
+            bar.appendChild(btn);
+            const frame = doc.createElement('iframe');
+            frame.style.cssText = 'flex:1;border:0;width:100%;';
+            panel.appendChild(bar);
+            panel.appendChild(frame);
+            ov.appendChild(panel);
+            ov.onclick = e => {
+                if (e.target === ov) this._removeOverlay();
+            };
+            doc.body.appendChild(ov);
+        }
+        ov.querySelector('iframe').srcdoc = this._html();
+        this._shownKey = this._key();
+    }
+
+    _removeOverlay () {
+        const ov = this._overlay();
+        if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    }
+
+    closeTree () {
+        if (this._win && !this._win.closed) this._win.close();
+        this._win = null;
+        this._removeOverlay();
+    }
+
+    /* ---------- 預測 ---------- */
+
+    setInput (args) {
+        const col = String(args.COL).trim();
+        if (col) this._input[col] = String(args.VAL).trim();
+    }
+
+    clearInput () {
+        this._input = {};
+    }
+
+    _predict (input) {
+        if (!this._model) {
+            this._setStatus('st_noTree');
+            this._last = null;
+            return '';
+        }
+        const r = core.predict(this._model, input);
+        this._last = r;
+        const okKey = this._model.nTest ? 'st_trained' : 'st_trainedNoTest';
+        const okParams = {nTrain: this._model.nTrain, nTest: this._model.nTest, acc: round1(this._model.accuracy)};
+        if (r.unknown) {
+            this._setStatus('st_unknownValue', {col: r.unknown.feature, val: r.unknown.value});
+        } else if (r.missing.length) {
+            this._setStatus('st_missing', {list: r.missing.join(', ')});
+        } else {
+            this._setStatus(okKey, okParams);
+        }
+        // 視窗開著時，把預測路徑畫上去（路徑沒變就不重畫）
+        if (this._isShowing() && this._key() !== this._shownKey) this._render();
+        return r.prediction;
+    }
+
+    predict () {
+        return this._predict(this._input);
+    }
+
+    predictText (args) {
+        return this._predict(core.parseInputText(args.TEXT));
+    }
+
+    getConfidence () {
+        return this._last ? round1(this._last.confidence) : '';
+    }
+
+    getPath () {
+        const r = this._last;
+        if (!r) return '';
+        const parts = r.path.map(p => (p.op === '=' ? `${p.feature} = ${p.label}` : `${p.feature} ${p.label}`));
+        if (r.unknown) parts.push(`${r.unknown.feature} = ${r.unknown.value} ${this._t('unknownMark')}`);
+        parts.push(`${this._model ? this._model.target : ''} = ${r.prediction}`);
+        return parts.join(' → ');
+    }
+}
+
+module.exports = Scratch3DecisionTree;
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/dt-core.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+/**
+ * 決策樹核心（不依賴 Scratch，可在 Node 測試）
+ *
+ * - 演算法：C4.5 風格
+ *   - 文字欄位：每個值一個分支（例：天氣 → 晴 / 陰 / 雨），用過就不再用
+ *   - 數字欄位：找最好的門檻值切成兩邊（例：溫度 ≤ 75.5 / > 75.5），可重複使用
+ *   - 用「資訊增益比」挑欄位，只在增益不低於平均的欄位中挑（避免偏好值很多的欄位）
+ * - 資料格式：Google 試算表插件的 JSON，[{欄位: 值, ...}, ...]，值通常都是字串
+ *
+ * 注意：不可使用 async/await（見專案的 regeneratorRuntime 調查）。
+ */
+'use strict';
+
+const EPS = 1e-12;
+
+/* ---------- 資料 ---------- */
+
+const isNumeric = s => s !== '' && isFinite(Number(s));
+
+function cleanCell (v) {
+    if (v === null || typeof v === 'undefined') return '';
+    if (typeof v === 'object') return JSON.stringify(v);
+    return String(v).trim();
+}
+
+/** 簡單 CSV 解析（支援雙引號），資料不是 JSON 時的備用 */
+function parseCsv (text) {
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let quoted = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (quoted) {
+            if (c === '"' && text[i + 1] === '"') {
+                cell += '"';
+                i++;
+            } else if (c === '"') {
+                quoted = false;
+            } else {
+                cell += c;
+            }
+        } else if (c === '"') {
+            quoted = true;
+        } else if (c === ',') {
+            row.push(cell);
+            cell = '';
+        } else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = '';
+        } else {
+            cell += c;
+        }
+    }
+    row.push(cell);
+    rows.push(row);
+    if (rows.length < 2) return null;
+    const headers = rows[0];
+    return rows.slice(1).map(r => {
+        const o = {};
+        headers.forEach((h, j) => {
+            o[h] = typeof r[j] === 'undefined' ? '' : r[j];
+        });
+        return o;
+    });
+}
+
+/**
+ * 讀入資料。
+ * @param {string|Array} input JSON 字串、物件陣列，或 CSV 文字
+ * @returns {{rows: object[], columns: string[]} | {error: string}}
+ *   error：'empty' | 'format' | 'noRows'
+ */
+function parseData (input) {
+    let list = input;
+    if (typeof input === 'number') input = String(input);
+    if (typeof input === 'string') {
+        const text = input.trim();
+        if (!text) return {error: 'empty'};
+        try {
+            list = JSON.parse(text);
+        } catch (e) {
+            list = (text.indexOf(',') >= 0 && /[\r\n]/.test(text)) ? parseCsv(text) : null;
+        }
+    }
+    if (list && !Array.isArray(list) && typeof list === 'object') {
+        // 也接受 {data: [...]} 或 {data: "[...]"}
+        if (Array.isArray(list.data)) list = list.data;
+        else if (typeof list.data === 'string') return parseData(list.data);
+    }
+    if (!Array.isArray(list)) return {error: 'format'};
+
+    const columns = [];
+    const seen = {};
+    const rows = [];
+    list.forEach(item => {
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return;
+        const row = {};
+        let hasValue = false;
+        Object.keys(item).forEach(k => {
+            const key = String(k).trim();
+            if (!key) return; // CSV 結尾多出的逗號
+            const v = cleanCell(item[k]);
+            row[key] = v;
+            if (v !== '') hasValue = true;
+            if (!seen[key]) {
+                seen[key] = true;
+                columns.push(key);
+            }
+        });
+        if (hasValue) rows.push(row); // 跳過整列空白（CSV 最後一列）
+    });
+    if (!rows.length) return {error: 'noRows'};
+    rows.forEach(r => columns.forEach(c => {
+        if (typeof r[c] === 'undefined') r[c] = '';
+    }));
+    return {rows, columns};
+}
+
+/** 欄位是否為數字欄：所有非空白值都是數字 */
+function columnIsNumeric (rows, col) {
+    let any = false;
+    for (const r of rows) {
+        const v = r[col];
+        if (v === '') continue;
+        if (!isNumeric(v)) return false;
+        any = true;
+    }
+    return any;
+}
+
+/** 把「天氣, 溫度」之類的文字拆成欄位清單（支援 , ， 、 ; 換行） */
+function splitList (text) {
+    return String(text === null || typeof text === 'undefined' ? '' : text)
+        .split(/[,，、;；\n]/)
+        .map(s => s.trim())
+        .filter(Boolean);
+}
+
+/** 「全部」「all」「*」或空白 → 使用全部欄位 */
+function isAllKeyword (text) {
+    const s = String(text === null || typeof text === 'undefined' ? '' : text).trim().toLowerCase();
+    return s === '' || s === '*' || s === 'all' || s === '全部' || s === '全部欄位' || s === '所有欄位';
+}
+
+/**
+ * 把預測資料文字轉成物件。
+ * 支援 JSON（{"天氣":"晴"}）或「天氣=晴, 溫度=70」（= : ： 皆可）
+ */
+function parseInputText (text) {
+    if (text && typeof text === 'object') return Object.assign({}, text);
+    const s = String(text === null || typeof text === 'undefined' ? '' : text).trim();
+    if (!s) return {};
+    if (s[0] === '{') {
+        try {
+            const o = JSON.parse(s);
+            const out = {};
+            Object.keys(o).forEach(k => {
+                out[String(k).trim()] = cleanCell(o[k]);
+            });
+            return out;
+        } catch (e) { /* 當成一般文字處理 */ }
+    }
+    const out = {};
+    splitList(s).forEach(part => {
+        const m = part.match(/^([^=:：]+)[=:：](.*)$/);
+        if (m) out[m[1].trim()] = m[2].trim();
+    });
+    return out;
+}
+
+/* ---------- 亂數（固定種子，同樣的資料每次切法一樣） ---------- */
+
+function mulberry32 (seed) {
+    let a = seed >>> 0;
+    return function () {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function shuffled (list, seed) {
+    const rand = mulberry32(seed);
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        const t = a[i];
+        a[i] = a[j];
+        a[j] = t;
+    }
+    return a;
+}
+
+/* ---------- 計算 ---------- */
+
+function countBy (rows, target) {
+    const counts = {};
+    rows.forEach(r => {
+        counts[r[target]] = (counts[r[target]] || 0) + 1;
+    });
+    return counts;
+}
+
+function entropyOfCounts (counts, total) {
+    if (!total) return 0;
+    let h = 0;
+    Object.keys(counts).forEach(k => {
+        const p = counts[k] / total;
+        if (p > 0) h -= p * Math.log2(p);
+    });
+    return h;
+}
+
+/** 多數類別；同票時依 classOrder（資料中先出現的）決定，結果固定 */
+function majority (counts, classOrder) {
+    let best = null;
+    let bestN = -1;
+    classOrder.forEach(c => {
+        if ((counts[c] || 0) > bestN) {
+            best = c;
+            bestN = counts[c] || 0;
+        }
+    });
+    return best;
+}
+
+/** 好讀的門檻值：兩數中點，最多 4 位小數 */
+function niceThreshold (a, b) {
+    const mid = (a + b) / 2;
+    return Number(mid.toFixed(4));
+}
+
+function formatNumber (x) {
+    return String(Number(Number(x).toFixed(4)));
+}
+
+/** 文字欄位的分數 */
+function scoreCategorical (rows, feature, target, baseH) {
+    const groups = {};
+    const order = [];
+    rows.forEach(r => {
+        const v = r[feature];
+        if (!groups[v]) {
+            groups[v] = [];
+            order.push(v);
+        }
+        groups[v].push(r);
+    });
+    if (order.length < 2) return null;
+    const n = rows.length;
+    let rem = 0;
+    let split = 0;
+    order.forEach(v => {
+        const g = groups[v];
+        const w = g.length / n;
+        rem += w * entropyOfCounts(countBy(g, target), g.length);
+        split -= w * Math.log2(w);
+    });
+    const gain = baseH - rem;
+    return {feature, kind: 'cat', gain, ratio: split > EPS ? gain / split : 0, values: order, groups};
+}
+
+/** 數字欄位：找最佳門檻。空白或非數字的列先不算，之後歸到筆數多的一邊 */
+function scoreNumeric (rows, feature, target) {
+    const known = [];
+    const unknown = [];
+    rows.forEach(r => {
+        if (isNumeric(r[feature])) known.push({x: Number(r[feature]), y: r[target], r});
+        else unknown.push(r);
+    });
+    if (known.length < 2) return null;
+    known.sort((a, b) => a.x - b.x);
+    const total = countBy(known.map(k => k.r), target);
+    const nk = known.length;
+    const h = entropyOfCounts(total, nk);
+    const left = {};
+    let best = null;
+    for (let i = 0; i < nk - 1; i++) {
+        left[known[i].y] = (left[known[i].y] || 0) + 1;
+        if (known[i].x === known[i + 1].x) continue;
+        const nl = i + 1;
+        const nr = nk - nl;
+        const right = {};
+        Object.keys(total).forEach(c => {
+            right[c] = total[c] - (left[c] || 0);
+        });
+        const rem = (nl / nk) * entropyOfCounts(left, nl) + (nr / nk) * entropyOfCounts(right, nr);
+        const g = h - rem;
+        if (!best || g > best.g + EPS) best = {g, i};
+    }
+    if (!best) return null;
+    const threshold = niceThreshold(known[best.i].x, known[best.i + 1].x);
+    const leftRows = [];
+    const rightRows = [];
+    known.forEach(k => (k.x <= threshold ? leftRows : rightRows).push(k.r));
+    if (!leftRows.length || !rightRows.length) return null;
+    // C4.5：有缺值時增益依已知比例打折
+    const frac = nk / rows.length;
+    const gain = frac * best.g;
+    const missingGoes = leftRows.length >= rightRows.length ? 0 : 1;
+    unknown.forEach(r => (missingGoes === 0 ? leftRows : rightRows).push(r));
+    const n = rows.length;
+    const wl = leftRows.length / n;
+    const wr = rightRows.length / n;
+    const split = -(wl * Math.log2(wl)) - (wr * Math.log2(wr));
+    return {
+        feature, kind: 'num', gain, ratio: split > EPS ? gain / split : 0,
+        threshold, missingGoes, groups: [leftRows, rightRows]
+    };
+}
+
+/* ---------- 訓練 ---------- */
+
+/**
+ * 訓練決策樹。
+ * @param {object[]} rows 已清理的資料（parseData 的 rows）
+ * @param {object} opts
+ *   target：要預測的欄位
+ *   features：用來判斷的欄位（陣列）
+ *   maxDepth：最大深度（根節點的分岔算第 1 層），預設 5
+ *   minSamples：少於幾筆就不再分，預設 2
+ *   trainPercent：訓練資料百分比（1～100），預設 70
+ *   seed：打亂資料的種子，預設 1
+ * @returns {object} model 或 {error, detail}
+ */
+function train (rows, opts) {
+    const target = opts.target;
+    const maxDepth = Math.max(1, Math.min(20, Math.round(Number(opts.maxDepth) || 5)));
+    const minSamples = Math.max(2, Math.round(Number(opts.minSamples) || 2));
+    let trainPercent = Number(opts.trainPercent);
+    if (!isFinite(trainPercent)) trainPercent = 70;
+    trainPercent = Math.max(1, Math.min(100, trainPercent));
+    const seed = typeof opts.seed === 'number' ? opts.seed : 1;
+
+    const usable = rows.filter(r => r[target] !== '');
+    const dropped = rows.length - usable.length;
+    if (usable.length < 2) return {error: 'tooFewRows', detail: String(usable.length)};
+
+    // 欄位型別、略過「每列都不一樣」的文字欄（例如姓名、編號）
+    const featureInfo = [];
+    const skipped = [];
+    opts.features.forEach(f => {
+        if (f === target) return;
+        const numeric = columnIsNumeric(usable, f);
+        if (!numeric) {
+            const distinct = {};
+            usable.forEach(r => {
+                distinct[r[f]] = true;
+            });
+            const nd = Object.keys(distinct).length;
+            if (nd === usable.length && usable.length >= 6) {
+                skipped.push({feature: f, reason: 'unique'});
+                return;
+            }
+            if (nd < 2) {
+                skipped.push({feature: f, reason: 'constant'});
+                return;
+            }
+        }
+        featureInfo.push({name: f, type: numeric ? 'number' : 'text'});
+    });
+    if (!featureInfo.length) return {error: 'noFeatures', skipped};
+
+    // 類別順序：依資料中出現的先後
+    const classOrder = [];
+    usable.forEach(r => {
+        if (classOrder.indexOf(r[target]) < 0) classOrder.push(r[target]);
+    });
+
+    // 切訓練 / 測試
+    const mixed = trainPercent >= 100 ? usable.slice() : shuffled(usable, seed);
+    let nTrain = Math.round(mixed.length * trainPercent / 100);
+    nTrain = Math.max(1, Math.min(mixed.length, nTrain));
+    const trainRows = mixed.slice(0, nTrain);
+    const testRows = mixed.slice(nTrain);
+
+    let nextId = 0;
+    const types = {};
+    featureInfo.forEach(f => {
+        types[f.name] = f.type;
+    });
+
+    function leaf (counts, n) {
+        const prediction = majority(counts, classOrder);
+        return {
+            id: nextId++, leaf: true, n, counts, prediction,
+            confidence: n ? counts[prediction] / n : 0
+        };
+    }
+
+    function build (subset, available, depth) {
+        const n = subset.length;
+        const counts = countBy(subset, target);
+        const nClasses = Object.keys(counts).length;
+        if (nClasses <= 1 || depth >= maxDepth || n < minSamples || !available.length) {
+            return leaf(counts, n);
+        }
+        const baseH = entropyOfCounts(counts, n);
+        const candidates = [];
+        available.forEach(f => {
+            const s = types[f] === 'number' ?
+                scoreNumeric(subset, f, target) :
+                scoreCategorical(subset, f, target, baseH);
+            if (s && s.gain > EPS) candidates.push(s);
+        });
+        if (!candidates.length) return leaf(counts, n);
+        const avg = candidates.reduce((a, s) => a + s.gain, 0) / candidates.length;
+        let best = null;
+        candidates.forEach(s => {
+            if (s.gain + EPS < avg) return;
+            if (!best || s.ratio > best.ratio + EPS) best = s;
+        });
+
+        const node = {
+            id: nextId++, leaf: false, n, counts,
+            prediction: majority(counts, classOrder),
+            feature: best.feature, kind: best.kind, children: []
+        };
+        node.confidence = counts[node.prediction] / n;
+        if (best.kind === 'num') {
+            node.threshold = best.threshold;
+            node.missingGoes = best.missingGoes;
+            const t = formatNumber(best.threshold);
+            node.children.push({op: '<=', value: best.threshold, label: `≤ ${t}`,
+                node: build(best.groups[0], available, depth + 1)});
+            node.children.push({op: '>', value: best.threshold, label: `> ${t}`,
+                node: build(best.groups[1], available, depth + 1)});
+        } else {
+            const rest = available.filter(f => f !== best.feature);
+            best.values.forEach(v => {
+                node.children.push({op: '=', value: v, label: v === '' ? '(空白)' : v,
+                    node: build(best.groups[v], rest, depth + 1)});
+            });
+        }
+        // 所有子節點都是預測同一類的葉子 → 合併成一片葉子，圖比較簡潔
+        if (node.children.every(c => c.node.leaf && c.node.prediction === node.prediction)) {
+            return {id: node.id, leaf: true, n, counts, prediction: node.prediction, confidence: node.confidence};
+        }
+        return node;
+    }
+
+    const tree = build(trainRows, featureInfo.map(f => f.name), 0);
+    renumber(tree);
+
+    const model = {
+        target, classes: classOrder, features: featureInfo, skipped,
+        maxDepth, trainPercent,
+        nRows: usable.length, droppedRows: dropped,
+        nTrain: trainRows.length, nTest: testRows.length,
+        tree
+    };
+    const evalRows = testRows.length ? testRows : trainRows;
+    let correct = 0;
+    evalRows.forEach(r => {
+        if (predict(model, r).prediction === r[target]) correct++;
+    });
+    model.accuracy = evalRows.length ? correct / evalRows.length : 0;
+    model.accuracyOn = testRows.length ? 'test' : 'train';
+    model.correct = correct;
+    model.nEval = evalRows.length;
+    model.depth = treeDepth(tree);
+    model.leaves = countLeaves(tree);
+    model.usedFeatures = usedFeatures(tree);
+    return model;
+}
+
+/** 依前序重新編號（合併節點後 id 會跳號） */
+function renumber (tree) {
+    let id = 0;
+    (function walk (node) {
+        node.id = id++;
+        if (!node.leaf) node.children.forEach(c => walk(c.node));
+    }(tree));
+}
+
+function treeDepth (node) {
+    if (node.leaf) return 0;
+    return 1 + Math.max.apply(null, node.children.map(c => treeDepth(c.node)));
+}
+
+function countLeaves (node) {
+    if (node.leaf) return 1;
+    return node.children.reduce((a, c) => a + countLeaves(c.node), 0);
+}
+
+function usedFeatures (tree) {
+    const list = [];
+    (function walk (node) {
+        if (node.leaf) return;
+        if (list.indexOf(node.feature) < 0) list.push(node.feature);
+        node.children.forEach(c => walk(c.node));
+    }(tree));
+    return list;
+}
+
+/* ---------- 預測 ---------- */
+
+/**
+ * 預測一筆資料。
+ * @returns {{prediction, confidence, nodeIds: number[], path: object[], unknown: object|null, missing: string[]}}
+ *   path：[{feature, label}]；unknown：遇到沒看過的文字值時 {feature, value}，停在該節點用多數類別
+ */
+function predict (model, input) {
+    const values = {};
+    Object.keys(input || {}).forEach(k => {
+        values[String(k).trim()] = cleanCell(input[k]);
+    });
+    let node = model.tree;
+    const nodeIds = [node.id];
+    const path = [];
+    const missing = [];
+    let unknown = null;
+    while (!node.leaf) {
+        const has = Object.prototype.hasOwnProperty.call(values, node.feature);
+        const v = has ? values[node.feature] : '';
+        let next = null;
+        if (node.kind === 'num') {
+            if (isNumeric(v)) {
+                next = Number(v) <= node.threshold ? node.children[0] : node.children[1];
+            } else {
+                if (missing.indexOf(node.feature) < 0) missing.push(node.feature);
+                next = node.children[node.missingGoes];
+            }
+        } else {
+            next = node.children.filter(c => c.value === v)[0] || null;
+            if (!next) {
+                if (!has || v === '') {
+                    if (missing.indexOf(node.feature) < 0) missing.push(node.feature);
+                } else {
+                    unknown = {feature: node.feature, value: v};
+                }
+                break;
+            }
+        }
+        path.push({feature: node.feature, label: next.label, op: next.op});
+        node = next.node;
+        nodeIds.push(node.id);
+    }
+    return {
+        prediction: node.prediction,
+        confidence: node.confidence,
+        nodeIds, path, unknown, missing
+    };
+}
+
+/* ---------- 規則文字 ---------- */
+
+/**
+ * 把樹轉成「如果…就…」的規則文字，一片葉子一行。
+ * @param {object} model
+ * @param {object} w 文字：{if, and, then, always, rows}（rows 例如 '筆'）
+ */
+function rulesText (model, w) {
+    const lines = [];
+    (function walk (node, conds) {
+        if (node.leaf) {
+            const right = node.counts[node.prediction] || 0;
+            const head = conds.length ? `${w.if} ${conds.join(` ${w.and} `)}` : w.always;
+            lines.push(`${head} ${w.then} ${model.target} = ${node.prediction}（${right}/${node.n} ${w.rows}）`);
+            return;
+        }
+        node.children.forEach(c => {
+            const cond = c.op === '=' ? `${node.feature} = ${c.label}` : `${node.feature} ${c.label}`;
+            walk(c.node, conds.concat(cond));
+        });
+    }(model.tree, []));
+    return lines.join('\n');
+}
+
+module.exports = {
+    parseData,
+    parseCsv,
+    columnIsNumeric,
+    splitList,
+    isAllKeyword,
+    parseInputText,
+    train,
+    predict,
+    rulesText,
+    formatNumber,
+    entropyOfCounts,
+    _shuffled: shuffled
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/tree-view.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+/**
+ * 產生顯示決策樹的 HTML 頁面（給彈出視窗或頁面內浮動視窗使用）
+ *
+ * - 完全自己用 SVG 畫，不需要 CDN，離線也能用
+ * - 可滾輪縮放、拖曳移動、符合視窗、下載 PNG
+ * - 有預測結果時，把走過的節點與線標成橘色
+ *
+ * 頁面裡的程式寫在字串中，不會經過 babel，所以只用 ES5 寫法、
+ * 不使用反引號與 ${}。
+ */
+'use strict';
+
+// 類別顏色（不用橘色：橘色保留給預測路徑）
+const PALETTE = ['#4C97FF', '#59C059', '#9966FF', '#FF6680', '#0FBD8C', '#5CB1D6', '#CF63CF', '#8C6239',
+    '#3D5A80', '#7F8C8D'];
+
+const TEXTS = {
+    'en': {
+        title: 'Decision Tree',
+        predicting: 'Predicting',
+        rows: 'rows',
+        train: 'train',
+        test: 'test',
+        accuracyTest: 'Test accuracy',
+        accuracyTrain: 'Training accuracy',
+        depth: 'depth',
+        leaves: 'leaves',
+        fit: 'Fit',
+        zoomIn: 'Zoom in',
+        zoomOut: 'Zoom out',
+        png: 'Download PNG',
+        result: 'Prediction',
+        confidence: 'confidence',
+        via: 'Path',
+        unknownValue: 'value not seen in training',
+        missing: 'missing',
+        hint: 'Scroll to zoom, drag to move',
+        stopHere: 'stopped here',
+        close: 'Close'
+    },
+    'zh-tw': {
+        title: '決策樹',
+        predicting: '預測',
+        rows: '筆',
+        train: '訓練',
+        test: '測試',
+        accuracyTest: '測試正確率',
+        accuracyTrain: '訓練資料正確率',
+        depth: '深度',
+        leaves: '葉子',
+        fit: '符合視窗',
+        zoomIn: '放大',
+        zoomOut: '縮小',
+        png: '下載圖片',
+        result: '預測結果',
+        confidence: '信心',
+        via: '路徑',
+        unknownValue: '訓練資料裡沒有這個值',
+        missing: '缺少',
+        hint: '滾輪縮放、拖曳移動',
+        stopHere: '停在這裡',
+        close: '關閉'
+    }
+};
+
+const PAGE_CSS = [
+    '*{box-sizing:border-box}',
+    'html,body{margin:0;height:100%;background:#F5F3FB;color:#2B2340;',
+    'font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC","Helvetica Neue",Arial,sans-serif}',
+    'body{display:flex;flex-direction:column}',
+    'header{background:linear-gradient(90deg,#2E1A78,#8A2BE2);color:#fff;padding:10px 16px;',
+    'display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}',
+    'header h1{font-size:18px;margin:0;font-weight:700}',
+    '.stats{font-size:13px;opacity:.92}',
+    '.tools{margin-left:auto;display:flex;gap:6px}',
+    'button{border:0;border-radius:16px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;',
+    'background:rgba(255,255,255,.18);color:#fff}',
+    'button:hover{background:rgba(255,255,255,.32)}',
+    '.legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 16px;font-size:13px;background:#fff;',
+    'border-bottom:1px solid #E3DDF3}',
+    '.chip{display:inline-flex;align-items:center;gap:5px}',
+    '.chip i{width:12px;height:12px;border-radius:3px;display:inline-block}',
+    '.result{padding:8px 16px;background:#FFF4E5;border-bottom:1px solid #FFD8A8;font-size:14px}',
+    '.result b{font-size:16px}',
+    '.result .warn{color:#C0392B}',
+    '#stage{flex:1;position:relative;overflow:hidden;cursor:grab}',
+    '#stage.drag{cursor:grabbing}',
+    '#stage svg{width:100%;height:100%;display:block}',
+    '.hint{position:absolute;right:12px;bottom:8px;font-size:12px;color:#8A80A8;pointer-events:none}'
+].join('');
+
+/* 以下是頁面裡執行的程式（ES5） */
+const PAGE_SCRIPT = [
+    '(function(){',
+    'var D=window.__DT__,M=D.model,T=D.texts,H=D.highlight;',
+    'var FONT=\'"Microsoft JhengHei","PingFang TC","Noto Sans TC","Helvetica Neue",Arial,sans-serif\';',
+    'var NS="http://www.w3.org/2000/svg";',
+    'var color={};M.classes.forEach(function(c,i){color[c]=D.palette[i%D.palette.length];});',
+    'function tint(hex,a){var n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255;',
+    '  r=Math.round(r+(255-r)*a);g=Math.round(g+(255-g)*a);b=Math.round(b+(255-b)*a);',
+    '  return "rgb("+r+","+g+","+b+")";}',
+    'function el(tag,attrs,parent){var e=document.createElementNS(NS,tag);',
+    '  for(var k in attrs){if(attrs.hasOwnProperty(k))e.setAttribute(k,attrs[k]);}',
+    '  if(parent)parent.appendChild(e);return e;}',
+    'var ctx=document.createElement("canvas").getContext("2d");',
+    'function tw(text,size,bold){ctx.font=(bold?"700 ":"400 ")+size+"px "+FONT;return ctx.measureText(String(text)).width;}',
+    'function pct(x){return Math.round(x*1000)/10+"%";}',
+    'var hl={};if(H){H.nodeIds.forEach(function(id){hl[id]=true;});}',
+    'var lastId=H?H.nodeIds[H.nodeIds.length-1]:-1;',
+    // 標題列
+    'document.getElementById("ttl").textContent=T.title+"："+T.predicting+"「"+M.target+"」";',
+    'var acc=(M.accuracyOn==="test"?T.accuracyTest:T.accuracyTrain)+" "+pct(M.accuracy)+" ("+M.correct+"/"+M.nEval+")";',
+    'document.getElementById("stats").textContent=T.train+" "+M.nTrain+" "+T.rows+"、"+T.test+" "+M.nTest+" "+T.rows+"｜"+acc+"｜"+T.depth+" "+M.depth+"、"+T.leaves+" "+M.leaves;',
+    'var lg=document.getElementById("legend");M.classes.forEach(function(c){',
+    '  var s=document.createElement("span");s.className="chip";var i=document.createElement("i");',
+    '  i.style.background=color[c];s.appendChild(i);s.appendChild(document.createTextNode(M.target+" = "+c));lg.appendChild(s);});',
+    // 預測結果列
+    'if(H){var r=document.getElementById("result");r.style.display="block";',
+    '  var html="<b>"+T.result+"："+esc(H.prediction)+"</b>（"+T.confidence+" "+pct(H.confidence)+"）";',
+    '  if(H.path.length){html+="　"+T.via+"："+H.path.map(function(p){return esc(p.feature+" "+(p.op==="="?"= ":"")+p.label);}).join(" → ");}',
+    '  if(H.unknown){html+="　<span class=warn>"+esc(H.unknown.feature+" = "+H.unknown.value)+"："+T.unknownValue+"，"+T.stopHere+"</span>";}',
+    '  if(H.missing&&H.missing.length){html+="　<span class=warn>"+T.missing+"："+esc(H.missing.join("、"))+"</span>";}',
+    '  r.innerHTML=html;}',
+    'function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;"}[c];});}',
+    // 量尺寸
+    'var GAP=26,LEVEL=128;',
+    'function measure(n){',
+    '  if(n.leaf){n.l1=String(n.prediction);n.l2=(n.counts[n.prediction]||0)+"/"+n.n+" "+T.rows+" · "+pct(n.confidence);',
+    '    n.w=Math.max(96,tw(n.l1,17,true)+30,tw(n.l2,12,false)+24);}',
+    '  else{n.l1=String(n.feature);n.l2=n.n+" "+T.rows;',
+    '    n.w=Math.max(110,tw(n.l1,16,true)+30,tw(n.l2,12,false)+24);',
+    '    n.children.forEach(function(c){c.lw=tw(c.label,13,true)+18;measure(c.node);});}',
+    '  n.h=60;}',
+    'function span(n){',
+    '  if(n.leaf){n.sw=n.w;return n.sw;}',
+    '  var s=0;n.children.forEach(function(c,i){s+=Math.max(span(c.node),c.lw+8)+(i?GAP:0);});',
+    '  n.sw=Math.max(n.w,s);return n.sw;}',
+    'function place(n,left,depth){',
+    '  n.y=depth*LEVEL;',
+    '  if(n.leaf){n.x=left+n.sw/2;return;}',
+    '  var total=0;n.children.forEach(function(c,i){total+=Math.max(c.node.sw,c.lw+8)+(i?GAP:0);});',
+    '  var x=left+(n.sw-total)/2;',
+    '  n.children.forEach(function(c){var w=Math.max(c.node.sw,c.lw+8);place(c.node,x+(w-c.node.sw)/2,depth+1);x+=w+GAP;});',
+    '  n.x=(n.children[0].node.x+n.children[n.children.length-1].node.x)/2;}',
+    'measure(M.tree);span(M.tree);place(M.tree,0,0);',
+    'var W=M.tree.sw,Hh=0;(function f(n){Hh=Math.max(Hh,n.y+n.h);if(!n.leaf)n.children.forEach(function(c){f(c.node);});})(M.tree);',
+    // 畫圖
+    'var svg=el("svg",{xmlns:NS,"font-family":FONT});',
+    'document.getElementById("stage").appendChild(svg);',
+    'var view=el("g",{},svg);var gl=el("g",{},view),gn=el("g",{},view),gt=el("g",{},view);',
+    'function draw(n){',
+    '  if(!n.leaf){n.children.forEach(function(c){',
+    '    var on=hl[n.id]&&hl[c.node.id];',
+    '    var x1=n.x,y1=n.y+n.h,x2=c.node.x,y2=c.node.y,my=(y1+y2)/2;',
+    '    el("path",{d:"M"+x1+","+y1+" C"+x1+","+my+" "+x2+","+my+" "+x2+","+y2,fill:"none",',
+    '      stroke:on?"#FF8C1A":"#B9AEDA","stroke-width":on?5:2.2},gl);',
+    '    var lx=x1+(x2-x1)*0.5,ly=my;',
+    '    el("rect",{x:lx-c.lw/2,y:ly-12,width:c.lw,height:24,rx:12,fill:on?"#FF8C1A":"#FFFFFF",',
+    '      stroke:on?"#FF8C1A":"#B9AEDA","stroke-width":1.5},gt);',
+    '    var t=el("text",{x:lx,y:ly+4.5,"text-anchor":"middle","font-size":13,"font-weight":700,fill:on?"#FFFFFF":"#4B3F72"},gt);',
+    '    t.textContent=c.label;draw(c.node);});}',
+    '  var on=hl[n.id];var x=n.x-n.w/2,y=n.y;',
+    '  var main=n.leaf?color[n.prediction]:"#5B3FB8";',
+    '  if(on)el("rect",{x:x-5,y:y-5,width:n.w+10,height:n.h+10,rx:16,fill:"none",stroke:"#FF8C1A","stroke-width":4},gn);',
+    '  el("rect",{x:x,y:y,width:n.w,height:n.h,rx:12,fill:n.leaf?tint(main,0.82):"#FFFFFF",stroke:main,"stroke-width":n.leaf?2.5:2},gn);',
+    '  var t1=el("text",{x:n.x,y:y+24,"text-anchor":"middle","font-size":n.leaf?17:16,"font-weight":700,fill:n.leaf?main:"#2B2340"},gn);',
+    '  t1.textContent=n.l1;',
+    '  if(n.leaf){var t2=el("text",{x:n.x,y:y+45,"text-anchor":"middle","font-size":12,fill:"#5A5172"},gn);t2.textContent=n.l2;}',
+    '  else{',
+    // 類別比例條
+    '    var bx=x+12,bw=n.w-24,by=y+36,acc0=0;',
+    '    M.classes.forEach(function(c){var k=n.counts[c]||0;if(!k)return;var w=bw*k/n.n;',
+    '      el("rect",{x:bx+acc0,y:by,width:w,height:7,fill:color[c]},gn);acc0+=w;});',
+    '    el("rect",{x:bx,y:by,width:bw,height:7,rx:2,fill:"none",stroke:"#D8D0EE","stroke-width":1},gn);',
+    '    var t3=el("text",{x:n.x,y:y+55,"text-anchor":"middle","font-size":11,fill:"#7A7096"},gn);t3.textContent=n.l2;}',
+    '  if(n.id===lastId&&H&&H.unknown){var q=el("text",{x:x+n.w-4,y:y+4,"font-size":18,"font-weight":700,fill:"#C0392B"},gn);q.textContent="?";}',
+    '}',
+    'draw(M.tree);',
+    // 縮放與移動
+    'var stage=document.getElementById("stage"),s=1,tx=0,ty=0,PAD=30;',
+    'function apply(){view.setAttribute("transform","translate("+tx+","+ty+") scale("+s+")");}',
+    'function fit(){var w=stage.clientWidth,h=stage.clientHeight;',
+    '  s=Math.min((w-PAD*2)/W,(h-PAD*2)/Hh,1.6);if(!(s>0))s=1;',
+    '  tx=(w-W*s)/2;ty=Math.max(PAD,(h-Hh*s)/2);apply();}',
+    'function zoomAt(f,cx,cy){var ns=Math.max(0.1,Math.min(6,s*f));tx=cx-(cx-tx)*ns/s;ty=cy-(cy-ty)*ns/s;s=ns;apply();}',
+    'stage.addEventListener("wheel",function(e){e.preventDefault();var r=stage.getBoundingClientRect();',
+    '  zoomAt(e.deltaY<0?1.15:1/1.15,e.clientX-r.left,e.clientY-r.top);},{passive:false});',
+    'var drag=null;',
+    'stage.addEventListener("mousedown",function(e){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.className="drag";});',
+    'window.addEventListener("mousemove",function(e){if(!drag)return;tx=drag.tx+e.clientX-drag.x;ty=drag.ty+e.clientY-drag.y;apply();});',
+    'window.addEventListener("mouseup",function(){drag=null;stage.className="";});',
+    'document.getElementById("fit").onclick=fit;',
+    'document.getElementById("zin").onclick=function(){zoomAt(1.25,stage.clientWidth/2,stage.clientHeight/2);};',
+    'document.getElementById("zout").onclick=function(){zoomAt(0.8,stage.clientWidth/2,stage.clientHeight/2);};',
+    'window.addEventListener("resize",fit);fit();',
+    // 下載 PNG
+    'document.getElementById("png").onclick=function(){',
+    '  var P=24,sc=2,ex=svg.cloneNode(true);ex.setAttribute("width",(W+P*2)*sc);ex.setAttribute("height",(Hh+P*2)*sc);',
+    '  ex.setAttribute("viewBox",(-P)+" "+(-P)+" "+(W+P*2)+" "+(Hh+P*2));ex.firstChild.setAttribute("transform","");',
+    '  var bg=document.createElementNS(NS,"rect");bg.setAttribute("x",-P);bg.setAttribute("y",-P);',
+    '  bg.setAttribute("width",W+P*2);bg.setAttribute("height",Hh+P*2);bg.setAttribute("fill","#FFFFFF");ex.insertBefore(bg,ex.firstChild);',
+    '  var xml=new XMLSerializer().serializeToString(ex);var img=new Image();',
+    '  img.onload=function(){var cv=document.createElement("canvas");cv.width=(W+P*2)*sc;cv.height=(Hh+P*2)*sc;',
+    '    cv.getContext("2d").drawImage(img,0,0);var a=document.createElement("a");a.href=cv.toDataURL("image/png");',
+    '    a.download="decision-tree.png";document.body.appendChild(a);a.click();document.body.removeChild(a);};',
+    '  img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(xml);};',
+    'window.__DT_READY__=true;',
+    '})();'
+].join('\n');
+
+function escapeHtml (s) {
+    return String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+}
+
+/** JSON 放進 <script> 時避免 </script> 提早結束 */
+function safeJson (obj) {
+    return JSON.stringify(obj)
+        .replace(/</g, '\\u003c')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+}
+
+/**
+ * @param {object} model dt-core.train() 的結果
+ * @param {object} [opts] {locale: 'zh-tw'|'en', highlight: predict() 的結果（另加 prediction）}
+ * @returns {string} 完整 HTML
+ */
+function buildHtml (model, opts) {
+    opts = opts || {};
+    const locale = opts.locale === 'zh-tw' ? 'zh-tw' : 'en';
+    const texts = TEXTS[locale];
+    const highlight = opts.highlight ? {
+        nodeIds: opts.highlight.nodeIds,
+        prediction: opts.highlight.prediction,
+        confidence: opts.highlight.confidence,
+        path: opts.highlight.path.map(p => ({feature: p.feature, label: p.label, op: p.op})),
+        unknown: opts.highlight.unknown,
+        missing: opts.highlight.missing
+    } : null;
+    const data = {
+        model: {
+            target: model.target, classes: model.classes, tree: model.tree,
+            nTrain: model.nTrain, nTest: model.nTest, accuracy: model.accuracy, accuracyOn: model.accuracyOn,
+            correct: model.correct, nEval: model.nEval, depth: model.depth, leaves: model.leaves
+        },
+        texts,
+        highlight,
+        palette: PALETTE
+    };
+    const title = `${texts.title} - ${model.target}`;
+    return [
+        '<!DOCTYPE html>',
+        `<html lang="${locale === 'zh-tw' ? 'zh-Hant-TW' : 'en'}"><head><meta charset="UTF-8">`,
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        `<title>${escapeHtml(title)}</title><style>${PAGE_CSS}</style></head><body>`,
+        '<header><h1 id="ttl"></h1><span class="stats" id="stats"></span><span class="tools">',
+        `<button id="zout">${texts.zoomOut}</button><button id="zin">${texts.zoomIn}</button>`,
+        `<button id="fit">${texts.fit}</button><button id="png">${texts.png}</button></span></header>`,
+        '<div class="legend" id="legend"></div>',
+        '<div class="result" id="result" style="display:none"></div>',
+        `<div id="stage"><span class="hint">${texts.hint}</span></div>`,
+        `<script>window.__DT__=${safeJson(data)};</script>`,
+        `<script>${PAGE_SCRIPT}</script>`,
+        '</body></html>'
+    ].join('\n');
+}
+
+module.exports = {buildHtml, PALETTE, TEXTS};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/samples.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+/**
+ * 範例資料：打網球（Quinlan 的經典決策樹教材資料，14 筆）
+ * 天氣、風是文字欄位；溫度（華氏）、濕度（%）是數字欄位
+ */
+'use strict';
+
+const OUTLOOK = ['sunny', 'sunny', 'overcast', 'rain', 'rain', 'rain', 'overcast', 'sunny', 'sunny', 'rain', 'sunny',
+    'overcast', 'overcast', 'rain'];
+const TEMP = [85, 80, 83, 70, 68, 65, 64, 72, 69, 75, 75, 72, 81, 71];
+const HUMIDITY = [85, 90, 86, 96, 80, 70, 65, 95, 70, 80, 70, 90, 75, 91];
+const WINDY = [0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1];
+const PLAY = [0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0];
+
+const WORDS = {
+    'zh-tw': {
+        cols: ['天氣', '溫度', '濕度', '風', '打網球'],
+        sunny: '晴', overcast: '陰', rain: '雨',
+        windy: ['無', '有'], play: ['否', '是']
+    },
+    'en': {
+        cols: ['Outlook', 'Temperature', 'Humidity', 'Wind', 'Play'],
+        sunny: 'Sunny', overcast: 'Overcast', rain: 'Rain',
+        windy: ['Weak', 'Strong'], play: ['No', 'Yes']
+    }
+};
+
+/** @returns {{rows: object[], target: string}} 值都是字串，跟 Google 試算表的 JSON 一樣 */
+function tennis (locale) {
+    const w = WORDS[locale] || WORDS.en;
+    const c = w.cols;
+    const rows = OUTLOOK.map((o, i) => {
+        const r = {};
+        r[c[0]] = w[o];
+        r[c[1]] = String(TEMP[i]);
+        r[c[2]] = String(HUMIDITY[i]);
+        r[c[3]] = w.windy[WINDY[i]];
+        r[c[4]] = w.play[PLAY[i]];
+        return r;
+    });
+    return {rows, target: c[4]};
+}
+
+module.exports = {tennis};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/translation.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+/* 中英文字（CommonJS，可直接在 Node 測試） */
+const t = (en, zh) => ({'en': en, 'zh-tw': zh});
+
+module.exports = {
+    title: t('Decision Tree', '決策樹'),
+
+    // 積木：資料
+    useSample: t('use sample data (play tennis)', '使用範例資料（打網球）'),
+    setData: t('set data to [DATA]', '設定資料為 [DATA]'),
+    setTarget: t('set column to predict to [COL]', '要預測的欄位設為 [COL]'),
+    setFeatures: t('set columns used for deciding to [COLS]', '用來判斷的欄位設為 [COLS]'),
+    columns: t('data columns', '資料的欄位'),
+    rowCount: t('number of data rows', '資料筆數'),
+
+    // 積木：訓練
+    setTrainPercent: t('use [P] % of data for training (rest for testing)', '訓練資料佔 [P] %（其餘用來測試）'),
+    setMaxDepth: t('set max tree depth to [D]', '樹的最大深度設為 [D]'),
+    train: t('train decision tree', '訓練決策樹'),
+    status: t('decision tree status', '決策樹狀態'),
+    accuracy: t('accuracy (%)', '正確率 (%)'),
+    info: t('decision tree [PROP]', '決策樹的 [PROP]'),
+    rules: t('decision tree rules', '決策樹規則'),
+
+    // 積木：圖
+    showTree: t('show decision tree in new window', '在新視窗顯示決策樹'),
+    closeTree: t('close decision tree window', '關閉決策樹視窗'),
+
+    // 積木：預測
+    setInput: t('set [COL] of input to [VAL]', '預測資料的 [COL] 設為 [VAL]'),
+    clearInput: t('clear input', '清除預測資料'),
+    predict: t('prediction', '預測結果'),
+    predictText: t('predict with [TEXT]', '用 [TEXT] 預測'),
+    confidence: t('prediction confidence (%)', '預測信心 (%)'),
+    path: t('prediction path', '預測路徑'),
+
+    // 預設值
+    defData: t('Google data', 'Google 資料'),
+    defTarget: t('Play', '打網球'),
+    defFeatures: t('all', '全部'),
+    defCol: t('Outlook', '天氣'),
+    defVal: t('Sunny', '晴'),
+    defText: t('Outlook=Sunny, Humidity=60', '天氣=晴, 濕度=60'),
+
+    // 選單
+    prop_depth: t('depth', '深度'),
+    prop_leaves: t('number of leaves', '葉子數'),
+    prop_nTrain: t('training rows', '訓練筆數'),
+    prop_nTest: t('testing rows', '測試筆數'),
+    prop_features: t('columns used', '用到的欄位'),
+    prop_target: t('column predicted', '預測的欄位'),
+
+    // 規則文字
+    rule_if: t('IF', '如果'),
+    rule_and: t('AND', '且'),
+    rule_then: t('THEN', '就'),
+    rule_always: t('ALWAYS', '一律'),
+    rule_rows: t('rows', '筆'),
+
+    // 狀態
+    st_noData: t('No data yet. Use "set data to" first.', '尚未設定資料，請先使用「設定資料為」'),
+    st_dataEmpty: t('Data is empty. Make sure the Google Sheet has been read.', '資料是空的，請確認已讀到 Google 試算表的資料'),
+    st_dataFormat: t('Data format not recognized. Put the Google Sheets data (JSON) here.', '看不懂這個資料，請放入 Google 試算表插件讀到的資料（JSON）'),
+    st_dataNoRows: t('The data has no rows.', '資料裡沒有任何一筆資料'),
+    st_dataReady: t('Loaded {rows} rows, {cols} columns. Not trained yet.', '已讀入 {rows} 筆資料、{cols} 個欄位，尚未訓練'),
+    st_badTarget: t('Column to predict "{col}" not found. Columns: {cols}', '找不到要預測的欄位「{col}」，資料的欄位有：{cols}'),
+    st_badFeatures: t('Column(s) not found: {missing}. Columns: {cols}', '找不到欄位：{missing}，資料的欄位有：{cols}'),
+    st_tooFewRows: t('Not enough rows with a value in "{col}" (need at least 2).', '「{col}」有填值的資料太少（至少要 2 筆）'),
+    st_noFeatures: t('No usable columns for deciding.', '沒有可以用來判斷的欄位'),
+    st_trained: t('Trained: {nTrain} training rows, {nTest} testing rows, accuracy {acc}%',
+        '已訓練：訓練 {nTrain} 筆、測試 {nTest} 筆，正確率 {acc}%'),
+    st_trainedNoTest: t('Trained on all {nTrain} rows (accuracy {acc}% on training data)',
+        '已用全部 {nTrain} 筆資料訓練（訓練資料正確率 {acc}%）'),
+    st_skipped: t('; skipped: {list}', '；已略過：{list}'),
+    skip_unique: t('{col} (different in every row)', '{col}（每筆都不一樣）'),
+    skip_constant: t('{col} (same in every row)', '{col}（每筆都一樣）'),
+    st_noTree: t('Train the decision tree first.', '請先訓練決策樹'),
+    st_popup: t('Pop-up was blocked by the browser, so the tree is shown on this page. Allow pop-ups for this site to use a new window.',
+        '瀏覽器擋住了彈出視窗，已改在本頁顯示；若要用新視窗，請允許本網站的彈出式視窗'),
+    st_unknownValue: t('{col} = "{val}" was not in the training data; used the majority at that point.',
+        '訓練資料裡沒有 {col} =「{val}」，已用該處最多的答案'),
+    st_missing: t('Input is missing: {list}', '預測資料缺少：{list}'),
+
+    unknownMark: t('(not seen)', '（沒看過）')
 };
 
 
@@ -115578,11 +117132,11 @@ __webpack_require__.r(__webpack_exports__);
 , {
   name: "Claude",
   extensionId: "claude",
-  collaborator: "Anthropic API",
+  collaborator: "Andrew Yang",
   iconURL: "static/osep/claude.png",
   insetIconURL: "static/osep/claude-small.svg",
   description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
-    defaultMessage: "Chat with Claude AI (needs your own API key).",
+    defaultMessage: "Use Claude’s models to process natural language.",
     id: "gui.extension.claude.description"
   }),
   featured: true,
@@ -115614,6 +117168,7 @@ __webpack_require__.r(__webpack_exports__);
     id: "gui.extension.faceExpressionMediapipe.title"
   }),
   extensionId: "faceExpressionMediapipe",
+  collaborator: "Andrew Yang",
   iconURL: "static/osep/faceExpressionMediapipe.png",
   insetIconURL: "static/osep/faceExpressionMediapipe-small.svg",
   description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
@@ -115623,6 +117178,23 @@ __webpack_require__.r(__webpack_exports__);
   featured: true,
   disabled: false,
   internetConnectionRequired: true,
+  useAutoScan: false
+}, {
+  name: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "Decision Tree",
+    id: "gui.extension.decisionTree.title"
+  }),
+  extensionId: "decisionTree",
+  collaborator: "Andrew Yang",
+  iconURL: "static/osep/decisionTree.png",
+  insetIconURL: "static/osep/decisionTree-small.svg",
+  description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "Train a decision tree from Google Sheets data, draw it and make predictions.",
+    id: "gui.extension.decisionTree.description"
+  }),
+  featured: true,
+  disabled: false,
+  internetConnectionRequired: false,
   useAutoScan: false
 }]);
 
@@ -376064,11 +377636,13 @@ __webpack_require__.r(__webpack_exports__);
     "gui.extension.openai.description":"使用 OpenAI 的人工智慧模型進行自然語言處理任務",
     "gui.extension.gemini.description":"使用 Google Gemini 的人工智慧模型進行自然語言處理任務",
     //osep add (claude/textSentiment/faceExpressionMediapipe)
-    "gui.extension.claude.description":"與 Claude AI 對話（可用自己的 API 金鑰或學校的中繼網址）",
+    "gui.extension.claude.description":"使用 Claude 的人工智慧模型進行自然語言處理任務",
     "gui.extension.textSentiment.title":"文本情緒辨識",
     "gui.extension.textSentiment.description":"使用文本情緒模型，辨識文本是否為正面或負面情緒",
     "gui.extension.faceExpressionMediapipe.title":"臉部表情辨識 (MediaPipe)",
-    "gui.extension.faceExpressionMediapipe.description":"使用 MediaPipe 辨識臉部表情、臉部動作（微笑、眨眼、張嘴…）與頭部角度",
+    "gui.extension.faceExpressionMediapipe.description":"使用 MediaPipe 辨識臉部表情、臉部動作與頭部角度",
+    "gui.extension.decisionTree.title":"決策樹",
+    "gui.extension.decisionTree.description":"用 Google 試算表的資料訓練決策樹，畫出樹狀圖並進行預測",
   }
 });
 
