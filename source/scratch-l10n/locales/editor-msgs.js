@@ -60591,8 +60591,9 @@ export default {
     "gui.extension.faceExpressionRecogintion.description":"使用攝影機捕捉臉部表情，辨識情緒如開心、平靜、生氣等",
     "gui.extension.faceExpressionRecogintion.title":"臉部表情辨識",
     "gui.extension.faceExpressionMediapipe.title":"臉部表情辨識 (MediaPipe)",
-    "gui.extension.faceExpressionMediapipe.description":"使用 MediaPipe 辨識臉部表情、臉部動作（微笑、眨眼、張嘴…）與頭部角度",    
+    "gui.extension.faceExpressionMediapipe.description":"使用 MediaPipe 辨識臉部表情、臉部動作與頭部角度",
     "gui.extension.decisionTree.title":"決策樹",
     "gui.extension.decisionTree.description":"用 Google 試算表的資料訓練決策樹，畫出樹狀圖並進行預測",
+    "gui.extension.claude.description":"使用 Claude 的人工智慧模型進行自然語言處理任務",
   }
 };

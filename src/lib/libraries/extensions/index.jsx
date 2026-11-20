@@ -1161,12 +1161,12 @@ const extensions = [
   {
     name: "Claude",
     extensionId: "claude",
-    collaborator: "Anthropic API",
+    collaborator: "Andrew Yang",
     iconURL: claudeImage,
     insetIconURL: claudeInsetIconURL,
     description: (
       <FormattedMessage
-        defaultMessage="Chat with Claude AI (needs your own API key)."
+        defaultMessage="Use Claude’s models to process natural language."
         description="Claude extension description"
         id="gui.extension.claude.description"
       />
@@ -1382,6 +1382,7 @@ const extensions = [
       />
     ),
     extensionId: "faceExpressionMediapipe",
+    collaborator: "Andrew Yang",
     iconURL: faceExpressionMediapipeImage,
     insetIconURL: faceExpressionMediapipeIconURL,
     description: (
