@@ -549,12 +549,12 @@
         let chain = Promise.resolve();
         list.forEach(id => {
             chain = chain.then(() => loadScript(`plugins/${id}.js`)).then(ok => {
-                if (!ok) OSEP.errors.push(`找不到 plugins/${id}.js（檔名要和 _list.js 裡寫的一樣，大小寫也要一樣）`);
+                if (!ok) OSEP.errors.push(`找不到 plugins/${id}.js（檔名要和 list.js 裡寫的一樣，大小寫也要一樣）`);
                 else if (!OSEP.get(id)) OSEP.errors.push(`plugins/${id}.js 沒有成功加入：可能有語法錯誤，或 OSEP.addPlugin 裡的 id 不是「${id}」`);
             });
         });
         chain.then(() => {
-            // 依 _list.js 的順序排列
+            // 依 list.js 的順序排列
             OSEP.plugins.sort((a, b) => list.indexOf(a.id) - list.indexOf(b.id));
             if (OSEP.errors.length) {
                 $('#loadwarn').innerHTML = `<div class="note warn"><b>有插件資料載入失敗：</b><br>${OSEP.errors.map(esc).join('<br>')}</div>`;

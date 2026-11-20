@@ -15,7 +15,7 @@ assets/                 網站程式（一般不用改）
   guide.js              「新增插件」頁面內容
   style.css             樣式
 plugins/
-  _list.js              要顯示哪些插件、順序
+  list.js              要顯示哪些插件、順序
   claude.js             一個插件一個檔案
   textSentiment.js
   faceExpressionMediapipe.js
@@ -26,7 +26,7 @@ tools/extract-plugin.js 從插件原始碼產生／同步資料檔
 ## 新增一個插件（3 步）
 
 ```bash
-# 1. 從原始碼產生資料檔（也會存好積木圖示、加進 _list.js）
+# 1. 從原始碼產生資料檔（也會存好積木圖示、加進 list.js）
 node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_你的插件
 
 # 2. 把卡片圖複製到 images/<插件id>/card.png 與 small.svg

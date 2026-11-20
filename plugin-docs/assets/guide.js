@@ -11,7 +11,7 @@ window.OSEP_GUIDE_HTML = `
 <ul>
 <li>產生 <code>plugins/&lt;插件id&gt;.js</code>：每塊積木的中英文文字、類型、參數、預設值、選單選項、分組（依原始碼中的 <code>'---'</code> 分組）、顏色</li>
 <li>把積木上的小圖示存成 <code>images/&lt;插件id&gt;/block-icon.svg</code>（或 .png）</li>
-<li>把插件加進 <code>plugins/_list.js</code></li>
+<li>把插件加進 <code>plugins/list.js</code></li>
 </ul>
 <div class="note">插件更新後（例如新增積木、改積木文字），<b>再執行一次同樣的指令</b>即可同步。你寫的說明會保留；程式碼中已刪除的積木會移到檔案最後的 <code>removedBlocks</code>，讓你決定要不要留著。</div>
 </div></div>
@@ -110,7 +110,7 @@ window.OSEP_GUIDE_HTML = `
 <p>想讓好幾段腳本並排（例如兩段同時開始的綠旗腳本），把 <code>script</code> 寫成陣列的陣列：<code>script: [[…第一段…], […第二段…]]</code>。</p>
 
 <h2>調整插件的順序或暫時隱藏</h2>
-<p>編輯 <code>plugins/_list.js</code>：網站依這裡的順序顯示；把某一行刪掉（或在前面加 <code>//</code>）就不會顯示那個插件。</p>
+<p>編輯 <code>plugins/list.js</code>：網站依這裡的順序顯示；把某一行刪掉（或在前面加 <code>//</code>）就不會顯示那個插件。</p>
 
 <h2>放到網路上</h2>
 <p>整個 <code>osep_plugin_docs</code> 資料夾都是靜態檔案，可以直接放到 GitHub Pages 或任何網頁空間。<code>tools/</code> 只在你自己的電腦上用，放上去也沒關係。</p>

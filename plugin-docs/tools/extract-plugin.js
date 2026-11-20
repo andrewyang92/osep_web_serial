@@ -10,7 +10,7 @@
  *   1. 載入插件的 index.js，用 zh-tw 與 en 各呼叫一次 getInfo()
  *   2. 產生 plugins/<id>.js：積木文字、類型、參數、預設值、選單選項、分組（依 '---'）、顏色
  *   3. 把積木圖示（blockIconURI）存成 images/<id>/block-icon.svg 或 .png
- *   4. 在 plugins/_list.js 加入這個插件（已存在就不重複加）
+ *   4. 在 plugins/list.js 加入這個插件（已存在就不重複加）
  *
  * 如果 plugins/<id>.js 已經存在：只更新「從程式碼來的欄位」（積木文字、參數、類型、順序、顏色），
  * 你手寫的說明（summary、detail、args 的 desc、returns、tips、概述、範例、FAQ…）都會保留。
@@ -332,13 +332,13 @@ if (dry) {
 fs.mkdirSync(path.dirname(pluginFile), {recursive: true});
 fs.writeFileSync(pluginFile, body);
 
-// 加到 _list.js
-const listFile = path.join(SITE, 'plugins', '_list.js');
+// 加到 list.js
+const listFile = path.join(SITE, 'plugins', 'list.js');
 let list = fs.existsSync(listFile) ? fs.readFileSync(listFile, 'utf8') : 'OSEP_PLUGIN_LIST = [\n];\n';
 if (!new RegExp(`['"]${id}['"]`).test(list)) {
     list = list.replace(/\n\];/, `\n    '${id}',\n];`).replace(/,(\s*),/g, ',$1');
     fs.writeFileSync(listFile, list);
-    console.log(`已把 ${id} 加到 plugins/_list.js`);
+    console.log(`已把 ${id} 加到 plugins/list.js`);
 }
 
 const blockCount = newGroups.reduce((n, g) => n + g.blocks.length, 0);
