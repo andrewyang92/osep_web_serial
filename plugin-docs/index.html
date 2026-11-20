@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OSEP 插件說明</title>
+    <meta name="description" content="OSEP Scratch 插件說明：每個插件的功能與每一塊積木的用法。">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235A23B8'/%3E%3Cpath d='M16 5l2.6 8.4L27 16l-8.4 2.6L16 27l-2.6-8.4L5 16l8.4-2.6z' fill='%23FFD84D'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar-inner">
+            <a class="brand" href="#/">
+                <span class="brand-mark"><svg width="20" height="20" viewBox="0 0 32 32"><path d="M16 3l3 10 10 3-10 3-3 10-3-10-10-3 10-3z" fill="#FFD84D"/></svg></span>
+                OSEP<span class="bt">插件說明</span><small>Scratch 擴充功能</small>
+            </a>
+            <nav class="nav">
+                <a href="#/" data-nav="home">插件</a>
+                <a href="#/blocks" data-nav="blocks">積木速查</a>
+                <a href="#/guide" data-nav="guide">新增插件</a>
+            </nav>
+        </div>
+    </header>
+    <div id="loadwarn" class="loadwarn"></div>
+    <div id="app"></div>
+    <footer class="footer">OSEP 插件說明・資料放在 <code>plugins/</code> 資料夾，一個插件一個檔案</footer>
+
+    <!-- 要顯示哪些插件、順序：改 plugins/_list.js -->
+    <script src="plugins/_list.js"></script>
+    <script src="assets/blocks.js"></script>
+    <script src="assets/guide.js"></script>
+    <script src="assets/app.js"></script>
+</body>
+</html>
