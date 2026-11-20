@@ -1,6 +1,8 @@
 /**
  * 範例資料：打網球（Quinlan 的經典決策樹教材資料，14 筆）
- * 天氣、風是文字欄位；溫度（華氏）、濕度（%）是數字欄位
+ * - tennis：原版，天氣、風是文字欄位；溫度（華氏）、濕度（%）是數字欄位
+ * - tennisYesNo：是非題版（插件目前用這個）：晴天？下雨？天氣熱？濕度高？有風？打網球？
+ *   天氣熱、濕度高用原教材的文字版（Hot、High）
  */
 'use strict';
 
@@ -40,4 +42,31 @@ function tennis (locale) {
     return {rows, target: c[4]};
 }
 
-module.exports = {tennis};
+// 原教材文字版：溫度 Hot、濕度 High
+const HOT = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
+const HUMID = [1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1];
+
+const YN_WORDS = {
+    'zh-tw': {cols: ['晴天', '下雨', '天氣熱', '濕度高', '有風', '打網球'], yes: '是', no: '否'},
+    'en': {cols: ['Sunny', 'Rainy', 'Hot', 'Humid', 'Windy', 'Play'], yes: 'Yes', no: 'No'}
+};
+
+/** @returns {{rows: object[], target: string}} 每一格都是 是 / 否 */
+function tennisYesNo (locale) {
+    const w = YN_WORDS[locale] || YN_WORDS.en;
+    const c = w.cols;
+    const yn = b => (b ? w.yes : w.no);
+    const rows = OUTLOOK.map((o, i) => {
+        const r = {};
+        r[c[0]] = yn(o === 'sunny');
+        r[c[1]] = yn(o === 'rain');
+        r[c[2]] = yn(HOT[i]);
+        r[c[3]] = yn(HUMID[i]);
+        r[c[4]] = yn(WINDY[i]);
+        r[c[5]] = yn(PLAY[i]);
+        return r;
+    });
+    return {rows, target: c[5]};
+}
+
+module.exports = {tennis, tennisYesNo};

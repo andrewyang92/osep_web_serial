@@ -7,6 +7,8 @@
  *   - 用「資訊增益比」挑欄位，只在增益不低於平均的欄位中挑（避免偏好值很多的欄位）
  * - 資料格式：Google 試算表插件的 JSON，[{欄位: 值, ...}, ...]，值通常都是字串
  *
+ * - 目前只接受「是非」資料（checkYesNo）：每一格都要是 是/否、有/沒有… 這類答案，不接受數字
+ *
  * 注意：不可使用 async/await（見專案的 regeneratorRuntime 調查）。
  */
 'use strict';
@@ -96,7 +98,8 @@ function parseData (input) {
     const columns = [];
     const seen = {};
     const rows = [];
-    list.forEach(item => {
+    const lines = []; // 每筆資料在試算表的第幾列（第 1 列是欄位名稱）
+    list.forEach((item, idx) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) return;
         const row = {};
         let hasValue = false;
@@ -111,13 +114,56 @@ function parseData (input) {
                 columns.push(key);
             }
         });
-        if (hasValue) rows.push(row); // 跳過整列空白（CSV 最後一列）
+        if (hasValue) { // 跳過整列空白（CSV 最後一列）
+            rows.push(row);
+            lines.push(idx + 2);
+        }
     });
     if (!rows.length) return {error: 'noRows'};
     rows.forEach(r => columns.forEach(c => {
         if (typeof r[c] === 'undefined') r[c] = '';
     }));
-    return {rows, columns};
+    return {rows, columns, lines};
+}
+
+/* ---------- 是非資料 ---------- */
+
+// 比對前先轉小寫、去掉空白；不接受數字（1/0）
+const YES_WORDS = ['是', '有', '會', '对', '對', '要', '真', 'yes', 'y', 'true'];
+const NO_WORDS = ['否', '不是', '沒有', '没有', '沒', '没', '無', '无', '不會', '不会', '不對', '不对', '錯', '错',
+    '不要', '假', 'no', 'n', 'false'];
+
+/** 是非答案 → true / false；看不懂（含數字、空白）→ null */
+function yesNoValue (v) {
+    const s = cleanCell(v).toLowerCase()
+        .replace(/\s+/g, '');
+    if (YES_WORDS.indexOf(s) >= 0) return true;
+    if (NO_WORDS.indexOf(s) >= 0) return false;
+    return null;
+}
+
+/**
+ * 檢查每一格都是是非答案，並統一成 words.yes / words.no（例：是 / 否）
+ * @param {{rows, columns, lines}} data parseData 的結果
+ * @param {{yes: string, no: string}} words
+ * @returns {{rows, columns, lines}|{error: 'blank'|'notYesNo', col, line, value}}
+ *   line 是試算表的列號（第 1 列是欄位名稱）
+ */
+function checkYesNo (data, words) {
+    const rows = [];
+    for (let i = 0; i < data.rows.length; i++) {
+        const r = data.rows[i];
+        const out = {};
+        for (let j = 0; j < data.columns.length; j++) {
+            const c = data.columns[j];
+            const b = yesNoValue(r[c]);
+            const line = data.lines ? data.lines[i] : i + 2;
+            if (b === null) return {error: r[c] === '' ? 'blank' : 'notYesNo', col: c, line, value: r[c]};
+            out[c] = b ? words.yes : words.no;
+        }
+        rows.push(out);
+    }
+    return {rows, columns: data.columns.slice(), lines: data.lines};
 }
 
 /** 欄位是否為數字欄：所有非空白值都是數字 */
@@ -329,8 +375,24 @@ function scoreNumeric (rows, feature, target) {
  *   seed：打亂資料的種子，預設 1
  * @returns {object} model 或 {error, detail}
  */
+/** 分支順序：valueOrder 裡的值排前面（依 valueOrder 順序），其他照資料出現的先後 */
+function sortValues (values, valueOrder) {
+    if (!valueOrder || !valueOrder.length) return values;
+    const rank = v => {
+        const i = valueOrder.indexOf(v);
+        return i < 0 ? valueOrder.length : i;
+    };
+    return values.map((v, i) => ({v, i}))
+        .sort((a, b) => (rank(a.v) - rank(b.v)) || (a.i - b.i))
+        .map(x => x.v);
+}
+
+/**
+ * opts.valueOrder：文字欄位分支的固定順序，例：['是', '否'] → 「是」一律在左
+ */
 function train (rows, opts) {
     const target = opts.target;
+    const valueOrder = opts.valueOrder || null;
     const maxDepth = Math.max(1, Math.min(20, Math.round(Number(opts.maxDepth) || 5)));
     const minSamples = Math.max(2, Math.round(Number(opts.minSamples) || 2));
     let trainPercent = Number(opts.trainPercent);
@@ -433,7 +495,7 @@ function train (rows, opts) {
                 node: build(best.groups[1], available, depth + 1)});
         } else {
             const rest = available.filter(f => f !== best.feature);
-            best.values.forEach(v => {
+            sortValues(best.values, valueOrder).forEach(v => {
                 node.children.push({op: '=', value: v, label: v === '' ? '(空白)' : v,
                     node: build(best.groups[v], rest, depth + 1)});
             });
@@ -576,6 +638,8 @@ function rulesText (model, w) {
 module.exports = {
     parseData,
     parseCsv,
+    yesNoValue,
+    checkYesNo,
     columnIsNumeric,
     splitList,
     isAllKeyword,

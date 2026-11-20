@@ -70149,6 +70149,9 @@ module.exports = {
  * 決策樹插件
  *
  * - 資料：Google 試算表插件「讀取的 Google 資料」產生的 JSON（[{欄位: 值}, ...]）
+ *   目前只接受是非資料：每一格都要是 是/否、有/沒有… 這類答案（不接受數字），讀入時統一成 是 / 否
+ * - 訓練功能暫時關閉（TRAINING_ENABLED = false）：讀入資料後自動用全部資料建樹，只開放「看圖」；
+ *   訓練設定、正確率、預測的積木隱藏（opcode 保留，舊專案仍可載入）
  * - 訓練：dt-core.js（C4.5 風格，文字欄位多分支、數字欄位自動找門檻）
  * - 顯示：tree-view.js 產生 HTML，用 window.open 在新視窗顯示；
  *   彈出視窗被瀏覽器擋住時，改在本頁用浮動視窗顯示
@@ -70179,6 +70182,9 @@ const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" 
 const menuIconURI = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
 const blockIconURI = menuIconURI;
 
+// 訓練功能暫時關閉（讀入資料就自動建樹、可看圖）；改成 true 就恢復訓練、預測的積木
+const TRAINING_ENABLED = false;
+
 const WINDOW_NAME = 'osepDecisionTree';
 const OVERLAY_ID = 'osep-decision-tree-overlay';
 
@@ -70189,14 +70195,16 @@ const round1 = x => Math.round(x * 1000) / 10;
 class Scratch3DecisionTree {
     /**
      * @param {Runtime} runtime
-     * @param {object} [deps] 測試用：{win: 取代 window, doc: 取代 document}
+     * @param {object} [deps] 測試用：{win: 取代 window, doc: 取代 document, trainingEnabled: 覆寫 TRAINING_ENABLED}
      */
     constructor (runtime, deps = {}) {
         this.runtime = runtime;
         this._deps = deps;
+        this._trainingEnabled = typeof deps.trainingEnabled === 'boolean' ? deps.trainingEnabled : TRAINING_ENABLED;
 
         this._data = null; // {rows, columns}
         this._target = '';
+        this._targetFromSample = false; // _target 是「使用範例資料」設的
         this._features = null; // null = 全部
         this._trainPercent = 70;
         this._maxDepth = 5;
@@ -70252,59 +70260,7 @@ class Scratch3DecisionTree {
             color3: '#4E2696',
             menuIconURI,
             blockIconURI,
-            blocks: [
-                {opcode: 'useSample', blockType: BlockType.COMMAND, text: s('useSample')},
-                {
-                    opcode: 'setData', blockType: BlockType.COMMAND, text: s('setData'),
-                    arguments: {DATA: {type: ArgumentType.STRING, defaultValue: s('defData')}}
-                },
-                {
-                    opcode: 'setTarget', blockType: BlockType.COMMAND, text: s('setTarget'),
-                    arguments: {COL: {type: ArgumentType.STRING, defaultValue: s('defTarget')}}
-                },
-                {
-                    opcode: 'setFeatures', blockType: BlockType.COMMAND, text: s('setFeatures'),
-                    arguments: {COLS: {type: ArgumentType.STRING, defaultValue: s('defFeatures')}}
-                },
-                {opcode: 'getColumns', blockType: BlockType.REPORTER, text: s('columns')},
-                {opcode: 'getRowCount', blockType: BlockType.REPORTER, text: s('rowCount')},
-                '---',
-                {
-                    opcode: 'setTrainPercent', blockType: BlockType.COMMAND, text: s('setTrainPercent'),
-                    arguments: {P: {type: ArgumentType.NUMBER, defaultValue: 70}}
-                },
-                {
-                    opcode: 'setMaxDepth', blockType: BlockType.COMMAND, text: s('setMaxDepth'),
-                    arguments: {D: {type: ArgumentType.NUMBER, defaultValue: 5}}
-                },
-                {opcode: 'train', blockType: BlockType.COMMAND, text: s('train')},
-                {opcode: 'getStatus', blockType: BlockType.REPORTER, text: s('status')},
-                {opcode: 'getAccuracy', blockType: BlockType.REPORTER, text: s('accuracy')},
-                {
-                    opcode: 'getTreeInfo', blockType: BlockType.REPORTER, text: s('info'),
-                    arguments: {PROP: {type: ArgumentType.STRING, menu: 'prop', defaultValue: 'depth'}}
-                },
-                {opcode: 'getRules', blockType: BlockType.REPORTER, text: s('rules')},
-                '---',
-                {opcode: 'showTree', blockType: BlockType.COMMAND, text: s('showTree')},
-                {opcode: 'closeTree', blockType: BlockType.COMMAND, text: s('closeTree')},
-                '---',
-                {
-                    opcode: 'setInput', blockType: BlockType.COMMAND, text: s('setInput'),
-                    arguments: {
-                        COL: {type: ArgumentType.STRING, defaultValue: s('defCol')},
-                        VAL: {type: ArgumentType.STRING, defaultValue: s('defVal')}
-                    }
-                },
-                {opcode: 'clearInput', blockType: BlockType.COMMAND, text: s('clearInput')},
-                {opcode: 'predict', blockType: BlockType.REPORTER, text: s('predict')},
-                {
-                    opcode: 'predictText', blockType: BlockType.REPORTER, text: s('predictText'),
-                    arguments: {TEXT: {type: ArgumentType.STRING, defaultValue: s('defText')}}
-                },
-                {opcode: 'getConfidence', blockType: BlockType.REPORTER, text: s('confidence')},
-                {opcode: 'getPath', blockType: BlockType.REPORTER, text: s('path')}
-            ],
+            blocks: this._blocks(s),
             menus: {
                 prop: {
                     acceptReporters: false,
@@ -70313,6 +70269,74 @@ class Scratch3DecisionTree {
                 }
             }
         };
+    }
+
+    _blocks (s) {
+        const data = [
+            {opcode: 'useSample', blockType: BlockType.COMMAND, text: s('useSample')},
+            {
+                opcode: 'setData', blockType: BlockType.COMMAND, text: s('setData'),
+                arguments: {DATA: {type: ArgumentType.STRING, defaultValue: s('defData')}}
+            },
+            {
+                opcode: 'setTarget', blockType: BlockType.COMMAND, text: s('setTarget'),
+                arguments: {COL: {type: ArgumentType.STRING, defaultValue: s('defTarget')}}
+            },
+            {
+                opcode: 'setFeatures', blockType: BlockType.COMMAND, text: s('setFeatures'),
+                arguments: {COLS: {type: ArgumentType.STRING, defaultValue: s('defFeatures')}}
+            },
+            {opcode: 'getColumns', blockType: BlockType.REPORTER, text: s('columns')},
+            {opcode: 'getRowCount', blockType: BlockType.REPORTER, text: s('rowCount')}
+        ];
+        const status = {opcode: 'getStatus', blockType: BlockType.REPORTER, text: s('status')};
+        const train = [
+            {
+                opcode: 'setTrainPercent', blockType: BlockType.COMMAND, text: s('setTrainPercent'),
+                arguments: {P: {type: ArgumentType.NUMBER, defaultValue: 70}}
+            },
+            {
+                opcode: 'setMaxDepth', blockType: BlockType.COMMAND, text: s('setMaxDepth'),
+                arguments: {D: {type: ArgumentType.NUMBER, defaultValue: 5}}
+            },
+            {opcode: 'train', blockType: BlockType.COMMAND, text: s('train')},
+            status,
+            {opcode: 'getAccuracy', blockType: BlockType.REPORTER, text: s('accuracy')},
+            {
+                opcode: 'getTreeInfo', blockType: BlockType.REPORTER, text: s('info'),
+                arguments: {PROP: {type: ArgumentType.STRING, menu: 'prop', defaultValue: 'depth'}}
+            },
+            {opcode: 'getRules', blockType: BlockType.REPORTER, text: s('rules')}
+        ];
+        const show = [
+            {opcode: 'showTree', blockType: BlockType.COMMAND, text: s('showTree')},
+            {opcode: 'closeTree', blockType: BlockType.COMMAND, text: s('closeTree')}
+        ];
+        const predict = [
+            {
+                opcode: 'setInput', blockType: BlockType.COMMAND, text: s('setInput'),
+                arguments: {
+                    COL: {type: ArgumentType.STRING, defaultValue: s('defCol')},
+                    VAL: {type: ArgumentType.STRING, defaultValue: s('defVal')}
+                }
+            },
+            {opcode: 'clearInput', blockType: BlockType.COMMAND, text: s('clearInput')},
+            {opcode: 'predict', blockType: BlockType.REPORTER, text: s('predict')},
+            {
+                opcode: 'predictText', blockType: BlockType.REPORTER, text: s('predictText'),
+                arguments: {TEXT: {type: ArgumentType.STRING, defaultValue: s('defText')}}
+            },
+            {opcode: 'getConfidence', blockType: BlockType.REPORTER, text: s('confidence')},
+            {opcode: 'getPath', blockType: BlockType.REPORTER, text: s('path')}
+        ];
+        if (this._trainingEnabled) {
+            return data.concat(['---'], train, ['---'], show, ['---'], predict);
+        }
+        // 訓練關閉：只留讀資料、狀態和看圖；其他積木隱藏（opcode 不變，舊專案仍可載入）
+        const hide = b => Object.assign({}, b, {hideFromPalette: true});
+        const hidden = ['setTarget', 'setFeatures'];
+        return data.map(b => (hidden.indexOf(b.opcode) >= 0 ? hide(b) : b))
+            .concat([status], ['---'], show, train.filter(b => b !== status).map(hide), predict.map(hide));
     }
 
     /* ---------- 資料 ---------- */
@@ -70327,24 +70351,44 @@ class Scratch3DecisionTree {
             this._setStatus(key || 'st_dataFormat');
             return false;
         }
-        this._data = r;
-        this._setStatus('st_dataReady', {rows: r.rows.length, cols: r.columns.length});
+        // 只接受是非資料，統一成 是 / 否
+        const yn = core.checkYesNo(r, {yes: this._t('yes'), no: this._t('no')});
+        if (yn.error) {
+            this._data = null;
+            this._setStatus(yn.error === 'blank' ? 'st_blankCell' : 'st_notYesNo',
+                {col: yn.col, line: yn.line, val: yn.value});
+            return false;
+        }
+        this._data = yn;
+        if (this._trainingEnabled) {
+            this._setStatus('st_dataReady', {rows: yn.rows.length, cols: yn.columns.length});
+        } else if (this._build(100)) {
+            // 訓練關閉：直接用全部資料建樹，給「在新視窗顯示決策樹」用
+            this._setStatus('st_dataReadyTree', {rows: yn.rows.length, cols: yn.columns.length});
+        }
         return true;
     }
 
     useSample () {
-        const sample = samples.tennis(theLocale);
-        this._loadData(sample.rows);
+        const sample = samples.tennisYesNo(theLocale);
         this._target = sample.target;
+        this._targetFromSample = true;
         this._features = null;
+        this._loadData(sample.rows);
     }
 
     setData (args) {
+        // 範例資料設定的答案欄不沿用到自己的資料（改用最後一欄）
+        if (this._targetFromSample) {
+            this._target = '';
+            this._targetFromSample = false;
+        }
         this._loadData(args.DATA);
     }
 
     setTarget (args) {
         this._target = String(args.COL).trim();
+        this._targetFromSample = false;
         this._model = null;
     }
 
@@ -70373,47 +70417,65 @@ class Scratch3DecisionTree {
         if (isFinite(d)) this._maxDepth = Math.max(1, Math.min(20, d));
     }
 
+    /** 沒有決策樹時設定狀態 */
+    _noTree () {
+        if (this._trainingEnabled) this._setStatus('st_noTree');
+        // 訓練關閉：沒資料就請先設定資料；有資料卻沒樹時，保留建樹失敗的原因
+        else if (!this._data) this._setStatus('st_noData');
+    }
+
     train () {
+        if (!this._trainingEnabled) {
+            this._setStatus('st_trainingOff');
+            return;
+        }
+        this._build(this._trainPercent);
+    }
+
+    /** 建樹；成功時回傳 true 並設定狀態（訓練關閉時由 _loadData 改寫狀態） */
+    _build (trainPercent) {
         this._model = null;
         this._last = null;
         if (!this._data) {
             this._setStatus('st_noData');
-            return;
+            return false;
         }
         const cols = this._data.columns;
         const target = this._target || cols[cols.length - 1];
         if (cols.indexOf(target) < 0) {
             this._setStatus('st_badTarget', {col: target, cols: cols.join(', ')});
-            return;
+            return false;
         }
         let features = cols.filter(c => c !== target);
         if (this._features) {
             const missing = this._features.filter(f => cols.indexOf(f) < 0);
             if (missing.length) {
                 this._setStatus('st_badFeatures', {missing: missing.join(', '), cols: cols.join(', ')});
-                return;
+                return false;
             }
             features = this._features.filter(f => f !== target);
         }
         const m = core.train(this._data.rows, {
-            target, features, maxDepth: this._maxDepth, trainPercent: this._trainPercent
+            target, features, maxDepth: this._maxDepth, trainPercent,
+            valueOrder: [this._t('yes'), this._t('no')] // 是 一律在左
         });
         if (m.error) {
             if (m.error === 'tooFewRows') this._setStatus('st_tooFewRows', {col: target});
             else this._setStatus('st_noFeatures');
-            return;
+            return false;
         }
         this._model = m;
         this._setStatus(m.nTest ? 'st_trained' : 'st_trainedNoTest', {
             nTrain: m.nTrain, nTest: m.nTest, acc: round1(m.accuracy)
         });
         if (this._isShowing()) this._render();
+        return true;
     }
 
     getStatus () {
         let text = this._fmt(this._status.key, this._status.params);
         if (this._model && this._model.skipped.length &&
-            (this._status.key === 'st_trained' || this._status.key === 'st_trainedNoTest')) {
+            ['st_trained', 'st_trainedNoTest', 'st_dataReadyTree'].indexOf(this._status.key) >= 0) {
             const list = this._model.skipped.map(sk =>
                 this._fmt(sk.reason === 'unique' ? 'skip_unique' : 'skip_constant', {col: sk.feature}));
             text += this._fmt('st_skipped', {list: list.join('、')});
@@ -70468,7 +70530,7 @@ class Scratch3DecisionTree {
 
     showTree () {
         if (!this._model) {
-            this._setStatus('st_noTree');
+            this._noTree();
             return;
         }
         const win = this._window();
@@ -70571,11 +70633,17 @@ class Scratch3DecisionTree {
 
     _predict (input) {
         if (!this._model) {
-            this._setStatus('st_noTree');
+            this._noTree();
             this._last = null;
             return '';
         }
-        const r = core.predict(this._model, input);
+        // 預測資料也統一成 是 / 否（看不懂的值照原樣，預測時會當成沒看過）
+        const norm = {};
+        Object.keys(input).forEach(k => {
+            const b = core.yesNoValue(input[k]);
+            norm[k] = b === null ? input[k] : this._t(b ? 'yes' : 'no');
+        });
+        const r = core.predict(this._model, norm);
         this._last = r;
         const okKey = this._model.nTest ? 'st_trained' : 'st_trainedNoTest';
         const okParams = {nTrain: this._model.nTrain, nTest: this._model.nTest, acc: round1(this._model.accuracy)};
@@ -70630,6 +70698,8 @@ module.exports = Scratch3DecisionTree;
  *   - 數字欄位：找最好的門檻值切成兩邊（例：溫度 ≤ 75.5 / > 75.5），可重複使用
  *   - 用「資訊增益比」挑欄位，只在增益不低於平均的欄位中挑（避免偏好值很多的欄位）
  * - 資料格式：Google 試算表插件的 JSON，[{欄位: 值, ...}, ...]，值通常都是字串
+ *
+ * - 目前只接受「是非」資料（checkYesNo）：每一格都要是 是/否、有/沒有… 這類答案，不接受數字
  *
  * 注意：不可使用 async/await（見專案的 regeneratorRuntime 調查）。
  */
@@ -70720,7 +70790,8 @@ function parseData (input) {
     const columns = [];
     const seen = {};
     const rows = [];
-    list.forEach(item => {
+    const lines = []; // 每筆資料在試算表的第幾列（第 1 列是欄位名稱）
+    list.forEach((item, idx) => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) return;
         const row = {};
         let hasValue = false;
@@ -70735,13 +70806,56 @@ function parseData (input) {
                 columns.push(key);
             }
         });
-        if (hasValue) rows.push(row); // 跳過整列空白（CSV 最後一列）
+        if (hasValue) { // 跳過整列空白（CSV 最後一列）
+            rows.push(row);
+            lines.push(idx + 2);
+        }
     });
     if (!rows.length) return {error: 'noRows'};
     rows.forEach(r => columns.forEach(c => {
         if (typeof r[c] === 'undefined') r[c] = '';
     }));
-    return {rows, columns};
+    return {rows, columns, lines};
+}
+
+/* ---------- 是非資料 ---------- */
+
+// 比對前先轉小寫、去掉空白；不接受數字（1/0）
+const YES_WORDS = ['是', '有', '會', '对', '對', '要', '真', 'yes', 'y', 'true'];
+const NO_WORDS = ['否', '不是', '沒有', '没有', '沒', '没', '無', '无', '不會', '不会', '不對', '不对', '錯', '错',
+    '不要', '假', 'no', 'n', 'false'];
+
+/** 是非答案 → true / false；看不懂（含數字、空白）→ null */
+function yesNoValue (v) {
+    const s = cleanCell(v).toLowerCase()
+        .replace(/\s+/g, '');
+    if (YES_WORDS.indexOf(s) >= 0) return true;
+    if (NO_WORDS.indexOf(s) >= 0) return false;
+    return null;
+}
+
+/**
+ * 檢查每一格都是是非答案，並統一成 words.yes / words.no（例：是 / 否）
+ * @param {{rows, columns, lines}} data parseData 的結果
+ * @param {{yes: string, no: string}} words
+ * @returns {{rows, columns, lines}|{error: 'blank'|'notYesNo', col, line, value}}
+ *   line 是試算表的列號（第 1 列是欄位名稱）
+ */
+function checkYesNo (data, words) {
+    const rows = [];
+    for (let i = 0; i < data.rows.length; i++) {
+        const r = data.rows[i];
+        const out = {};
+        for (let j = 0; j < data.columns.length; j++) {
+            const c = data.columns[j];
+            const b = yesNoValue(r[c]);
+            const line = data.lines ? data.lines[i] : i + 2;
+            if (b === null) return {error: r[c] === '' ? 'blank' : 'notYesNo', col: c, line, value: r[c]};
+            out[c] = b ? words.yes : words.no;
+        }
+        rows.push(out);
+    }
+    return {rows, columns: data.columns.slice(), lines: data.lines};
 }
 
 /** 欄位是否為數字欄：所有非空白值都是數字 */
@@ -70953,8 +71067,24 @@ function scoreNumeric (rows, feature, target) {
  *   seed：打亂資料的種子，預設 1
  * @returns {object} model 或 {error, detail}
  */
+/** 分支順序：valueOrder 裡的值排前面（依 valueOrder 順序），其他照資料出現的先後 */
+function sortValues (values, valueOrder) {
+    if (!valueOrder || !valueOrder.length) return values;
+    const rank = v => {
+        const i = valueOrder.indexOf(v);
+        return i < 0 ? valueOrder.length : i;
+    };
+    return values.map((v, i) => ({v, i}))
+        .sort((a, b) => (rank(a.v) - rank(b.v)) || (a.i - b.i))
+        .map(x => x.v);
+}
+
+/**
+ * opts.valueOrder：文字欄位分支的固定順序，例：['是', '否'] → 「是」一律在左
+ */
 function train (rows, opts) {
     const target = opts.target;
+    const valueOrder = opts.valueOrder || null;
     const maxDepth = Math.max(1, Math.min(20, Math.round(Number(opts.maxDepth) || 5)));
     const minSamples = Math.max(2, Math.round(Number(opts.minSamples) || 2));
     let trainPercent = Number(opts.trainPercent);
@@ -71057,7 +71187,7 @@ function train (rows, opts) {
                 node: build(best.groups[1], available, depth + 1)});
         } else {
             const rest = available.filter(f => f !== best.feature);
-            best.values.forEach(v => {
+            sortValues(best.values, valueOrder).forEach(v => {
                 node.children.push({op: '=', value: v, label: v === '' ? '(空白)' : v,
                     node: build(best.groups[v], rest, depth + 1)});
             });
@@ -71200,6 +71330,8 @@ function rulesText (model, w) {
 module.exports = {
     parseData,
     parseCsv,
+    yesNoValue,
+    checkYesNo,
     columnIsNumeric,
     splitList,
     isAllKeyword,
@@ -71497,7 +71629,9 @@ module.exports = {buildHtml, PALETTE, TEXTS};
 
 /**
  * 範例資料：打網球（Quinlan 的經典決策樹教材資料，14 筆）
- * 天氣、風是文字欄位；溫度（華氏）、濕度（%）是數字欄位
+ * - tennis：原版，天氣、風是文字欄位；溫度（華氏）、濕度（%）是數字欄位
+ * - tennisYesNo：是非題版（插件目前用這個）：晴天？下雨？天氣熱？濕度高？有風？打網球？
+ *   天氣熱、濕度高用原教材的文字版（Hot、High）
  */
 'use strict';
 
@@ -71537,7 +71671,34 @@ function tennis (locale) {
     return {rows, target: c[4]};
 }
 
-module.exports = {tennis};
+// 原教材文字版：溫度 Hot、濕度 High
+const HOT = [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];
+const HUMID = [1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1];
+
+const YN_WORDS = {
+    'zh-tw': {cols: ['晴天', '下雨', '天氣熱', '濕度高', '有風', '打網球'], yes: '是', no: '否'},
+    'en': {cols: ['Sunny', 'Rainy', 'Hot', 'Humid', 'Windy', 'Play'], yes: 'Yes', no: 'No'}
+};
+
+/** @returns {{rows: object[], target: string}} 每一格都是 是 / 否 */
+function tennisYesNo (locale) {
+    const w = YN_WORDS[locale] || YN_WORDS.en;
+    const c = w.cols;
+    const yn = b => (b ? w.yes : w.no);
+    const rows = OUTLOOK.map((o, i) => {
+        const r = {};
+        r[c[0]] = yn(o === 'sunny');
+        r[c[1]] = yn(o === 'rain');
+        r[c[2]] = yn(HOT[i]);
+        r[c[3]] = yn(HUMID[i]);
+        r[c[4]] = yn(WINDY[i]);
+        r[c[5]] = yn(PLAY[i]);
+        return r;
+    });
+    return {rows, target: c[5]};
+}
+
+module.exports = {tennis, tennisYesNo};
 
 
 /***/ },
@@ -71585,9 +71746,13 @@ module.exports = {
     defData: t('Google data', 'Google 資料'),
     defTarget: t('Play', '打網球'),
     defFeatures: t('all', '全部'),
-    defCol: t('Outlook', '天氣'),
-    defVal: t('Sunny', '晴'),
-    defText: t('Outlook=Sunny, Humidity=60', '天氣=晴, 濕度=60'),
+    defCol: t('Rainy', '下雨'),
+    defVal: t('No', '否'),
+    defText: t('Rainy=No, Humid=Yes', '下雨=否, 濕度高=是'),
+
+    // 是非答案統一成的文字
+    yes: t('Yes', '是'),
+    no: t('No', '否'),
 
     // 選單
     prop_depth: t('depth', '深度'),
@@ -71609,6 +71774,15 @@ module.exports = {
     st_dataEmpty: t('Data is empty. Make sure the Google Sheet has been read.', '資料是空的，請確認已讀到 Google 試算表的資料'),
     st_dataFormat: t('Data format not recognized. Put the Google Sheets data (JSON) here.', '看不懂這個資料，請放入 Google 試算表插件讀到的資料（JSON）'),
     st_dataNoRows: t('The data has no rows.', '資料裡沒有任何一筆資料'),
+    st_dataReadyYN: t('Loaded {rows} rows, {cols} yes/no columns. (Training is turned off for now.)',
+        '已讀入 {rows} 筆資料、{cols} 個是非欄位（訓練功能暫時關閉）'),
+    st_notYesNo: t('Column "{col}", row {line}: "{val}" is not a yes/no answer. Use Yes/No or True/False (numbers are not accepted).',
+        '「{col}」第 {line} 列的「{val}」不是是非答案，請填 是／否、有／沒有、會／不會、對／錯 或 yes／no（不接受數字）'),
+    st_blankCell: t('Column "{col}", row {line} is blank. Every cell must be Yes or No.',
+        '「{col}」第 {line} 列是空白，每一格都要填 是 或 否'),
+    st_dataReadyTree: t('Loaded {rows} rows, {cols} yes/no columns. The decision tree is ready (built from all rows).',
+        '已讀入 {rows} 筆資料、{cols} 個是非欄位，決策樹已建好（用全部資料）'),
+    st_trainingOff: t('Training is turned off for now.', '訓練功能暫時關閉'),
     st_dataReady: t('Loaded {rows} rows, {cols} columns. Not trained yet.', '已讀入 {rows} 筆資料、{cols} 個欄位，尚未訓練'),
     st_badTarget: t('Column to predict "{col}" not found. Columns: {cols}', '找不到要預測的欄位「{col}」，資料的欄位有：{cols}'),
     st_badFeatures: t('Column(s) not found: {missing}. Columns: {cols}', '找不到欄位：{missing}，資料的欄位有：{cols}'),

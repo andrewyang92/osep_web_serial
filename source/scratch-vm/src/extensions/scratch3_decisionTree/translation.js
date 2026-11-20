@@ -37,9 +37,13 @@ module.exports = {
     defData: t('Google data', 'Google 資料'),
     defTarget: t('Play', '打網球'),
     defFeatures: t('all', '全部'),
-    defCol: t('Outlook', '天氣'),
-    defVal: t('Sunny', '晴'),
-    defText: t('Outlook=Sunny, Humidity=60', '天氣=晴, 濕度=60'),
+    defCol: t('Rainy', '下雨'),
+    defVal: t('No', '否'),
+    defText: t('Rainy=No, Humid=Yes', '下雨=否, 濕度高=是'),
+
+    // 是非答案統一成的文字
+    yes: t('Yes', '是'),
+    no: t('No', '否'),
 
     // 選單
     prop_depth: t('depth', '深度'),
@@ -61,6 +65,15 @@ module.exports = {
     st_dataEmpty: t('Data is empty. Make sure the Google Sheet has been read.', '資料是空的，請確認已讀到 Google 試算表的資料'),
     st_dataFormat: t('Data format not recognized. Put the Google Sheets data (JSON) here.', '看不懂這個資料，請放入 Google 試算表插件讀到的資料（JSON）'),
     st_dataNoRows: t('The data has no rows.', '資料裡沒有任何一筆資料'),
+    st_dataReadyYN: t('Loaded {rows} rows, {cols} yes/no columns. (Training is turned off for now.)',
+        '已讀入 {rows} 筆資料、{cols} 個是非欄位（訓練功能暫時關閉）'),
+    st_notYesNo: t('Column "{col}", row {line}: "{val}" is not a yes/no answer. Use Yes/No or True/False (numbers are not accepted).',
+        '「{col}」第 {line} 列的「{val}」不是是非答案，請填 是／否、有／沒有、會／不會、對／錯 或 yes／no（不接受數字）'),
+    st_blankCell: t('Column "{col}", row {line} is blank. Every cell must be Yes or No.',
+        '「{col}」第 {line} 列是空白，每一格都要填 是 或 否'),
+    st_dataReadyTree: t('Loaded {rows} rows, {cols} yes/no columns. The decision tree is ready (built from all rows).',
+        '已讀入 {rows} 筆資料、{cols} 個是非欄位，決策樹已建好（用全部資料）'),
+    st_trainingOff: t('Training is turned off for now.', '訓練功能暫時關閉'),
     st_dataReady: t('Loaded {rows} rows, {cols} columns. Not trained yet.', '已讀入 {rows} 筆資料、{cols} 個欄位，尚未訓練'),
     st_badTarget: t('Column to predict "{col}" not found. Columns: {cols}', '找不到要預測的欄位「{col}」，資料的欄位有：{cols}'),
     st_badFeatures: t('Column(s) not found: {missing}. Columns: {cols}', '找不到欄位：{missing}，資料的欄位有：{cols}'),
