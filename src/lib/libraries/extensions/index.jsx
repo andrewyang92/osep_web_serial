@@ -158,6 +158,8 @@ import faceExpressionRecogintionImage from "./faceExpressionRecogintion/faceExpr
 import faceExpressionRecogintionIconURL from "./faceExpressionRecogintion/faceExpressionRecogintion-small.png";
 import faceExpressionMediapipeImage from "./faceExpressionMediapipe/faceExpressionMediapipe.png";
 import faceExpressionMediapipeIconURL from "./faceExpressionMediapipe/faceExpressionMediapipe-small.svg";
+import decisionTreeImage from "./decisionTree/decisionTree.png";
+import decisionTreeIconURL from "./decisionTree/decisionTree-small.svg";
 
 const version = "v2-0.2.4";
 
@@ -1392,6 +1394,30 @@ const extensions = [
     featured: true,
     disabled: false,
     internetConnectionRequired: true,
+    useAutoScan: false,
+  },
+  {
+    name: (
+      <FormattedMessage
+        defaultMessage="Decision Tree"
+        description="Decision tree"
+        id="gui.extension.decisionTree.title"
+      />
+    ),
+    extensionId: "decisionTree",
+    collaborator: "Andrew Yang",
+    iconURL: decisionTreeImage,
+    insetIconURL: decisionTreeIconURL,
+    description: (
+      <FormattedMessage
+        defaultMessage="Train a decision tree from Google Sheets data, draw it and make predictions."
+        description="Decision tree from Google Sheets data."
+        id="gui.extension.decisionTree.description"
+      />
+    ),
+    featured: true,
+    disabled: false,
+    internetConnectionRequired: false,
     useAutoScan: false,
   },
 ];

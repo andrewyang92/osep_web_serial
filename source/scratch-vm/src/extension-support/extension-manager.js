@@ -62,6 +62,7 @@ const builtinExtensions = {
     claude: () => require('../extensions/scratch3_claude'),
     faceExpressionRecogintion: () => require('../extensions/scratch3_faceExpressionRecogintion'),
     faceExpressionMediapipe: () => require('../extensions/scratch3_faceExpressionMediapipe'),
+    decisionTree: () => require('../extensions/scratch3_decisionTree'),
     //tmpose2scratch: () => require('../extensions/scratch3_tmpose2scratch'),
     //qrcode: () => require('../extensions/scratch3_qrcode'),
 };
