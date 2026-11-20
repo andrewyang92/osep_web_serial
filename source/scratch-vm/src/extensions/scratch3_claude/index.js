@@ -58,14 +58,6 @@ class Scratch3Claude {
             blockIconURI: blockIconURI,
             blocks: [
                 {
-                    opcode: 'setApiKey',
-                    blockType: BlockType.COMMAND,
-                    text: msg.set_api_key[L],
-                    arguments: {
-                        KEY: {type: ArgumentType.STRING, defaultValue: KEY_PLACEHOLDER}
-                    }
-                },
-                {
                     opcode: 'setAccessCode',
                     blockType: BlockType.COMMAND,
                     text: msg.set_access_code[L],
@@ -74,11 +66,28 @@ class Scratch3Claude {
                     }
                 },
                 {
+                    opcode: 'setApiKey',
+                    blockType: BlockType.COMMAND,
+                    text: msg.set_api_key[L],
+                    arguments: {
+                        KEY: {type: ArgumentType.STRING, defaultValue: KEY_PLACEHOLDER}
+                    }
+                },
+                {
                     opcode: 'setProxyUrl',
                     blockType: BlockType.COMMAND,
                     text: msg.set_proxy_url[L],
                     arguments: {
                         URL: {type: ArgumentType.STRING, defaultValue: 'https://script.google.com/macros/s/.../exec'}
+                    }
+                },
+                '---',
+                {
+                    opcode: 'setSystem',
+                    blockType: BlockType.COMMAND,
+                    text: msg.set_system[L],
+                    arguments: {
+                        SYSTEM: {type: ArgumentType.STRING, defaultValue: msg.default_system[L]}
                     }
                 },
                 {
@@ -90,11 +99,20 @@ class Scratch3Claude {
                     }
                 },
                 {
-                    opcode: 'setSystem',
+                    opcode: 'setMemory',
                     blockType: BlockType.COMMAND,
-                    text: msg.set_system[L],
+                    text: msg.set_memory[L],
                     arguments: {
-                        SYSTEM: {type: ArgumentType.STRING, defaultValue: msg.default_system[L]}
+                        ONOFF: {type: ArgumentType.STRING, menu: 'onoffMenu', defaultValue: 'on'}
+                    }
+                },
+                '---',
+                {
+                    opcode: 'setTemperature',
+                    blockType: BlockType.COMMAND,
+                    text: msg.set_temperature[L],
+                    arguments: {
+                        TEMP: {type: ArgumentType.NUMBER, defaultValue: 0.7}
                     }
                 },
                 {
@@ -105,32 +123,20 @@ class Scratch3Claude {
                         TOKENS: {type: ArgumentType.NUMBER, defaultValue: DEFAULT_MAX_TOKENS}
                     }
                 },
-                {
-                    opcode: 'setTemperature',
-                    blockType: BlockType.COMMAND,
-                    text: msg.set_temperature[L],
-                    arguments: {
-                        TEMP: {type: ArgumentType.NUMBER, defaultValue: 0.7}
-                    }
-                },
-                {
-                    opcode: 'setMemory',
-                    blockType: BlockType.COMMAND,
-                    text: msg.set_memory[L],
-                    arguments: {
-                        ONOFF: {type: ArgumentType.STRING, menu: 'onoffMenu', defaultValue: 'on'}
-                    }
-                },
-                {
-                    opcode: 'clearHistory',
-                    blockType: BlockType.COMMAND,
-                    text: msg.clear_history[L]
-                },
                 '---',
                 {
                     opcode: 'ask',
                     blockType: BlockType.COMMAND,
                     text: msg.ask[L],
+                    arguments: {
+                        QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_question[L]}
+                    }
+                },
+                {
+                    opcode: 'askReporter',
+                    blockType: BlockType.REPORTER,
+                    text: msg.ask_reporter[L],
+                    disableMonitor: true,
                     arguments: {
                         QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_question[L]}
                     }
@@ -143,15 +149,6 @@ class Scratch3Claude {
                         QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_stage_question[L]}
                     }
                 },
-                {
-                    opcode: 'askReporter',
-                    blockType: BlockType.REPORTER,
-                    text: msg.ask_reporter[L],
-                    disableMonitor: true,
-                    arguments: {
-                        QUESTION: {type: ArgumentType.STRING, defaultValue: msg.default_question[L]}
-                    }
-                },
                 '---',
                 {
                     opcode: 'getAnswer',
@@ -159,14 +156,14 @@ class Scratch3Claude {
                     text: msg.answer[L]
                 },
                 {
-                    opcode: 'getStatus',
-                    blockType: BlockType.REPORTER,
-                    text: msg.status[L]
-                },
-                {
                     opcode: 'isBusy',
                     blockType: BlockType.BOOLEAN,
                     text: msg.is_busy[L]
+                },
+                {
+                    opcode: 'getStatus',
+                    blockType: BlockType.REPORTER,
+                    text: msg.status[L]
                 },
                 {
                     opcode: 'copyText',
@@ -175,6 +172,11 @@ class Scratch3Claude {
                     arguments: {
                         TEXT: {type: ArgumentType.STRING, defaultValue: ' '}
                     }
+                },
+                {
+                    opcode: 'clearHistory',
+                    blockType: BlockType.COMMAND,
+                    text: msg.clear_history[L]
                 }
             ],
             menus: {

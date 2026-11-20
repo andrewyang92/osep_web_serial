@@ -104,7 +104,8 @@ class Scratch3FaceExpressionMediapipe {
                     }
                 },
                 {opcode: 'startRecognition', blockType: BlockType.COMMAND, text: this._t('start')},
-                {opcode: 'stopRecognition', blockType: BlockType.COMMAND, text: this._t('stop')},
+                {opcode: 'getStatus', blockType: BlockType.REPORTER, text: this._t('status')},
+                {opcode: 'isFaceDetected', blockType: BlockType.BOOLEAN, text: this._t('faceDetected')},
                 '---',
                 {
                     opcode: 'whenEmotion',
@@ -113,7 +114,6 @@ class Scratch3FaceExpressionMediapipe {
                     isEdgeActivated: true,
                     arguments: {EMOTION: emotionArg}
                 },
-                {opcode: 'isFaceDetected', blockType: BlockType.BOOLEAN, text: this._t('faceDetected')},
                 {
                     opcode: 'isEmotion',
                     blockType: BlockType.BOOLEAN,
@@ -143,12 +143,13 @@ class Scratch3FaceExpressionMediapipe {
                 },
                 {
                     opcode: 'getBlendshape',
+                    hideFromPalette: true, // 2026-11-17 隱藏（進階用，功能保留，舊專案仍可執行）
                     blockType: BlockType.REPORTER,
                     text: this._t('blendshape'),
                     arguments: {NAME: {type: ArgumentType.STRING, defaultValue: 'jawOpen'}}
                 },
                 '---',
-                {opcode: 'getStatus', blockType: BlockType.REPORTER, text: this._t('status')}
+                {opcode: 'stopRecognition', blockType: BlockType.COMMAND, text: this._t('stop')}
             ],
             menus: {
                 videoMenu: {
