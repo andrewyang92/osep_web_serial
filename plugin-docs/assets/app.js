@@ -280,6 +280,16 @@
     };
 
     const plainText = s => String(s || '').replace(/\[\[([\w.]+)\]\]/g, '$1').replace(/[*`>|]/g, '');
+    /** 一句話說明（純文字）：[[opcode]] 換成「積木文字」，拿掉粗體、程式碼記號 */
+    const summaryText = (s, plugin) => String(s || '').replace(/\[\[([\w.]+)\]\]/g, (m, ref) => {
+        let pid = plugin && plugin.id;
+        let op = ref;
+        if (ref.indexOf('.') > 0) [pid, op] = ref.split('.');
+        const p = OSEP.get(pid);
+        const b = p && OSEP.findBlock(p, op);
+        if (!b) return ref;
+        return T('q', b.text.replace(/\s*\[[A-Za-z0-9_]+\]\s*/g, ' ( ) ').replace(/\s+/g, ' ').trim());
+    }).replace(/\*\*|`/g, '');
 
     /* ================= 星空 ================= */
 
@@ -379,7 +389,7 @@
                 }));
                 const res = h(`<div class="results"><div class="section-title"><h2>${esc(T('matchBlocks'))}</h2><span>${esc(T('nBlocks', hits.length))}</span></div></div>`);
                 hits.forEach(({p, b}) => {
-                    const a = h(`<a class="result" href="#/p/${p.id}/${b.opcode}"><div class="r-block"></div><div class="r-text"><b>${esc(p.name)}</b>${esc(isTodo(b.summary) ? '' : b.summary)}</div></a>`);
+                    const a = h(`<a class="result" href="#/p/${p.id}/${b.opcode}"><div class="r-block"></div><div class="r-text"><b>${esc(p.name)}</b>${esc(isTodo(b.summary) ? '' : summaryText(b.summary, p))}</div></a>`);
                     $('.r-block', a).appendChild(OSEPBlocks.block(b, p));
                     res.appendChild(a);
                 });
@@ -419,7 +429,8 @@
     /* ---------- 插件頁 ---------- */
 
     const argRows = (b, plugin) => {
-        const names = Object.keys(b.args || {});
+        // 只列積木上看得到的空格（有些插件的 arguments 裡有積木文字沒用到的參數）
+        const names = Object.keys(b.args || {}).filter(k => String(b.text).indexOf(`[${k}]`) >= 0);
         if (!names.length) return '';
         const typeName = a => (a.type === 'menu' ? (a.acceptReporters ? T('tMenuVar') : T('tMenu')) :
             a.type === 'number' ? T('tNum') : a.type === 'boolean' ? T('tBool') : a.type === 'color' ? T('tColor') : T('tText'));
@@ -569,6 +580,7 @@
         main.appendChild(h(`<div class="pager">${prev ? `<a href="#/p/${prev.id}"><small>${esc(T('prev'))}</small>${esc(prev.name)}</a>` : ''}${next ? `<a class="next" href="#/p/${next.id}"><small>${esc(T('next'))}</small>${esc(next.name)}</a>` : ''}</div>`));
 
         toc.innerHTML = `<div class="toc-h">${esc(T('onThisPage'))}</div>${tocItems.join('')}`;
+        fitPalette(palEl);
         setupScrollSpy(toc);
 
         // 跳到指定位置
@@ -616,15 +628,57 @@
             doc.appendChild(h(`<div class="cheat-plugin">${p.icon ? `<img src="${esc(p.icon)}" alt="">` : ''}<h2><a href="#/p/${p.id}" style="color:inherit;text-decoration:none">${esc(p.name)}</a></h2></div>`));
             const grid = h('<div class="cheat"></div>');
             OSEP.blocksOf(p).forEach(b => {
-                const a = h(`<a href="#/p/${p.id}/${b.opcode}"><div class="c-blk"></div><div class="c-sum">${esc(isTodo(b.summary) ? '' : b.summary)}</div></a>`);
+                const a = h(`<a href="#/p/${p.id}/${b.opcode}"><div class="c-blk"></div><div class="c-sum">${esc(isTodo(b.summary) ? '' : summaryText(b.summary, p))}</div></a>`);
                 $('.c-blk', a).appendChild(OSEPBlocks.block(b, p));
                 grid.appendChild(a);
             });
             doc.appendChild(grid);
         });
         root.appendChild(doc);
+        fitWideBlocks(doc, '.cheat a', '.c-blk');
         window.scrollTo({top: 0, behavior: 'instant'});
     };
+
+    /**
+     * 比格子寬的積木（例如有很多空格的積木）改成佔滿整列；
+     * 整列還是放不下（手機寬度）時，加上 too-wide，讓積木在格子裡左右捲動
+     */
+    const fitWideBlocks = (root, itemSel, blockSel) => {
+        const items = Array.from(root.querySelectorAll(itemSel));
+        const blockOf = it => it.querySelector(blockSel) && it.querySelector(blockSel).firstElementChild;
+        const overflows = it => {
+            const b = blockOf(it);
+            if (!b) return false;
+            const cs = getComputedStyle(it);
+            const inner = it.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+            return b.getBoundingClientRect().width > inner + 0.5;
+        };
+        items.forEach(it => {
+            it.classList.remove('wide', 'too-wide');
+        });
+        items.filter(overflows).forEach(it => it.classList.add('wide'));
+        items.filter(it => it.classList.contains('wide') && overflows(it)).forEach(it => it.classList.add('too-wide'));
+    };
+    /** 積木總覽：某一組裡有積木比欄寬，整組改成佔滿整列 */
+    const fitPalette = pal => {
+        const groups = Array.from(pal.querySelectorAll('.palette-group'));
+        const items = g => Array.from(g.querySelectorAll('.pal-item'));
+        const over = (g, it) => it.firstElementChild && it.firstElementChild.getBoundingClientRect().width > g.clientWidth + 0.5;
+        groups.forEach(g => {
+            g.classList.remove('wide');
+            items(g).forEach(it => it.classList.remove('too-wide'));
+        });
+        groups.filter(g => items(g).some(it => over(g, it))).forEach(g => g.classList.add('wide'));
+        groups.forEach(g => items(g).filter(it => over(g, it)).forEach(it => it.classList.add('too-wide')));
+    };
+    let fitTimer = null;
+    window.addEventListener('resize', () => {
+        clearTimeout(fitTimer);
+        fitTimer = setTimeout(() => {
+            document.querySelectorAll('.cheat').forEach(c => fitWideBlocks(c, 'a', '.c-blk'));
+            document.querySelectorAll('.palette').forEach(fitPalette);
+        }, 150);
+    });
 
     /* ---------- 新增插件指南 ---------- */
 

@@ -410,7 +410,11 @@ img { max-width: 100%; }
     border-bottom: 1px solid #E3E3E8;
     padding-bottom: 4px;
 }
+.palette-group { min-width: 0; }
+.palette-group.wide { grid-column: 1 / -1; }
 .palette-group .pal-item { margin-bottom: 14px; }
+/* 整列還放不下的積木（app.js 的 fitPalette 判斷）在原位左右捲動 */
+.palette-group .pal-item.too-wide { overflow-x: auto; overflow-y: hidden; padding: 2px 0 8px; }
 .palette-group .pal-item .blk-link { display: inline-block; }
 .pal-hidden { opacity: .55; }
 
@@ -542,6 +546,9 @@ img { max-width: 100%; }
 /* 速查頁的格子比較窄：文字空格縮短（超過的用 … 表示），整塊積木也不超出格子 */
 .cheat .c-blk { min-width: 0; max-width: 100%; }
 .cheat .in-str { max-width: 80px; }
+/* 比格子寬的積木佔滿整列（app.js 的 fitWideBlocks 判斷）；還是放不下就在格子裡左右捲動 */
+.cheat a.wide { grid-column: 1 / -1; }
+.cheat a.too-wide .c-blk { overflow-x: auto; overflow-y: hidden; padding: 2px 0 8px; }
 
 .loadwarn { max-width: 1240px; margin: 16px auto; padding: 0 24px; }
 .loadwarn:empty { display: none; }
@@ -736,7 +743,7 @@ img { max-width: 100%; }
     .args td:first-child { white-space: normal; }
     .cheat { grid-template-columns: 1fr; }
     /* 手機寬度：積木文字本身就比格子長時，讓積木在格子裡左右捲動，不超出畫面 */
-    .cheat .c-blk { overflow-x: auto; padding: 2px 0 4px; }
+    .cheat .c-blk { overflow-x: auto; overflow-y: hidden; padding: 2px 0 8px; }
     .pager { grid-template-columns: 1fr; }
     .pager .next { grid-column: 1; }
 }

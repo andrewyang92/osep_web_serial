@@ -4,4 +4,8 @@ OSEP_PLUGIN_LIST = [
     'faceExpressionMediapipe',
     'decisionTree',
     'yoloDetection',
+    'gasoIFTTT',
+    'gasoThingSpeak',
+    'gasoLASS',
+    'gasoJSON',
 ];
