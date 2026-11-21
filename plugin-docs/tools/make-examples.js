@@ -5,14 +5,14 @@
  * 把說明網站的「範例作品」轉成可以下載的 Scratch 專案檔（.sb3）。
  *
  * 用法（在 plugin-docs 資料夾執行）：
- *   node tools/make-examples.js            全部插件
- *   node tools/make-examples.js claude     只做某些插件
+ *   node tools/make-examples.js            全部擴充功能
+ *   node tools/make-examples.js claude     只做某些擴充功能
  *
  * 產生：
- *   examples/<插件id>/zh-<n>.sb3、en-<n>.sb3   第 n 個範例（中文／英文版）
+ *   examples/<擴充功能id>/zh-<n>.sb3、en-<n>.sb3   第 n 個範例（中文／英文版）
  *   plugins/examples.js                         有哪些範例檔（網站用來顯示下載按鈕）
  *
- * 範例腳本裡的插件積木（{use: 'opcode'}）依插件的 getInfo() 產生；
+ * 範例腳本裡的擴充功能積木（{use: 'opcode'}）依擴充功能的 getInfo() 產生；
  * 內建積木（{t: '說出 [M]', cat: 'looks'}）依下面的 CORE 對照表產生，表裡沒有的積木會報錯。
  * 範例用到的造型、音效會自動加到角色裡：造型是寫著名字的示意圖，音效先用「喵」代替。
  */
@@ -28,7 +28,7 @@ const REPO = path.resolve(SITE, '..');
 const EXT_ROOT = path.join(REPO, 'node_modules', 'scratch-vm', 'src', 'extensions');
 const ASSETS = path.join(REPO, 'src', 'lib', 'default-project');
 
-/* ================= 1. 讓 Node 能載入插件（和 extract-plugin.js 相同的做法） ================= */
+/* ================= 1. 讓 Node 能載入擴充功能（和 extract-plugin.js 相同的做法） ================= */
 
 const origJs = Module._extensions['.js'];
 Module._extensions['.js'] = function (module, filename) {
@@ -95,7 +95,7 @@ try {
 } catch (e) {
     // 略過
 }
-// 插件會 console.log 很多東西，產生範例時不需要
+// 擴充功能會 console.log 很多東西，產生範例時不需要
 const quiet = fn => {
     const saved = [console.log, console.warn, console.info];
     console.log = console.warn = console.info = () => {};
@@ -109,7 +109,7 @@ const quiet = fn => {
 const formatMessage = require(require.resolve('format-message', {paths: [EXT_ROOT]}));
 const JSZip = require(require.resolve('jszip', {paths: [REPO]}));
 
-/** 載入插件，回傳 {zh, en} 兩種語言的 getInfo() 結果（同一個實例，呼叫動態選單用） */
+/** 載入擴充功能，回傳 {zh, en} 兩種語言的 getInfo() 結果（同一個實例，呼叫動態選單用） */
 const infoCache = {};
 const loadInfo = dir => {
     if (infoCache[dir]) return infoCache[dir];
@@ -170,7 +170,7 @@ core(['字串組合 [A] [B]', 'join [A] [B]'], {op: 'operator_join', inputs: {A:
 core(['[S] 的長度', 'length of [S]'], {op: 'operator_length', inputs: {S: 'STRING:text'}});
 core(['詢問 [Q] 並等待', 'ask [Q] and wait'], {op: 'sensing_askandwait', inputs: {Q: 'QUESTION:text'}});
 core(['詢問的答案', 'answer'], {op: 'sensing_answer'});
-// Google 試算表插件（範例裡用 color 畫的積木）
+// Google 試算表擴充功能（範例裡用 color 畫的積木）
 core(['取得 Google 試算表共用連結 [U]', 'get data from Google Sheet URL [U]'], {op: 'rwGoogle_googleJSON', ext: 'rwGoogle', inputs: {U: 'url:text'}});
 core(['讀取的 Google 資料', 'Google data'], {op: 'rwGoogle_readFromJSON', ext: 'rwGoogle', inputs: {}, extraInputs: {id: 'text:id'}});
 
@@ -322,7 +322,7 @@ class Builder {
         if (op.indexOf('.') > 0) [pid, op] = op.split('.');
         const entry = this.infos[pid];
         if (!entry) {
-            this.problems.push(`找不到插件 ${pid}`);
+            this.problems.push(`找不到擴充功能 ${pid}`);
             return;
         }
         const info = entry.info[this.lang];
@@ -352,7 +352,7 @@ class Builder {
         });
     }
 
-    /** 插件選單：可放變數的選單是影子積木，不行的是積木上的欄位；選項文字換成值 */
+    /** 擴充功能選單：可放變數的選單是影子積木，不行的是積木上的欄位；選項文字換成值 */
     extMenu (block, info, name, a, val) {
         const menu = info.menus && info.menus[a.menu];
         const accept = menu && !Array.isArray(menu) && !!menu.acceptReporters;
@@ -408,7 +408,7 @@ class Builder {
 const STR = {
     zh: {sprite: '角色1', costume: '造型', backdrop: '背景1', meow: '喵', pop: '啵', stage: 'Stage',
         placeholder: '「{names}」造型是示意圖，可以換成自己畫的造型。', soundNote: '音效「{names}」暫時用「喵」代替，可以換成其他音效。',
-        source: 'OSEP 插件說明網站的範例：', sep: '」「'},
+        source: 'OSEP 擴充功能說明網站的範例：', sep: '」「'},
     en: {sprite: 'Sprite1', costume: 'costume', backdrop: 'backdrop1', meow: 'Meow', pop: 'pop', stage: 'Stage',
         placeholder: 'The "{names}" costumes are placeholders; replace them with your own drawings.',
         soundNote: 'The "{names}" sound uses "Meow" for now; replace it with another sound.',
@@ -485,8 +485,8 @@ const buildProject = (lang, pluginId, ex, infos) => {
 };
 
 /**
- * 新版 OSEP（new/）和舊版（app/）擴充 id 不同的插件：舊版 id → 新版 id。
- * 例：new/ 裡的 textSentiment 是原作者的 ml5 舊插件，我們的版本叫 textSentimentTF（積木相同）。
+ * 新版 OSEP（new/）和舊版（app/）擴充 id 不同的擴充功能：舊版 id → 新版 id。
+ * 例：new/ 裡的 textSentiment 是原作者的 ml5 舊擴充功能，我們的版本叫 textSentimentTF（積木相同）。
  */
 const NEW_IDS = {textSentiment: 'textSentimentTF'};
 
@@ -568,7 +568,7 @@ const main = () => {
                         fs.writeFileSync(path.join(SITE, rel), buf);
                     }));
                 };
-                // 舊版 app/ 用的檔（插件原本的擴充 id）
+                // 舊版 app/ 用的檔（擴充功能原本的擴充 id）
                 const rel = `examples/${id}/${lang}-${i + 1}.sb3`;
                 manifest[id][lang][i] = rel;
                 save(project, rel);
@@ -583,7 +583,7 @@ const main = () => {
         });
     });
     return Promise.all(jobs).then(() => {
-        const body = `// 由 tools/make-examples.js 產生：每個插件各範例的 .sb3 檔（中文 zh、英文 en，依範例順序）\n` +
+        const body = `// 由 tools/make-examples.js 產生：每個擴充功能各範例的 .sb3 檔（中文 zh、英文 en，依範例順序）\n` +
             `window.OSEP_EXAMPLE_FILES = ${JSON.stringify(manifest, null, 2)};\n`;
         fs.writeFileSync(manifestFile, body);
         console.log(`產生 ${count} 個範例檔${bad ? `，其中 ${bad} 個有問題（見上面的 ⚠）` : ''}`);

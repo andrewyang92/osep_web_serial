@@ -1,7 +1,7 @@
 /*
- * ThingSpeak 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * ThingSpeak 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "gasoThingSpeak",
@@ -27,7 +27,7 @@ OSEP.addPlugin({
   "blockIcon": "",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_thingspeak",
   "tagline": "把數值存到 ThingSpeak 物聯網平台畫成圖表，也能把資料讀回 Scratch。",
-  "overview": "ThingSpeak 是 MathWorks 的物聯網資料平台：把感測器或遊戲的數值送上去，網站會自動畫成折線圖，也可以讓別的程式讀回來。\n\nThingSpeak 的資料放在「頻道（channel）」裡，一個頻道有 8 個欄位（field1～field8）。這個插件可以：\n\n- **寫入**：設定寫入 key → 填好要送的欄位 → 送出\n- **讀取**：用讀取 key 和頻道 ID 下載資料，再用 JSON 插件拆開來看\n\n### 事前準備（在 [ThingSpeak 網站](https://thingspeak.mathworks.com/)）\n- 註冊 MathWorks 帳號並登入，到 [My Channels](https://thingspeak.mathworks.com/channels) 按 **New Channel** 建立頻道，勾選要用的欄位（Field 1～8）\n- 在頻道的「API Keys」頁面可以找到 **Write API Key**、**Read API Key** 和 **Channel ID**\n\n> 免費帳號送出資料有時間間隔限制（大約每 15 秒一次），送太快的資料會被丟掉。限制以 ThingSpeak 網站目前的規定為準。\n\n### 相關網站\n- [ThingSpeak 首頁](https://thingspeak.mathworks.com/)：註冊、登入\n- [My Channels](https://thingspeak.mathworks.com/channels)：自己的頻道清單，點進頻道可以看圖表和 API Keys（要先登入）\n- [建立新頻道](https://thingspeak.mathworks.com/channels/new)（要先登入）\n\n插件原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
+  "overview": "ThingSpeak 是 MathWorks 的物聯網資料平台：把感測器或遊戲的數值送上去，網站會自動畫成折線圖，也可以讓別的程式讀回來。\n\nThingSpeak 的資料放在「頻道（channel）」裡，一個頻道有 8 個欄位（field1～field8）。這個擴充功能可以：\n\n- **寫入**：設定寫入 key → 填好要送的欄位 → 送出\n- **讀取**：用讀取 key 和頻道 ID 下載資料，再用 JSON 擴充功能拆開來看\n\n### 事前準備（在 [ThingSpeak 網站](https://thingspeak.mathworks.com/)）\n- 註冊 MathWorks 帳號並登入，到 [My Channels](https://thingspeak.mathworks.com/channels) 按 **New Channel** 建立頻道，勾選要用的欄位（Field 1～8）\n- 在頻道的「API Keys」頁面可以找到 **Write API Key**、**Read API Key** 和 **Channel ID**\n\n> 免費帳號送出資料有時間間隔限制（大約每 15 秒一次），送太快的資料會被丟掉。限制以 ThingSpeak 網站目前的規定為準。\n\n### 相關網站\n- [ThingSpeak 首頁](https://thingspeak.mathworks.com/)：註冊、登入\n- [My Channels](https://thingspeak.mathworks.com/channels)：自己的頻道清單，點進頻道可以看圖表和 API Keys（要先登入）\n- [建立新頻道](https://thingspeak.mathworks.com/channels/new)（要先登入）\n\n擴充功能原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
   "groups": [
     {
       "name": "寫入與讀取",
@@ -183,7 +183,7 @@ OSEP.addPlugin({
           },
           "summary": "最近一次 [[TS_Read]] 下載的資料。",
           "returns": "JSON 文字，例如 `[{\"created_at\":\"…\",\"entry_id\":1,\"field1\":\"25\"}, …]`。還沒讀過時是「錯誤：ThingSpeak 資料不存在」。",
-          "tips": "用 JSON 插件的「JSON 資料的第幾筆」「參數對應的值」就能取出某一筆的某個欄位，見範例 2。",
+          "tips": "用 JSON 擴充功能的「JSON 資料的第幾筆」「參數對應的值」就能取出某一筆的某個欄位，見範例 2。",
           "detail": ""
         }
       ]
@@ -243,7 +243,7 @@ OSEP.addPlugin({
     },
     {
       "title": "讀回最新一筆資料",
-      "intro": "下載頻道資料，取出最後一筆的欄位 1。要搭配 JSON 插件。",
+      "intro": "下載頻道資料，取出最後一筆的欄位 1。要搭配 JSON 擴充功能。",
       "script": [
         {
           "t": "當 [K] 鍵被按下",

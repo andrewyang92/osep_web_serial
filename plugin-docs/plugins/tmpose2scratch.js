@@ -1,7 +1,7 @@
 /*
- * TMPose2Scratch 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * TMPose2Scratch 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "tmpose2scratch",
@@ -28,11 +28,11 @@ OSEP.addPlugin({
   "blockIcon": "images/tmpose2scratch/block-icon.png",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_tmpose2scratch",
   "tagline": "把在 Teachable Machine 訓練好的姿勢模型放進 Scratch，用身體動作控制作品。",
-  "overview": "Google 的 **Teachable Machine** 可以訓練「姿勢」模型：對著攝影機擺幾個動作（例如舉左手、舉右手、蹲下），每個動作拍一些樣本，它就學會分辨。這個插件把訓練好的姿勢模型接到 Scratch。\n\n和看整張畫面的圖像模型（TM2Scratch）不同，姿勢模型只看身體骨架的位置，比較不受背景和衣服影響。\n\n### 使用步驟\n- 到 Teachable Machine 建立 **Pose Project**\n- 每個類別取名字、對著攝影機擺動作收集樣本，按 **Train Model** 訓練\n- 按 **Export Model** → **Upload（shareable link）**，複製得到的網址\n- 在 Scratch 用 [[setPoseClassificationModelURL]] 貼上網址\n\n> 插件一載入就會打開攝影機（鏡像）。辨識在你的瀏覽器裡進行，影像不會上傳；模型與程式庫是從網路下載的。\n\n插件原始作者：Tsukurusha、YengawaLab、Google。",
+  "overview": "Google 的 **Teachable Machine** 可以訓練「姿勢」模型：對著攝影機擺幾個動作（例如舉左手、舉右手、蹲下），每個動作拍一些樣本，它就學會分辨。這個擴充功能把訓練好的姿勢模型接到 Scratch。\n\n和看整張畫面的圖像模型（TM2Scratch）不同，姿勢模型只看身體骨架的位置，比較不受背景和衣服影響。\n\n### 使用步驟\n- 到 Teachable Machine 建立 **Pose Project**\n- 每個類別取名字、對著攝影機擺動作收集樣本，按 **Train Model** 訓練\n- 按 **Export Model** → **Upload（shareable link）**，複製得到的網址\n- 在 Scratch 用 [[setPoseClassificationModelURL]] 貼上網址\n\n> 擴充功能一載入就會打開攝影機（鏡像）。辨識在你的瀏覽器裡進行，影像不會上傳；模型與程式庫是從網路下載的。\n\n擴充功能原始作者：Tsukurusha、YengawaLab、Google。",
   "groups": [
     {
       "name": "姿勢辨識",
-      "intro": "先用 [[setPoseClassificationModelURL]] 載入模型。之後插件會自動、持續辨識攝影機畫面中的姿勢。",
+      "intro": "先用 [[setPoseClassificationModelURL]] 載入模型。之後擴充功能會自動、持續辨識攝影機畫面中的姿勢。",
       "blocks": [
         {
           "opcode": "whenPoseLabelReceived",
@@ -441,7 +441,7 @@ OSEP.addPlugin({
     },
     {
       "q": "一開始很慢、或沒有反應？",
-      "a": "插件載入時要從網路下載 TensorFlow 和 Teachable Machine 的程式庫，網路慢時要等比較久。"
+      "a": "擴充功能載入時要從網路下載 TensorFlow 和 Teachable Machine 的程式庫，網路慢時要等比較久。"
     }
   ],
   "changelog": [

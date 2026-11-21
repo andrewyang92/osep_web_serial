@@ -1,7 +1,7 @@
 /*
- * JSON 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * JSON 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "gasoJSON",
@@ -27,11 +27,11 @@ OSEP.addPlugin({
   "blockIcon": "images/gasoJSON/block-icon.svg",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_json",
   "tagline": "從網路下載 JSON、CSV、文字、XML 資料，查詢、篩選、修改都能在 Scratch 裡完成。",
-  "overview": "很多開放資料（天氣、公車、空氣品質、政府資料）都是用 **JSON** 格式提供的。這個插件可以：\n\n- **下載**網路上的 JSON、CSV、文字、XML 檔\n- **讀取**某一筆、某個欄位的值，列出所有欄位、算筆數\n- **查詢**欄位包含某個文字、或數值大於某個數的資料\n- **修改**資料：改某一格、新增、取代、刪除某一筆\n\n### JSON 長什麼樣子\nJSON 最常見的是「很多筆資料」的清單，每一筆有好幾個欄位：\n\n```\n[{\"name\": \"小明\", \"score\": 90}, {\"name\": \"小華\", \"score\": 75}]\n```\n\n「第 1 筆」是 `{\"name\": \"小明\", \"score\": 90}`，它的 `score` 欄位是 `90`。插件的讀取積木都是用文字傳來傳去，常見的做法是把資料存進變數，再一層一層取出來。\n\n### 讀取網路資料的兩個重點\n- 下載的積木**不會等資料到**就結束了。讀資料的積木放在 [[onJSONReceived]] 底下，或在下載後加「等待 1 秒」\n- 很多網站不允許別的網頁直接讀取它的資料（跨網域限制，CORS）。[[fetchJSON]] 讀不到時會自動改用中繼伺服器（OSEP 的 Google Apps Script）再試一次；[[corsfetchJSON]] 則一開始就用中繼\n\n插件原始作者：gasolin、TYiC（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
+  "overview": "很多開放資料（天氣、公車、空氣品質、政府資料）都是用 **JSON** 格式提供的。這個擴充功能可以：\n\n- **下載**網路上的 JSON、CSV、文字、XML 檔\n- **讀取**某一筆、某個欄位的值，列出所有欄位、算筆數\n- **查詢**欄位包含某個文字、或數值大於某個數的資料\n- **修改**資料：改某一格、新增、取代、刪除某一筆\n\n### JSON 長什麼樣子\nJSON 最常見的是「很多筆資料」的清單，每一筆有好幾個欄位：\n\n```\n[{\"name\": \"小明\", \"score\": 90}, {\"name\": \"小華\", \"score\": 75}]\n```\n\n「第 1 筆」是 `{\"name\": \"小明\", \"score\": 90}`，它的 `score` 欄位是 `90`。擴充功能的讀取積木都是用文字傳來傳去，常見的做法是把資料存進變數，再一層一層取出來。\n\n### 讀取網路資料的兩個重點\n- 下載的積木**不會等資料到**就結束了。讀資料的積木放在 [[onJSONReceived]] 底下，或在下載後加「等待 1 秒」\n- 很多網站不允許別的網頁直接讀取它的資料（跨網域限制，CORS）。[[fetchJSON]] 讀不到時會自動改用中繼伺服器（OSEP 的 Google Apps Script）再試一次；[[corsfetchJSON]] 則一開始就用中繼\n\n擴充功能原始作者：gasolin、TYiC（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
   "groups": [
     {
       "name": "取得資料",
-      "intro": "把資料下載（或貼上）到插件裡。插件一次只存一份資料，新的會取代舊的。",
+      "intro": "把資料下載（或貼上）到擴充功能裡。擴充功能一次只存一份資料，新的會取代舊的。",
       "blocks": [
         {
           "opcode": "fetchJSON",
@@ -76,7 +76,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "從網址下載 CSV 檔。",
-          "detail": "CSV 是用逗號分隔欄位、一行一筆的表格文字。下載後會存成 `{\"0\": \"第1行\", \"1\": \"第2行\", …}` 的樣子，每一行再用 [[splitString]] 依逗號拆開。\n\n> ! 目前的程式只在換行是兩個字元 `\\r\\n` 的寫法時才分行，一般 CSV 檔下載後**常常整份都在第 1 筆**。要用表格資料，建議改用 Google 試算表插件，或先轉成 JSON（[[openexceltojsonurl]]）。"
+          "detail": "CSV 是用逗號分隔欄位、一行一筆的表格文字。下載後會存成 `{\"0\": \"第1行\", \"1\": \"第2行\", …}` 的樣子，每一行再用 [[splitString]] 依逗號拆開。\n\n> ! 目前的程式只在換行是兩個字元 `\\r\\n` 的寫法時才分行，一般 CSV 檔下載後**常常整份都在第 1 筆**。要用表格資料，建議改用 Google 試算表擴充功能，或先轉成 JSON（[[openexceltojsonurl]]）。"
         },
         {
           "opcode": "fetchTXT",
@@ -115,14 +115,14 @@ OSEP.addPlugin({
           "text": "開啟 CORS 網址",
           "textEn": "open a CORS URL",
           "summary": "開啟 cors-anywhere 的示範頁。",
-          "detail": "這是舊版插件用的跨網域服務。現在插件改用 OSEP 自己的中繼，一般**不需要**用這塊。"
+          "detail": "這是舊版擴充功能用的跨網域服務。現在擴充功能改用 OSEP 自己的中繼，一般**不需要**用這塊。"
         },
         {
           "opcode": "clearJSONData",
           "type": "command",
           "text": "清除 JSON 資料",
           "textEn": "clear JSON data",
-          "summary": "清除插件裡的資料。",
+          "summary": "清除擴充功能裡的資料。",
           "detail": "清除後 [[readFromJSON]] 會變成「錯誤:JSON 資料不存在」。"
         }
       ]
@@ -157,7 +157,7 @@ OSEP.addPlugin({
               "desc": "積木上沒有這個空格（程式裡留下來的設定），不用理會。"
             }
           },
-          "summary": "插件裡目前的整份資料。",
+          "summary": "擴充功能裡目前的整份資料。",
           "returns": "JSON 文字。還沒有資料時是「錯誤:JSON 資料不存在」。",
           "tips": "常見做法：先把它存進變數「全部」，之後都用變數，比較好讀也比較快。",
           "detail": ""
@@ -465,7 +465,7 @@ OSEP.addPlugin({
     },
     {
       "name": "修改資料與工具",
-      "intro": "修改的是**插件裡目前的資料**（[[readFromJSON]] 那一份），資料要是 JSON 清單。",
+      "intro": "修改的是**擴充功能裡目前的資料**（[[readFromJSON]] 那一份），資料要是 JSON 清單。",
       "blocks": [
         {
           "opcode": "openexceltojsonurl",
@@ -473,7 +473,7 @@ OSEP.addPlugin({
           "text": "開啟試算表轉json網站",
           "textEn": "open excel to json url",
           "summary": "開啟「試算表轉 JSON」網站。",
-          "detail": "把 Excel 或試算表貼上去就能轉成 JSON，再用 [[texttojson]] 放進插件。"
+          "detail": "把 Excel 或試算表貼上去就能轉成 JSON，再用 [[texttojson]] 放進擴充功能。"
         },
         {
           "opcode": "texttojson",
@@ -487,8 +487,8 @@ OSEP.addPlugin({
               "desc": "JSON 文字，例如 `[{\"id\":1,\"name\":\"john\"}]`。"
             }
           },
-          "summary": "把一段 JSON 文字直接放進插件，當成目前的資料。",
-          "detail": "不用網路，適合自己準備小型資料。放進去後 [[onJSONReceived]] 會觸發。插件不會檢查格式，寫錯時之後的讀取積木會回傳 `Error: …`。"
+          "summary": "把一段 JSON 文字直接放進擴充功能，當成目前的資料。",
+          "detail": "不用網路，適合自己準備小型資料。放進去後 [[onJSONReceived]] 會觸發。擴充功能不會檢查格式，寫錯時之後的讀取積木會回傳 `Error: …`。"
         },
         {
           "opcode": "editjson",
@@ -520,7 +520,7 @@ OSEP.addPlugin({
           "type": "command",
           "text": "資料元素全部刪除",
           "textEn": "Delete all elements",
-          "summary": "刪除插件裡的所有資料。",
+          "summary": "刪除擴充功能裡的所有資料。",
           "detail": "和 [[clearJSONData]] 一樣，之後要再用 [[texttojson]] 或下載積木放入新資料。"
         },
         {
@@ -862,11 +862,11 @@ OSEP.addPlugin({
     },
     {
       "q": "CSV 檔讀進來只有一筆？",
-      "a": "目前程式分行的方式有問題，一般 CSV 檔常常整份放在第 1 筆。建議改用 Google 試算表插件，或先用 [[openexceltojsonurl]] 轉成 JSON。"
+      "a": "目前程式分行的方式有問題，一般 CSV 檔常常整份放在第 1 筆。建議改用 Google 試算表擴充功能，或先用 [[openexceltojsonurl]] 轉成 JSON。"
     },
     {
       "q": "修改資料會改到網路上的檔案嗎？",
-      "a": "不會。修改的只是插件裡的這一份，重新整理頁面或重新下載就會回到原本的資料。"
+      "a": "不會。修改的只是擴充功能裡的這一份，重新整理頁面或重新下載就會回到原本的資料。"
     }
   ],
   "changelog": [

@@ -1,26 +1,26 @@
 // Copyright (c) 2026 Andrew Yang
 // SPDX-License-Identifier: BSD-3-Clause
-/* 「新增插件」頁面的內容（純 HTML）：OSEP_GUIDE_HTML 中文、OSEP_GUIDE_HTML_EN 英文 */
+/* 「新增擴充功能」頁面的內容（純 HTML）：OSEP_GUIDE_HTML 中文、OSEP_GUIDE_HTML_EN 英文 */
 window.OSEP_GUIDE_HTML = `
-<h1>新增插件說明</h1>
-<p class="lead">每個插件就是 <code>plugins/</code> 資料夾裡的<b>一個檔案</b>（英文說明另外一個檔案）。積木的文字、參數、選單可以用工具從插件原始碼自動產生，你只需要補上說明文字。</p>
+<h1>新增擴充功能說明</h1>
+<p class="lead">每個擴充功能就是 <code>plugins/</code> 資料夾裡的<b>一個檔案</b>（英文說明另外一個檔案）。積木的文字、參數、選單可以用工具從擴充功能原始碼自動產生，你只需要補上說明文字。</p>
 
 <div class="step"><div class="step-n">1</div><div>
-<h3>從插件原始碼產生資料檔</h3>
-<p>在 <code>osep_web_serial/plugin-docs</code> 資料夾開啟命令列，執行（把最後的資料夾換成你的插件）：</p>
-<pre><code>node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_你的插件</code></pre>
+<h3>從擴充功能原始碼產生資料檔</h3>
+<p>在 <code>osep_web_serial/plugin-docs</code> 資料夾開啟命令列，執行（把最後的資料夾換成你的擴充功能）：</p>
+<pre><code>node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_你的擴充功能</code></pre>
 <p>工具會自動：</p>
 <ul>
-<li>產生 <code>plugins/&lt;插件id&gt;.js</code>：每塊積木的中英文文字、類型、參數、預設值、選單選項（中英文）、分組（依原始碼中的 <code>'---'</code> 分組）、顏色</li>
-<li>把積木上的小圖示存成 <code>images/&lt;插件id&gt;/block-icon.svg</code>（或 .png）</li>
-<li>把插件加進 <code>plugins/list.js</code></li>
+<li>產生 <code>plugins/&lt;擴充功能id&gt;.js</code>：每塊積木的中英文文字、類型、參數、預設值、選單選項（中英文）、分組（依原始碼中的 <code>'---'</code> 分組）、顏色</li>
+<li>把積木上的小圖示存成 <code>images/&lt;擴充功能id&gt;/block-icon.svg</code>（或 .png）</li>
+<li>把擴充功能加進 <code>plugins/list.js</code></li>
 </ul>
-<div class="note">插件更新後（例如新增積木、改積木文字），<b>再執行一次同樣的指令</b>即可同步。你寫的說明會保留；程式碼中已刪除的積木會移到檔案最後的 <code>removedBlocks</code>，讓你決定要不要留著。在積木區隱藏的積木（<code>hideFromPalette</code>）不會顯示在網站上。</div>
+<div class="note">擴充功能更新後（例如新增積木、改積木文字），<b>再執行一次同樣的指令</b>即可同步。你寫的說明會保留；程式碼中已刪除的積木會移到檔案最後的 <code>removedBlocks</code>，讓你決定要不要留著。在積木區隱藏的積木（<code>hideFromPalette</code>）不會顯示在網站上。</div>
 </div></div>
 
 <div class="step"><div class="step-n">2</div><div>
 <h3>放卡片圖片</h3>
-<p>把擴充庫卡片用的圖片複製到 <code>images/&lt;插件id&gt;/</code>：</p>
+<p>把擴充庫卡片用的圖片複製到 <code>images/&lt;擴充功能id&gt;/</code>：</p>
 <ul>
 <li><code>card.png</code>：卡片大圖（600×372）</li>
 <li><code>small.svg</code>（或 small.png）：卡片左下角的小圖示</li>
@@ -30,14 +30,14 @@ window.OSEP_GUIDE_HTML = `
 
 <div class="step"><div class="step-n">3</div><div>
 <h3>填寫說明</h3>
-<p>打開 <code>plugins/&lt;插件id&gt;.js</code>，把所有 <code>TODO</code> 換成說明。可以參考現有的 <code>claude.js</code>。</p>
-<h3>插件層級的欄位</h3>
+<p>打開 <code>plugins/&lt;擴充功能id&gt;.js</code>，把所有 <code>TODO</code> 換成說明。可以參考現有的 <code>claude.js</code>。</p>
+<h3>擴充功能層級的欄位</h3>
 <div class="prose"><table>
 <thead><tr><th>欄位</th><th>說明</th></tr></thead><tbody>
-<tr><td><code>tagline</code></td><td>一句話介紹，顯示在卡片和插件頁最上方</td></tr>
+<tr><td><code>tagline</code></td><td>一句話介紹，顯示在卡片和擴充功能頁最上方</td></tr>
 <tr><td><code>tags</code></td><td>分類標籤，例如 <code>['人工智慧', '影像']</code>，首頁可以用標籤篩選</td></tr>
 <tr><td><code>needs</code></td><td>使用需求，例如 <code>['網路', '攝影機']</code></td></tr>
-<tr><td><code>overview</code></td><td>「這個插件可以做什麼？」的內容</td></tr>
+<tr><td><code>overview</code></td><td>「這個擴充功能可以做什麼？」的內容</td></tr>
 <tr><td><code>highlights</code></td><td>重點卡片：<code>{icon: '💬', title: '…', text: '…'}</code></td></tr>
 <tr><td><code>groups[].name / intro</code></td><td>每一組積木的名稱與說明</td></tr>
 <tr><td><code>examples</code></td><td>範例作品：<code>{title, intro, script, explain}</code></td></tr>
@@ -59,8 +59,8 @@ window.OSEP_GUIDE_HTML = `
 
 <div class="step"><div class="step-n">4</div><div>
 <h3>寫英文說明</h3>
-<p>新增 <code>plugins/&lt;插件id&gt;.en.js</code>，內容是中文說明的英文版（積木文字、英文選單由工具從插件的英文翻譯產生，不用寫）：</p>
-<pre><code>OSEP.addText('插件id', 'en', {
+<p>新增 <code>plugins/&lt;擴充功能id&gt;.en.js</code>，內容是中文說明的英文版（積木文字、英文選單由工具從擴充功能的英文翻譯產生，不用寫）：</p>
+<pre><code>OSEP.addText('擴充功能id', 'en', {
   tagline: '…', tags: ['AI'], needs: ['Internet'],
   overview: \`…\`, highlights: [...],
   groups: [{name: '…', intro: '…'}, ...],   // 順序和中文的組別一樣
@@ -89,7 +89,7 @@ window.OSEP_GUIDE_HTML = `
 <tr><td>開頭 <code>&gt; !</code></td><td>紅色警告框</td></tr>
 <tr><td><code>| 欄 | 欄 |</code></td><td>表格（第一列是標題）</td></tr>
 <tr><td><code>### 標題</code></td><td>小標題</td></tr>
-<tr><td><code>[[opcode]]</code></td><td>連到這個插件的某塊積木，例如 <code>[[ask]]</code>；其他插件用 <code>[[claude.ask]]</code></td></tr>
+<tr><td><code>[[opcode]]</code></td><td>連到這個擴充功能的某塊積木，例如 <code>[[ask]]</code>；其他擴充功能用 <code>[[claude.ask]]</code></td></tr>
 <tr><td><code>[文字](https://…)</code></td><td>超連結</td></tr>
 </tbody></table></div>
 <p>說明文字很長時，可以用反引號 <code>\`…\`</code> 包起來，就能直接換行。</p>
@@ -109,7 +109,7 @@ window.OSEP_GUIDE_HTML = `
 
 <h3>兩種積木</h3>
 <ul>
-<li><b>這個插件的積木</b>：<code>{use: 'opcode'}</code>，會自動用插件的顏色、圖示和預設值。別的插件的積木寫 <code>{use: '插件id.opcode'}</code>。</li>
+<li><b>這個擴充功能的積木</b>：<code>{use: 'opcode'}</code>，會自動用擴充功能的顏色、圖示和預設值。別的擴充功能的積木寫 <code>{use: '擴充功能id.opcode'}</code>。</li>
 <li><b>Scratch 內建積木</b>：<code>{t: '文字', cat: '分類'}</code>。文字裡的 <code>[名稱]</code> 是空格，內容寫在 <code>args</code>。</li>
 </ul>
 <h3>cat（分類顏色）</h3>
@@ -129,12 +129,12 @@ window.OSEP_GUIDE_HTML = `
 
 <h3>產生可以下載的範例檔（.sb3）</h3>
 <p>範例寫好後，在 <code>plugin-docs</code> 資料夾執行：</p>
-<pre><code>node tools/make-examples.js            （全部插件）
-node tools/make-examples.js 插件id      （只做一個插件）</code></pre>
-<p>工具會把每個範例（中文、英文各一份）轉成 <code>examples/&lt;插件id&gt;/zh-1.sb3</code>、<code>en-1.sb3</code>…，並更新 <code>plugins/examples.js</code>，範例旁邊就會出現「下載範例檔」按鈕。範例用到的造型會做成寫著名字的示意圖，音效先用「喵」代替，專案裡的註解會提醒使用者替換。內建積木要在工具的對照表（<code>CORE</code>）裡才轉得出來，沒有的會印出 ⚠。</p>
+<pre><code>node tools/make-examples.js            （全部擴充功能）
+node tools/make-examples.js 擴充功能id      （只做一個擴充功能）</code></pre>
+<p>工具會把每個範例（中文、英文各一份）轉成 <code>examples/&lt;擴充功能id&gt;/zh-1.sb3</code>、<code>en-1.sb3</code>…，並更新 <code>plugins/examples.js</code>，範例旁邊就會出現「下載範例檔」按鈕。範例用到的造型會做成寫著名字的示意圖，音效先用「喵」代替，專案裡的註解會提醒使用者替換。內建積木要在工具的對照表（<code>CORE</code>）裡才轉得出來，沒有的會印出 ⚠。</p>
 
-<h2>調整插件的順序或暫時隱藏</h2>
-<p>編輯 <code>plugins/list.js</code>：網站依這裡的順序顯示；把某一行刪掉（或在前面加 <code>//</code>）就不會顯示那個插件。</p>
+<h2>調整擴充功能的順序或暫時隱藏</h2>
+<p>編輯 <code>plugins/list.js</code>：網站依這裡的順序顯示；把某一行刪掉（或在前面加 <code>//</code>）就不會顯示那個擴充功能。</p>
 
 <h2>放到網路上</h2>
 <p>整個 <code>plugin-docs</code> 資料夾都是靜態檔案，跟著 <code>osep-plugins</code> 分支推到 GitHub，就會出現在 GitHub Pages。<code>tools/</code> 只在你自己的電腦上用，放上去也沒關係。檔名不要用底線開頭（GitHub Pages 會略過）。</p>

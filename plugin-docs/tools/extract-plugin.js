@@ -2,17 +2,17 @@
 // Copyright (c) 2026 Andrew Yang
 // SPDX-License-Identifier: BSD-3-Clause
 /**
- * 從 Scratch 插件原始碼產生（或更新）插件說明資料檔。
+ * 從 Scratch 擴充功能原始碼產生（或更新）擴充功能說明資料檔。
  *
  * 用法（在 osep_plugin_docs 資料夾執行）：
- *   node tools/extract-plugin.js <插件資料夾>
+ *   node tools/extract-plugin.js <擴充功能資料夾>
  *   例：node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_claude
  *
  * 做的事：
- *   1. 載入插件的 index.js，用 zh-tw 與 en 各呼叫一次 getInfo()
+ *   1. 載入擴充功能的 index.js，用 zh-tw 與 en 各呼叫一次 getInfo()
  *   2. 產生 plugins/<id>.js：積木文字、類型、參數、預設值、選單選項、分組（依 '---'）、顏色
  *   3. 把積木圖示（blockIconURI）存成 images/<id>/block-icon.svg 或 .png
- *   4. 在 plugins/list.js 加入這個插件（已存在就不重複加）
+ *   4. 在 plugins/list.js 加入這個擴充功能（已存在就不重複加）
  *
  * 如果 plugins/<id>.js 已經存在：只更新「從程式碼來的欄位」（積木文字、參數、類型、順序、顏色），
  * 你手寫的說明（summary、detail、args 的 desc、returns、tips、概述、範例、FAQ…）都會保留。
@@ -31,7 +31,7 @@ const args = process.argv.slice(2);
 const dry = args.includes('--dry');
 const extDir = args.find(a => !a.startsWith('--'));
 if (!extDir) {
-    console.error('請指定插件資料夾，例如：node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_claude');
+    console.error('請指定擴充功能資料夾，例如：node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_claude');
     process.exit(1);
 }
 const EXT = path.resolve(extDir);
@@ -42,9 +42,9 @@ if (!fs.existsSync(indexFile)) {
     process.exit(1);
 }
 
-/* ---------- 1. 讓 Node 能載入插件 ---------- */
+/* ---------- 1. 讓 Node 能載入擴充功能 ---------- */
 
-// 插件資料夾裡的檔案若用 ES module 寫法（export const），轉成 CommonJS
+// 擴充功能資料夾裡的檔案若用 ES module 寫法（export const），轉成 CommonJS
 const origJs = Module._extensions['.js'];
 Module._extensions['.js'] = function (module, filename) {
     if (filename.startsWith(EXT + path.sep)) {
@@ -96,7 +96,7 @@ Module._load = function (request, parent, isMain) {
         throw e;
     }
 };
-// 有些插件會用到瀏覽器全域變數
+// 有些擴充功能會用到瀏覽器全域變數
 const setGlobal = (name, value) => {
     try {
         if (typeof global[name] === 'undefined') global[name] = value;
@@ -108,7 +108,7 @@ setGlobal('window', global);
 setGlobal('document', makeStub());
 setGlobal('navigator', {userAgent: 'node', language: 'zh-TW'});
 setGlobal('localStorage', {getItem: () => null, setItem () {}, removeItem () {}});
-// 建構時就開攝影機、發網路請求的插件（例如 tm2scratch、tmpose2scratch）
+// 建構時就開攝影機、發網路請求的擴充功能（例如 tm2scratch、tmpose2scratch）
 setGlobal('XMLHttpRequest', function () {
     return makeStub();
 });
@@ -127,7 +127,7 @@ let formatMessage;
 try {
     formatMessage = require(require.resolve('format-message', {paths: [EXT]}));
 } catch (e) {
-    console.error('找不到 format-message 套件。請確認插件資料夾位於 osep_web_serial 的 node_modules/scratch-vm 底下。');
+    console.error('找不到 format-message 套件。請確認擴充功能資料夾位於 osep_web_serial 的 node_modules/scratch-vm 底下。');
     process.exit(1);
 }
 
@@ -319,8 +319,8 @@ const base = old || {
     needs: [],
     card: `images/${id}/card.png`,
     icon: `images/${id}/small.svg`,
-    tagline: 'TODO：一句話介紹這個插件',
-    overview: 'TODO：這個插件可以做什麼、適合什麼樣的作品。',
+    tagline: 'TODO：一句話介紹這個擴充功能',
+    overview: 'TODO：這個擴充功能可以做什麼、適合什麼樣的作品。',
     highlights: [],
     examples: [],
     faq: [],
@@ -353,7 +353,7 @@ Object.keys(plugin).forEach(k => {
     if (!(k in ordered)) ordered[k] = plugin[k];
 });
 
-const header = `/*\n * ${ordered.name} 插件說明資料\n * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。\n * 說明文字可用簡單格式：空一行=新段落、**粗體**、\`程式碼\`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。\n */\n`;
+const header = `/*\n * ${ordered.name} 擴充功能說明資料\n * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。\n * 說明文字可用簡單格式：空一行=新段落、**粗體**、\`程式碼\`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。\n */\n`;
 const body = `${header}OSEP.addPlugin(${JSON.stringify(ordered, null, 2)});\n`;
 
 if (dry) {

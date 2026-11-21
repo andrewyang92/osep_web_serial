@@ -1,7 +1,7 @@
 /*
- * IFTTT 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * IFTTT 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "gasoIFTTT",
@@ -27,7 +27,7 @@ OSEP.addPlugin({
   "blockIcon": "",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_ifttt",
   "tagline": "從 Scratch 觸發 IFTTT：寄信、傳通知、記到試算表、控制智慧家電。",
-  "overview": "IFTTT（If This Then That，「如果這樣，就那樣」）是一個把各種網路服務串起來的平台。這個插件只有一塊積木：送出一個「事件」給 IFTTT 的 **Webhooks** 服務，IFTTT 收到後就會執行你設定好的動作，例如：\n\n- 寄一封 Email 或手機通知給自己\n- 把分數、感測器數值記到 Google 試算表\n- 開關支援 IFTTT 的智慧燈泡、插座\n\n每個事件可以帶 3 個參數（value1～value3），在 IFTTT 的動作裡用 `{{Value1}}` 這樣的寫法放進信件或試算表。\n\n> 插件只負責「送出」，看不到 IFTTT 有沒有成功執行。要確認，請到 IFTTT 網站的活動紀錄（Activity）查看。\n\n### 事前準備（在 [IFTTT 網站](https://ifttt.com/)）\n- 註冊 IFTTT 帳號，建立一個 Applet\n- 「If This」選 **Webhooks** 的「Receive a web request」，填一個事件名稱，例如 `scratch_score`\n- 「Then That」選要執行的動作（Email、Google Sheets…）\n- 到 [Webhooks 服務頁面](https://ifttt.com/maker_webhooks) 按右上角的 **Documentation**，**Your key is** 後面那一串就是自己的 key\n\n> Webhooks 是否需要付費方案、能用哪些動作，依 IFTTT 網站目前的規定為準。\n\n### 相關網站\n- [IFTTT 首頁](https://ifttt.com/)：註冊、登入、建立 Applet\n- [Webhooks 服務](https://ifttt.com/maker_webhooks)：「If This」要選的服務，Documentation 裡有 key 和測試工具\n- [Webhooks 設定](https://ifttt.com/maker_webhooks/settings)：查看或重新產生 key（要先登入）\n\n插件原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
+  "overview": "IFTTT（If This Then That，「如果這樣，就那樣」）是一個把各種網路服務串起來的平台。這個擴充功能只有一塊積木：送出一個「事件」給 IFTTT 的 **Webhooks** 服務，IFTTT 收到後就會執行你設定好的動作，例如：\n\n- 寄一封 Email 或手機通知給自己\n- 把分數、感測器數值記到 Google 試算表\n- 開關支援 IFTTT 的智慧燈泡、插座\n\n每個事件可以帶 3 個參數（value1～value3），在 IFTTT 的動作裡用 `{{Value1}}` 這樣的寫法放進信件或試算表。\n\n> 擴充功能只負責「送出」，看不到 IFTTT 有沒有成功執行。要確認，請到 IFTTT 網站的活動紀錄（Activity）查看。\n\n### 事前準備（在 [IFTTT 網站](https://ifttt.com/)）\n- 註冊 IFTTT 帳號，建立一個 Applet\n- 「If This」選 **Webhooks** 的「Receive a web request」，填一個事件名稱，例如 `scratch_score`\n- 「Then That」選要執行的動作（Email、Google Sheets…）\n- 到 [Webhooks 服務頁面](https://ifttt.com/maker_webhooks) 按右上角的 **Documentation**，**Your key is** 後面那一串就是自己的 key\n\n> Webhooks 是否需要付費方案、能用哪些動作，依 IFTTT 網站目前的規定為準。\n\n### 相關網站\n- [IFTTT 首頁](https://ifttt.com/)：註冊、登入、建立 Applet\n- [Webhooks 服務](https://ifttt.com/maker_webhooks)：「If This」要選的服務，Documentation 裡有 key 和測試工具\n- [Webhooks 設定](https://ifttt.com/maker_webhooks/settings)：查看或重新產生 key（要先登入）\n\n擴充功能原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
   "groups": [
     {
       "name": "傳送事件",
@@ -66,7 +66,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "送出一個事件給 IFTTT，帶上最多 3 個值。",
-          "detail": "插件會送出 `https://maker.ifttt.com/trigger/事件名稱/with/key/你的key?value1=…&value2=…&value3=…`。IFTTT 收到後，執行這個事件對應的 Applet。\n\n- 值裡面不要放 `&`、`#`、`?` 這些符號，會讓網址被切斷，IFTTT 收到的值就不完整\n- 瀏覽器看不到 IFTTT 的回應，所以積木不會告訴你成功或失敗\n- 不要在「重複無限次」裡一直送，IFTTT 有使用次數限制",
+          "detail": "擴充功能會送出 `https://maker.ifttt.com/trigger/事件名稱/with/key/你的key?value1=…&value2=…&value3=…`。IFTTT 收到後，執行這個事件對應的 Applet。\n\n- 值裡面不要放 `&`、`#`、`?` 這些符號，會讓網址被切斷，IFTTT 收到的值就不完整\n- 瀏覽器看不到 IFTTT 的回應，所以積木不會告訴你成功或失敗\n- 不要在「重複無限次」裡一直送，IFTTT 有使用次數限制",
           "tips": "key 等於你的 IFTTT 密碼，專案分享出去別人就能用你的帳號觸發事件。分享前把 key 刪掉。",
           "example": [
             {
@@ -161,7 +161,7 @@ OSEP.addPlugin({
     },
     {
       "q": "可以從 IFTTT 傳資料回 Scratch 嗎？",
-      "a": "這個插件不行，只能從 Scratch 送出去。要讀網路上的資料，可以用 JSON 插件。"
+      "a": "這個擴充功能不行，只能從 Scratch 送出去。要讀網路上的資料，可以用 JSON 擴充功能。"
     },
     {
       "q": "為什麼一次只能傳 3 個值？",

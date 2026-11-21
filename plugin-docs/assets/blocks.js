@@ -3,7 +3,7 @@
 /*
  * Scratch 風格積木繪製器（純 HTML + CSS，不需要外部函式庫）
  *
- * OSEPBlocks.block(def, plugin, opts)   畫一塊插件積木（def 是資料檔中的 block）
+ * OSEPBlocks.block(def, plugin, opts)   畫一塊擴充功能積木（def 是資料檔中的 block）
  * OSEPBlocks.script(nodes, plugin)      畫一段腳本（範例用，見 guide 的「範例腳本寫法」）
  */
 (function () {
@@ -36,7 +36,7 @@
         return `#${[m(r), m(g), m(b)].map(v => v.toString(16).padStart(2, '0')).join('')}`;
     };
 
-    /** 插件的三個顏色；次色、邊框色和主色一樣時自動調暗 */
+    /** 擴充功能的三個顏色；次色、邊框色和主色一樣時自動調暗 */
     const pluginColors = p => {
         const c = (p && p.color) || {};
         const c1 = c.primary || '#4C97FF';
@@ -214,7 +214,7 @@
         return stack;
     };
 
-    /** 畫一塊插件積木（用資料檔的預設值） */
+    /** 畫一塊擴充功能積木（用資料檔的預設值） */
     const block = (def, plugin, opts) => {
         const r = {
             type: def.type,

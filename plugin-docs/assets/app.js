@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Andrew Yang
 // SPDX-License-Identifier: BSD-3-Clause
 /*
- * OSEP 插件說明網站主程式
+ * OSEP 擴充功能說明網站主程式
  * 不需要伺服器：直接雙擊 index.html 就能開（所有資料都用 <script> 載入）。
  */
 (function () {
@@ -26,14 +26,14 @@
 
     const UI = {
         zh: {
-            siteTitle: 'OSEP 插件說明', sep: '｜',
-            heroTitle: 'OSEP Scratch 插件說明書',
-            heroText: '每個插件能做什麼、每一塊積木怎麼用、可以做出什麼作品，都整理在這裡。',
-            searchPh: '搜尋插件或積木，例如：舞台、情緒、攝影機',
-            stats: (p, b) => `<b>${p}</b> 個插件　·　<b>${b}</b> 塊積木`,
-            addTitle: '新增插件說明',
-            addText: '照著步驟，幾分鐘就能把新插件加進來',
-            noPlugin: '沒有符合的插件',
+            siteTitle: 'OSEP 擴充功能說明', sep: '｜',
+            heroTitle: 'OSEP Scratch 擴充功能說明書',
+            heroText: '每個擴充功能能做什麼、每一塊積木怎麼用、可以做出什麼作品，都整理在這裡。',
+            searchPh: '搜尋擴充功能或積木，例如：舞台、情緒、攝影機',
+            stats: (p, b) => `<b>${p}</b> 個擴充功能　·　<b>${b}</b> 塊積木`,
+            addTitle: '新增擴充功能說明',
+            addText: '照著步驟，幾分鐘就能把新擴充功能加進來',
+            noPlugin: '沒有符合的擴充功能',
             all: '全部',
             matchBlocks: '符合的積木',
             nBlocks: n => `${n} 塊`,
@@ -45,13 +45,13 @@
             returns: '回傳值', tip: '小提醒', usage: '用法',
             opcodeTitle: '程式內部名稱（opcode）',
             otherUi: '英文介面',
-            noPluginId: id => `找不到插件「${id}」`,
+            noPluginId: id => `找不到擴充功能「${id}」`,
             cardAlt: n => `${n} 卡片圖`,
-            allPlugins: '所有插件',
+            allPlugins: '所有擴充功能',
             metaBlocks: n => `積木 <b>${n}</b> 塊`,
             author: '作者', updated: '更新',
             seeBlocks: '看所有積木', examples: '範例作品',
-            overview: '概述', whatFor: '這個插件可以做什麼？',
+            overview: '概述', whatFor: '這個擴充功能可以做什麼？',
             palette: '積木總覽',
             paletteText: '在 Scratch 的積木區看到的順序就是這樣。點一下積木可以跳到它的詳細說明。',
             detail: '積木詳解',
@@ -59,25 +59,25 @@
             download: '下載範例檔（.sb3）',
             downloadNew: '下載範例檔（OSEP 新版）',
             downloadOld: '下載範例檔（OSEP 舊版）',
-            versionTip: 'OSEP 新版和舊版的這個插件 id 不同，請下載和你用的版本相同的檔案',
+            versionTip: 'OSEP 新版和舊版的這個擴充功能 id 不同，請下載和你用的版本相同的檔案',
             downloadTip: '下載後在 OSEP Scratch 用「檔案 > 從你的電腦挑選」打開',
             fileName: (p, i, t) => `${p}-範例${i}-${t}.sb3`,
             faq: '常見問題', changelog: '更新紀錄',
-            prev: '← 上一個插件', next: '下一個插件 →',
+            prev: '← 上一個擴充功能', next: '下一個擴充功能 →',
             onThisPage: '本頁內容',
             cheatTitle: '積木速查',
-            cheatLead: '所有插件的積木放在同一頁，方便上課時快速查找。點積木看完整說明。',
-            guideTitle: '新增插件說明',
+            cheatLead: '所有擴充功能的積木放在同一頁，方便上課時快速查找。點積木看完整說明。',
+            guideTitle: '新增擴充功能說明',
             notFound: '找不到頁面', home: '回到首頁',
             noRoute: x => `網址 #/${x} 不存在`,
-            loadFail: '有插件資料載入失敗：',
+            loadFail: '有擴充功能資料載入失敗：',
             noFile: id => `找不到 plugins/${id}.js（檔名要和 list.js 裡寫的一樣，大小寫也要一樣）`,
             notAdded: id => `plugins/${id}.js 沒有成功加入：可能有語法錯誤，或 OSEP.addPlugin 裡的 id 不是「${id}」`,
             noId: '有一個資料檔呼叫了 OSEP.addPlugin，但沒有 id',
             lineErr: (f, n, m) => `${f} 第 ${n} 行：${m}`,
-            navHome: '插件', navBlocks: '積木速查', navGuide: '新增插件',
-            brandSub: '插件說明', brandSmall: 'Scratch 擴充功能',
-            footer: 'OSEP 插件說明・資料放在 <code>plugins/</code> 資料夾，一個插件一個檔案',
+            navHome: '擴充功能', navBlocks: '積木速查', navGuide: '新增擴充功能',
+            brandSub: '擴充功能說明', brandSmall: 'Scratch 擴充功能',
+            footer: 'OSEP 擴充功能說明・資料放在 <code>plugins/</code> 資料夾，一個擴充功能一個檔案',
             switchTo: 'English', switchTitle: 'Switch to English',
             untranslated: '',
             q: x => `「${x}」`
@@ -294,6 +294,16 @@
         return `<span class="need">${icon ? NEED_ICONS[icon] : '•'} ${esc(n)}</span>`;
     };
 
+    /** 作者的 GitHub：資料檔的 author 用「、」或「, 」分開時，每個名字各自連結；沒有在這裡的名字不加連結 */
+    const AUTHOR_LINKS = {
+        'Andrew Yang': 'https://github.com/andrewyang92',
+        'gasolin': 'https://github.com/gasolin',
+        'Sugiura Lab': 'https://github.com/sugiura-lab'
+    };
+    const authorHtml = author => String(author).split(/(\s*[、,]\s*)/).map(part => {
+        const url = AUTHOR_LINKS[part.trim()];
+        return url ? `<a class="author-link" href="${url}" target="_blank" rel="noopener">${esc(part)}</a>` : esc(part);
+    }).join('');
     const plainText = s => String(s || '').replace(/\[\[([\w.]+)\]\]/g, '$1').replace(/[*`>|]/g, '');
     /** 一句話說明（純文字）：[[opcode]] 換成「積木文字」，拿掉粗體、程式碼記號 */
     const summaryText = (s, plugin) => String(s || '').replace(/\[\[([\w.]+)\]\]/g, (m, ref) => {
@@ -441,10 +451,10 @@
             </a>`);
     };
 
-    /* ---------- 插件頁 ---------- */
+    /* ---------- 擴充功能頁 ---------- */
 
     const argRows = (b, plugin) => {
-        // 只列積木上看得到的空格（有些插件的 arguments 裡有積木文字沒用到的參數）
+        // 只列積木上看得到的空格（有些擴充功能的 arguments 裡有積木文字沒用到的參數）
         const names = Object.keys(b.args || {}).filter(k => String(b.text).indexOf(`[${k}]`) >= 0);
         if (!names.length) return '';
         const typeName = a => (a.type === 'menu' ? (a.acceptReporters ? T('tMenuVar') : T('tMenu')) :
@@ -507,7 +517,7 @@
                         <div>${p.tags.filter(t => !isTodo(t)).map(t => `<span class="tag">${esc(t)}</span>`).join('')}${p.needs.map(needChip).join('')}</div>
                         <div class="meta">
                             <span>${T('metaBlocks', visible.length)}</span>
-                            ${p.author ? `<span>${esc(T('author'))} <b>${esc(p.author)}</b></span>` : ''}
+                            ${p.author ? `<span>${esc(T('author'))} <b>${authorHtml(p.author)}</b></span>` : ''}
                             ${p.updated ? `<span>${esc(T('updated'))} <b>${esc(p.updated)}</b></span>` : ''}
                         </div>
                         <div class="btns">
@@ -570,7 +580,7 @@
                 // 範例檔（tools/make-examples.js 產生，清單在 plugins/examples.js）
                 const all = (window.OSEP_EXAMPLE_FILES || {})[p.id] || {};
                 const file = (all[LANG] || [])[i];
-                // 新版 new/ 擴充 id 不同的插件，另有一份新版用的檔
+                // 新版 new/ 擴充 id 不同的擴充功能，另有一份新版用的檔
                 const fileNew = ((all.new || {})[LANG] || [])[i];
                 const fname = T('fileName', p.name, i + 1, ex.title).replace(/[\/:*?"<>|]/g, '');
                 const btn = (href, label, name) => `<a class="btn ex-dl" href="${esc(href)}" download="${esc(name)}" title="${esc(T('downloadTip'))}">⬇ ${esc(label)}</a>`;
@@ -708,7 +718,7 @@
         }, 150);
     });
 
-    /* ---------- 新增插件指南 ---------- */
+    /* ---------- 新增擴充功能指南 ---------- */
 
     const renderGuide = () => {
         setNav('guide');
@@ -758,7 +768,7 @@
         return renderNotFound(T('noRoute', hash));
     };
 
-    /* ================= 載入插件資料檔 ================= */
+    /* ================= 載入擴充功能資料檔 ================= */
 
     window.addEventListener('error', e => {
         if (e.filename && /\/plugins\//.test(e.filename)) {
@@ -775,8 +785,8 @@
     });
 
     /**
-     * 把插件資料換成目前的語言。
-     * 英文：積木文字用 textEn、選單和預設值用 optionsEn／valueEn（插件自己的英文翻譯），
+     * 把擴充功能資料換成目前的語言。
+     * 英文：積木文字用 textEn、選單和預設值用 optionsEn／valueEn（擴充功能自己的英文翻譯），
      * 說明文字用 plugins/<id>.en.js；英文沒寫的說明保留中文，並在頁面上方提示。
      */
     const localize = p => {

@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 Andrew Yang
  * SPDX-License-Identifier: BSD-3-Clause */
-/* OSEP 插件說明網站 */
+/* OSEP 擴充功能說明網站 */
 :root {
     /* 中性主題：Scratch 藍＋白（變數名稱沿用紫色版，值改成藍色系） */
     --ink: #1D2A3F;
@@ -216,7 +216,7 @@ img { max-width: 100%; }
     margin: 0 6px 6px 0;
 }
 
-/* ---------- 插件卡片 ---------- */
+/* ---------- 擴充功能卡片 ---------- */
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -280,7 +280,7 @@ img { max-width: 100%; }
 .result .r-text b { color: var(--ink); display: block; font-size: 13px; color: var(--ink-3); font-weight: 500; }
 .empty { text-align: center; color: var(--ink-3); padding: 40px 0; }
 
-/* ---------- 插件頁 ---------- */
+/* ---------- 擴充功能頁 ---------- */
 .p-hero {
     --pc: #4C97FF;
     background: color-mix(in srgb, var(--pc) 13%, #fff);
@@ -766,3 +766,7 @@ img { max-width: 100%; }
     body { background: #fff; }
 }
 .args th, .args td:nth-child(2) { white-space: nowrap; }
+
+/* 作者名字連到 GitHub */
+.meta a.author-link { color: inherit; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 40%, transparent); text-underline-offset: 3px; }
+.meta a.author-link:hover { text-decoration-color: currentColor; }

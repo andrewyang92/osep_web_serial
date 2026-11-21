@@ -1,4 +1,4 @@
-// 由 tools/make-examples.js 產生：每個插件各範例的 .sb3 檔（中文 zh、英文 en，依範例順序）
+// 由 tools/make-examples.js 產生：每個擴充功能各範例的 .sb3 檔（中文 zh、英文 en，依範例順序）
 window.OSEP_EXAMPLE_FILES = {
   "claude": {
     "zh": [

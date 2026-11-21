@@ -1,7 +1,7 @@
 /*
- * Claude AI 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * Claude AI 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "claude",
@@ -27,7 +27,7 @@ OSEP.addPlugin({
   "blockIcon": "images/claude/block-icon.svg",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_claude",
   "tagline": "讓角色跟 Claude AI 對話，還能讓 Claude 看舞台畫面回答問題。",
-  "overview": "這個插件把 Anthropic 的 **Claude** 人工智慧放進 Scratch。角色可以把問題丟給 Claude、拿到回答後說出來，做成聊天機器人、問答遊戲、故事接龍、作業小幫手等作品。\n\n除了文字，Claude 也能「看」舞台：[[askStage]] 會把當下的舞台畫面一起送出，讓 Claude 描述畫面、猜你畫了什麼，或幫你檢查作品。\n\n> 使用前要先有**自己的 Anthropic API 金鑰**，用 [[setApiKey]] 填入。插件會直接連到 Anthropic，費用算在金鑰所屬的帳號。\n\n### 開始使用\n- 到 Anthropic 的 Claude Console 申請 API 金鑰（`sk-ant-` 開頭）\n- 在綠旗腳本最前面放 [[setApiKey]]，填入金鑰\n- 用 [[ask]] 發問，再用 [[getAnswer]] 拿回答",
+  "overview": "這個擴充功能把 Anthropic 的 **Claude** 人工智慧放進 Scratch。角色可以把問題丟給 Claude、拿到回答後說出來，做成聊天機器人、問答遊戲、故事接龍、作業小幫手等作品。\n\n除了文字，Claude 也能「看」舞台：[[askStage]] 會把當下的舞台畫面一起送出，讓 Claude 描述畫面、猜你畫了什麼，或幫你檢查作品。\n\n> 使用前要先有**自己的 Anthropic API 金鑰**，用 [[setApiKey]] 填入。擴充功能會直接連到 Anthropic，費用算在金鑰所屬的帳號。\n\n### 開始使用\n- 到 Anthropic 的 Claude Console 申請 API 金鑰（`sk-ant-` 開頭）\n- 在綠旗腳本最前面放 [[setApiKey]]，填入金鑰\n- 用 [[ask]] 發問，再用 [[getAnswer]] 拿回答",
   "highlights": [
     {
       "icon": "💬",
@@ -53,7 +53,7 @@ OSEP.addPlugin({
   "groups": [
     {
       "name": "連線設定",
-      "intro": "使用這個插件前，一定要先用 [[setApiKey]] 填入自己的 Anthropic API 金鑰。",
+      "intro": "使用這個擴充功能前，一定要先用 [[setApiKey]] 填入自己的 Anthropic API 金鑰。",
       "blocks": [
         {
           "opcode": "setAccessCode",
@@ -85,7 +85,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "填入自己的 API 金鑰，連到 Anthropic。",
-          "detail": "**使用這個插件一定要先設定金鑰。** 插件會直接呼叫 Anthropic 的 API，費用算在金鑰所屬的帳號。\n\n金鑰可以到 Anthropic 的 Claude Console 申請。把這塊放在綠旗腳本的最前面，整個專案只要設定一次。",
+          "detail": "**使用這個擴充功能一定要先設定金鑰。** 擴充功能會直接呼叫 Anthropic 的 API，費用算在金鑰所屬的帳號。\n\n金鑰可以到 Anthropic 的 Claude Console 申請。把這塊放在綠旗腳本的最前面，整個專案只要設定一次。",
           "tips": "> ! 金鑰如果直接打在積木裡，會跟著 .sb3 專案檔一起儲存。分享或上傳專案前，記得把金鑰刪掉。"
         },
         {
@@ -102,7 +102,7 @@ OSEP.addPlugin({
           },
           "hidden": true,
           "summary": "改用另一個中繼伺服器（Google Apps Script）。",
-          "detail": "插件已經內建 OSEP 的中繼網址，一般不用設定。如果學校想用自己的 Google 帳號架一個中繼（例如要有獨立的次數上限），可以照插件資料夾裡 `gas/README.md` 的步驟部署，再用這塊積木填入網址。"
+          "detail": "擴充功能已經內建 OSEP 的中繼網址，一般不用設定。如果學校想用自己的 Google 帳號架一個中繼（例如要有獨立的次數上限），可以照擴充功能資料夾裡 `gas/README.md` 的步驟部署，再用這塊積木填入網址。"
         }
       ]
     },
@@ -182,7 +182,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "讓 Claude 記得（或忘記）前面聊過的內容。",
-          "detail": "插件一開始是**關閉**的：每個問題都是獨立的，Claude 不知道你上一句問了什麼。\n\n開啟後，Claude 會記得最近 **10 輪**（10 個問題＋10 個回答），可以接著前面的內容聊，例如故事接龍、多輪問答。超過 10 輪時，最舊的會先被忘掉。\n\n關閉記憶時，已記住的內容也會一起清除。",
+          "detail": "擴充功能一開始是**關閉**的：每個問題都是獨立的，Claude 不知道你上一句問了什麼。\n\n開啟後，Claude 會記得最近 **10 輪**（10 個問題＋10 個回答），可以接著前面的內容聊，例如故事接龍、多輪問答。超過 10 輪時，最舊的會先被忘掉。\n\n關閉記憶時，已記住的內容也會一起清除。",
           "tips": "記憶越多，每次送出的內容越長、回答也會稍微變慢。想開始新話題時，用 [[clearHistory]]。發問失敗的那一輪不會被記住。"
         }
       ]
@@ -306,7 +306,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "把舞台截圖跟問題一起送給 Claude。",
-          "detail": "按下的那一刻，插件會擷取整個舞台畫面（包含背景、角色、畫筆畫的線），連同問題一起送出。可以用來：\n\n- 讓 Claude 描述畫面：「舞台上有幾個角色？」\n- 畫圖猜謎：用畫筆畫一張圖，問「我畫的是什麼？只回答一個詞」\n- 作品回饋：「這個遊戲畫面哪裡可以更好？」\n\n回答一樣存在 [[getAnswer]]。",
+          "detail": "按下的那一刻，擴充功能會擷取整個舞台畫面（包含背景、角色、畫筆畫的線），連同問題一起送出。可以用來：\n\n- 讓 Claude 描述畫面：「舞台上有幾個角色？」\n- 畫圖猜謎：用畫筆畫一張圖，問「我畫的是什麼？只回答一個詞」\n- 作品回饋：「這個遊戲畫面哪裡可以更好？」\n\n回答一樣存在 [[getAnswer]]。",
           "tips": "視訊畫面也會被拍進去，所以搭配「視訊設為開啟」可以讓 Claude 看攝影機畫面。"
         }
       ]
@@ -600,17 +600,17 @@ OSEP.addPlugin({
     },
     {
       "q": "學生的問題會被存起來嗎？",
-      "a": "問題會直接送到 Anthropic 產生回答。插件本身不會另外儲存對話；開啟記憶時，對話只暫存在瀏覽器裡，重新整理頁面就會消失。"
+      "a": "問題會直接送到 Anthropic 產生回答。擴充功能本身不會另外儲存對話；開啟記憶時，對話只暫存在瀏覽器裡，重新整理頁面就會消失。"
     }
   ],
   "changelog": [
     {
       "date": "2026-11-11",
-      "text": "建立插件，支援 OSEP 中繼與自己的金鑰兩種連線方式"
+      "text": "建立擴充功能，支援 OSEP 中繼與自己的金鑰兩種連線方式"
     },
     {
       "date": "2026-11-14",
-      "text": "積木文字改成跟 OpenAI 插件相近的說法"
+      "text": "積木文字改成跟 OpenAI 擴充功能相近的說法"
     },
     {
       "date": "2026-11-17",

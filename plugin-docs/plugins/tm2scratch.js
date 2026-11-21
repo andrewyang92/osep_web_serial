@@ -1,7 +1,7 @@
 /*
- * TM2Scratch 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * TM2Scratch 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "tm2scratch",
@@ -30,11 +30,11 @@ OSEP.addPlugin({
   "blockIcon": "images/tm2scratch/block-icon.png",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_tm2scratch",
   "tagline": "把在 Teachable Machine 訓練好的圖像、聲音模型放進 Scratch，讓角色認得你教它的東西。",
-  "overview": "Google 的 **Teachable Machine**（teachablemachine.withgoogle.com）可以不寫程式就訓練 AI：拍幾十張「剪刀」「石頭」「布」的照片，或錄幾段「拍手」「吹口哨」的聲音，它就學會分辨。這個插件把訓練好的模型接到 Scratch。\n\n### 使用步驟\n- 到 Teachable Machine 建立 **Image Project**（圖像）或 **Audio Project**（聲音）\n- 每個類別（Class）取名字、拍照或錄音，按 **Train Model** 訓練\n- 按 **Export Model** → **Upload（shareable link）** 上傳，複製得到的網址（`https://teachablemachine.withgoogle.com/models/…/`）\n- 在 Scratch 用 [[setImageClassificationModelURL]] 或 [[setSoundClassificationModelURL]] 貼上網址\n\n模型載入後，插件會一直用攝影機（或麥克風）辨識，標籤選單會出現你取的類別名稱。\n\n> 插件一載入就會打開攝影機。辨識在你的瀏覽器裡進行，影像和聲音不會上傳；模型是從 Teachable Machine 下載的。\n\n插件原始作者：Tsukurusha、YengawaLab、Google。",
+  "overview": "Google 的 **Teachable Machine**（teachablemachine.withgoogle.com）可以不寫程式就訓練 AI：拍幾十張「剪刀」「石頭」「布」的照片，或錄幾段「拍手」「吹口哨」的聲音，它就學會分辨。這個擴充功能把訓練好的模型接到 Scratch。\n\n### 使用步驟\n- 到 Teachable Machine 建立 **Image Project**（圖像）或 **Audio Project**（聲音）\n- 每個類別（Class）取名字、拍照或錄音，按 **Train Model** 訓練\n- 按 **Export Model** → **Upload（shareable link）** 上傳，複製得到的網址（`https://teachablemachine.withgoogle.com/models/…/`）\n- 在 Scratch 用 [[setImageClassificationModelURL]] 或 [[setSoundClassificationModelURL]] 貼上網址\n\n模型載入後，擴充功能會一直用攝影機（或麥克風）辨識，標籤選單會出現你取的類別名稱。\n\n> 擴充功能一載入就會打開攝影機。辨識在你的瀏覽器裡進行，影像和聲音不會上傳；模型是從 Teachable Machine 下載的。\n\n擴充功能原始作者：Tsukurusha、YengawaLab、Google。",
   "groups": [
     {
       "name": "圖像辨識",
-      "intro": "先用 [[setImageClassificationModelURL]] 載入圖像模型。之後插件會自動、持續辨識攝影機畫面。",
+      "intro": "先用 [[setImageClassificationModelURL]] 載入圖像模型。之後擴充功能會自動、持續辨識攝影機畫面。",
       "blocks": [
         {
           "opcode": "whenReceived",
@@ -128,7 +128,7 @@ OSEP.addPlugin({
     },
     {
       "name": "聲音辨識",
-      "intro": "先用 [[setSoundClassificationModelURL]] 載入聲音模型，插件會開始用麥克風持續辨識。",
+      "intro": "先用 [[setSoundClassificationModelURL]] 載入聲音模型，擴充功能會開始用麥克風持續辨識。",
       "blocks": [
         {
           "opcode": "whenReceivedSoundLabel",
@@ -331,7 +331,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "設定舞台上要不要顯示攝影機畫面。",
-          "detail": "只影響舞台上看不看得到。插件自己另外開了攝影機做辨識，所以關閉後辨識照樣進行。"
+          "detail": "只影響舞台上看不看得到。擴充功能自己另外開了攝影機做辨識，所以關閉後辨識照樣進行。"
         }
       ]
     }

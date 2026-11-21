@@ -1,7 +1,7 @@
 /*
- * QR Code 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * QR Code 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "qrcode",
@@ -26,11 +26,11 @@ OSEP.addPlugin({
   "blockIcon": "images/qrcode/block-icon.svg",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_qrcode",
   "tagline": "用攝影機或舞台畫面掃描 QR Code，讀出裡面的文字或網址。",
-  "overview": "把 QR Code 拿到攝影機前，插件就會讀出裡面的內容（文字、網址、數字），並在舞台上用橘色框標出 QR Code 的位置。也可以掃描舞台畫面上的 QR Code。\n\n可以做的作品：尋寶遊戲（每個關卡貼一張 QR Code）、圖書借還、點名、用卡片控制角色等。\n\n> 掃描在你的瀏覽器裡進行，影像不會上傳。手機、平板可以切換前後鏡頭。\n\n> QR Code 是 DENSO WAVE 公司的註冊商標。\n\n插件原始作者：Sugiura Lab；切換鏡頭的兩塊積木由 estea chen 加入。讀取 QR Code 使用 [jsQR](https://github.com/cozmo/jsQR)。",
+  "overview": "把 QR Code 拿到攝影機前，擴充功能就會讀出裡面的內容（文字、網址、數字），並在舞台上用橘色框標出 QR Code 的位置。也可以掃描舞台畫面上的 QR Code。\n\n可以做的作品：尋寶遊戲（每個關卡貼一張 QR Code）、圖書借還、點名、用卡片控制角色等。\n\n> 掃描在你的瀏覽器裡進行，影像不會上傳。手機、平板可以切換前後鏡頭。\n\n> QR Code 是 DENSO WAVE 公司的註冊商標。\n\n擴充功能原始作者：Sugiura Lab；切換鏡頭的兩塊積木由 estea chen 加入。讀取 QR Code 使用 [jsQR](https://github.com/cozmo/jsQR)。",
   "groups": [
     {
       "name": "掃描",
-      "intro": "用 [[qrStart]] 開始，插件會每隔一段時間掃一次，直到 [[qrStop]] 或按下停止。",
+      "intro": "用 [[qrStart]] 開始，擴充功能會每隔一段時間掃一次，直到 [[qrStop]] 或按下停止。",
       "blocks": [
         {
           "opcode": "qrStart",
@@ -432,11 +432,11 @@ OSEP.addPlugin({
     },
     {
       "q": "為什麼畫面沒有像照鏡子？",
-      "a": "掃描相機時插件會把畫面改成不鏡像，QR Code 才會是正的，比較好對準。"
+      "a": "掃描相機時擴充功能會把畫面改成不鏡像，QR Code 才會是正的，比較好對準。"
     },
     {
       "q": "拿開 QR Code 後「條碼內容」還在？",
-      "a": "插件會保留最後一次讀到的內容。需要時用「清除資料」清掉。"
+      "a": "擴充功能會保留最後一次讀到的內容。需要時用「清除資料」清掉。"
     },
     {
       "q": "手機上怎麼用後鏡頭？",

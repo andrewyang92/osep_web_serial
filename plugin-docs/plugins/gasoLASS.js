@@ -1,7 +1,7 @@
 /*
- * LASS 插件說明資料
- * 積木文字、參數、類型由 tools/extract-plugin.js 從插件原始碼同步；說明文字是手寫的，重新同步時會保留。
- * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個插件的積木。
+ * LASS 擴充功能說明資料
+ * 積木文字、參數、類型由 tools/extract-plugin.js 從擴充功能原始碼同步；說明文字是手寫的，重新同步時會保留。
+ * 說明文字可用簡單格式：空一行=新段落、**粗體**、`程式碼`、開頭「- 」=清單、[[opcode]]=連到這個擴充功能的積木。
  */
 OSEP.addPlugin({
   "id": "gasoLASS",
@@ -27,7 +27,7 @@ OSEP.addPlugin({
   "blockIcon": "",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_lass",
   "tagline": "讀取台灣的空氣品質與天氣資料：空氣盒子、環境部測站、氣象署天氣預報。",
-  "overview": "這個插件把台灣常用的三種開放資料帶進 Scratch，可以做空氣品質看板、出門提醒、天氣播報員等作品：\n\n| 資料 | 來源 | 需要 |\n|---|---|---|\n| 空氣盒子的 PM2.5、溫度、濕度 | LASS 開源公益環境感測網路 | 空氣盒子的設備編號 |\n| 測站的 AQI、PM2.5、PM10、臭氧 | 環境部空氣品質監測網 | 不用設定 |\n| 各縣市 36 小時天氣預報 | 中央氣象署開放資料平臺 | 自己的授權碼 |\n\n> 資料都是即時從網路下載的，網路不通或資料來源網站維修時就讀不到。\n\n> ! 2026-11-22 檢查時，LASS 的空氣盒子資料停在 **2026-09-01**，之後沒有再更新，所以「LASS 空氣盒子」這一組積木目前讀不到資料（會是空的）。EdiGreen 地圖上的數值還有更新，但那是 Edimax 網站自己的資料，插件讀不到。環境部測站、氣象署的積木不受影響。\n\n### 相關網站\n- [LASS 開源公益環境感測網路](https://pm25.lass-net.org/)\n- [EdiGreen 空氣盒子地圖](https://airbox.edimaxcloud.com/)：找附近的空氣盒子、看站名\n- [全部空氣盒子的資料（JSON）](https://pm25.lass-net.org/data/last-all-airbox.json)：用站名查設備編號\n- [環境部空氣品質監測網](https://airtw.moenv.gov.tw/)：測站位置與即時 AQI\n- [中央氣象署開放資料平臺](https://opendata.cwa.gov.tw/)：註冊會員；登入後到 [取得授權碼](https://opendata.cwa.gov.tw/user/authkey) 頁面拿授權碼\n\n插件原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
+  "overview": "這個擴充功能把台灣常用的三種開放資料帶進 Scratch，可以做空氣品質看板、出門提醒、天氣播報員等作品：\n\n| 資料 | 來源 | 需要 |\n|---|---|---|\n| 空氣盒子的 PM2.5、溫度、濕度 | LASS 開源公益環境感測網路 | 空氣盒子的設備編號 |\n| 測站的 AQI、PM2.5、PM10、臭氧 | 環境部空氣品質監測網 | 不用設定 |\n| 各縣市 36 小時天氣預報 | 中央氣象署開放資料平臺 | 自己的授權碼 |\n\n> 資料都是即時從網路下載的，網路不通或資料來源網站維修時就讀不到。\n\n> ! 2026-11-22 檢查時，LASS 的空氣盒子資料停在 **2026-09-01**，之後沒有再更新，所以「LASS 空氣盒子」這一組積木目前讀不到資料（會是空的）。EdiGreen 地圖上的數值還有更新，但那是 Edimax 網站自己的資料，擴充功能讀不到。環境部測站、氣象署的積木不受影響。\n\n### 相關網站\n- [LASS 開源公益環境感測網路](https://pm25.lass-net.org/)\n- [EdiGreen 空氣盒子地圖](https://airbox.edimaxcloud.com/)：找附近的空氣盒子、看站名\n- [全部空氣盒子的資料（JSON）](https://pm25.lass-net.org/data/last-all-airbox.json)：用站名查設備編號\n- [環境部空氣品質監測網](https://airtw.moenv.gov.tw/)：測站位置與即時 AQI\n- [中央氣象署開放資料平臺](https://opendata.cwa.gov.tw/)：註冊會員；登入後到 [取得授權碼](https://opendata.cwa.gov.tw/user/authkey) 頁面拿授權碼\n\n擴充功能原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
   "groups": [
     {
       "name": "LASS 空氣盒子",
@@ -124,7 +124,7 @@ OSEP.addPlugin({
               "value": "基隆",
               "dynamic": true,
               "acceptReporters": true,
-              "desc": "測站名稱，例如「基隆」「中山」「臺南」。選單會在插件載入後自動抓到所有測站。"
+              "desc": "測站名稱，例如「基隆」「中山」「臺南」。選單會在擴充功能載入後自動抓到所有測站。"
             },
             "attr": {
               "type": "menu",
@@ -157,7 +157,7 @@ OSEP.addPlugin({
           "summary": "讀取某個測站的空氣品質。",
           "detail": "每次執行都會重新下載資料，所以會等一下才拿到值。\n\n| 項目 | 說明 |\n|---|---|\n| AQI | 空氣品質指標，0～50 良好、51～100 普通、101 以上對敏感族群不健康 |\n| PM2.5、PM10 | 細懸浮微粒、懸浮微粒濃度（µg/m³） |\n| O3 | 臭氧濃度（ppb） |\n| 發佈時間 | 這筆資料的時間，例如 `2026/11/22 08:00:00` |",
           "returns": "文字或數字。測站名稱打錯時是空的。",
-          "tips": "選單一開始只有「基隆」，插件從網路抓到測站清單後才會出現其他測站。"
+          "tips": "選單一開始只有「基隆」，擴充功能從網路抓到測站清單後才會出現其他測站。"
         },
         {
           "opcode": "EPAStation",
@@ -621,7 +621,7 @@ OSEP.addPlugin({
     },
     {
       "q": "測站選單只有「基隆」？",
-      "a": "插件剛載入時還沒抓到測站清單。等幾秒後再點開選單；網路不通時就只有「基隆」。也可以直接在選單位置放文字或變數。"
+      "a": "擴充功能剛載入時還沒抓到測站清單。等幾秒後再點開選單；網路不通時就只有「基隆」。也可以直接在選單位置放文字或變數。"
     },
     {
       "q": "「未來 12／24／36 小時」是什麼意思？",
