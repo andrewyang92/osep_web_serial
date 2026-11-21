@@ -56,6 +56,12 @@
             paletteText: '在 Scratch 的積木區看到的順序就是這樣。點一下積木可以跳到它的詳細說明。',
             detail: '積木詳解',
             exampleN: (i, t) => `範例 ${i}：${t}`,
+            download: '下載範例檔（.sb3）',
+            downloadNew: '下載範例檔（OSEP 新版）',
+            downloadOld: '下載範例檔（OSEP 舊版）',
+            versionTip: 'OSEP 新版和舊版的這個插件 id 不同，請下載和你用的版本相同的檔案',
+            downloadTip: '下載後在 OSEP Scratch 用「檔案 > 從你的電腦挑選」打開',
+            fileName: (p, i, t) => `${p}-範例${i}-${t}.sb3`,
             faq: '常見問題', changelog: '更新紀錄',
             prev: '← 上一個插件', next: '下一個插件 →',
             onThisPage: '本頁內容',
@@ -107,6 +113,12 @@
             paletteText: 'This is the order you see in the Scratch block palette. Click a block to jump to its description.',
             detail: 'Block reference',
             exampleN: (i, t) => `Example ${i}: ${t}`,
+            download: 'Download example (.sb3)',
+            downloadNew: 'Download example (new OSEP)',
+            downloadOld: 'Download example (old OSEP)',
+            versionTip: 'This plugin has a different id in the new and old OSEP, so download the file for the version you use',
+            downloadTip: 'Open it in OSEP Scratch with File > Load from your computer',
+            fileName: (p, i, t) => `${p}-example${i}-${t}.sb3`,
             faq: 'FAQ', changelog: 'Changelog',
             prev: '← Previous plugin', next: 'Next plugin →',
             onThisPage: 'On this page',
@@ -555,7 +567,20 @@
             addToc('examples', T('examples'));
             const sec = h(`<section id="s-examples"><h2>${esc(T('examples'))}</h2></section>`);
             p.examples.forEach((ex, i) => {
-                const e = h(`<div class="example"><div class="example-head"><h3>${esc(T('exampleN', i + 1, ex.title))}</h3>${ex.intro ? `<div class="prose">${md(ex.intro, p)}</div>` : ''}</div><div class="example-body"></div></div>`);
+                // 範例檔（tools/make-examples.js 產生，清單在 plugins/examples.js）
+                const all = (window.OSEP_EXAMPLE_FILES || {})[p.id] || {};
+                const file = (all[LANG] || [])[i];
+                // 新版 new/ 擴充 id 不同的插件，另有一份新版用的檔
+                const fileNew = ((all.new || {})[LANG] || [])[i];
+                const fname = T('fileName', p.name, i + 1, ex.title).replace(/[\/:*?"<>|]/g, '');
+                const btn = (href, label, name) => `<a class="btn ex-dl" href="${esc(href)}" download="${esc(name)}" title="${esc(T('downloadTip'))}">⬇ ${esc(label)}</a>`;
+                let dl = '';
+                if (file && fileNew) {
+                    dl = `<div class="ex-dls">${btn(fileNew, T('downloadNew'), fname)}${btn(file, T('downloadOld'), fname)}</div><div class="ex-dl-tip">${esc(T('versionTip'))}</div>`;
+                } else if (file) {
+                    dl = btn(file, T('download'), fname);
+                }
+                const e = h(`<div class="example"><div class="example-head"><h3>${esc(T('exampleN', i + 1, ex.title))}</h3>${ex.intro ? `<div class="prose">${md(ex.intro, p)}</div>` : ''}${dl}</div><div class="example-body"></div></div>`);
                 const body = $('.example-body', e);
                 body.appendChild(OSEPBlocks.script(ex.script || [], p));
                 if (ex.explain) body.appendChild(h(`<div class="prose">${md(ex.explain, p)}</div>`));
