@@ -535,10 +535,13 @@ img { max-width: 100%; }
 .cheat-plugin { margin: 34px 0 10px; display: flex; align-items: center; gap: 10px; }
 .cheat-plugin img { width: 34px; height: 34px; border-radius: 8px; }
 .cheat-plugin h2 { margin: 0; font-size: 21px; }
-.cheat { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px 22px; }
-.cheat a { display: grid; grid-template-columns: auto; gap: 4px; padding: 10px 12px; border-radius: 10px; text-decoration: none; color: inherit; }
+.cheat { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 8px 22px; }
+.cheat a { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 10px 12px; border-radius: 10px; text-decoration: none; color: inherit; }
 .cheat a:hover { background: #fff; box-shadow: 0 0 0 1px var(--line); }
 .cheat .c-sum { font-size: 14px; color: var(--ink-2); line-height: 1.5; }
+/* 速查頁的格子比較窄：文字空格縮短（超過的用 … 表示），整塊積木也不超出格子 */
+.cheat .c-blk { min-width: 0; max-width: 100%; }
+.cheat .in-str { max-width: 80px; }
 
 .loadwarn { max-width: 1240px; margin: 16px auto; padding: 0 24px; }
 .loadwarn:empty { display: none; }
@@ -732,6 +735,8 @@ img { max-width: 100%; }
     .bcard-body { padding: 14px 16px; }
     .args td:first-child { white-space: normal; }
     .cheat { grid-template-columns: 1fr; }
+    /* 手機寬度：積木文字本身就比格子長時，讓積木在格子裡左右捲動，不超出畫面 */
+    .cheat .c-blk { overflow-x: auto; padding: 2px 0 4px; }
     .pager { grid-template-columns: 1fr; }
     .pager .next { grid-column: 1; }
 }
