@@ -8,7 +8,7 @@ OSEP.addPlugin({
   "name": "Claude AI",
   "nameEn": "Claude",
   "author": "Andrew Yang",
-  "updated": "2026-11-17",
+  "updated": "2026-11-21",
   "tags": [
     "人工智慧",
     "語言",
@@ -27,7 +27,7 @@ OSEP.addPlugin({
   "blockIcon": "images/claude/block-icon.svg",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_claude",
   "tagline": "讓角色跟 Claude AI 對話，還能讓 Claude 看舞台畫面回答問題。",
-  "overview": "這個插件把 Anthropic 的 **Claude** 人工智慧放進 Scratch。角色可以把問題丟給 Claude、拿到回答後說出來，做成聊天機器人、問答遊戲、故事接龍、作業小幫手等作品。\n\n除了文字，Claude 也能「看」舞台：[[askStage]] 會把當下的舞台畫面一起送出，讓 Claude 描述畫面、猜你畫了什麼，或幫你檢查作品。\n\n> 不需要任何設定就能使用。插件預設會透過 OSEP 的中繼伺服器連線，所有使用者共用每日次數上限。\n\n### 兩種連線方式\n| 方式 | 怎麼用 | 適合 |\n|---|---|---|\n| OSEP 中繼（預設） | 什麼都不用設定；老師有設使用密碼時，用 [[setAccessCode]] 填入 | 上課、一般使用 |\n| 自己的 API 金鑰 | 用 [[setApiKey]] 填入 `sk-ant-` 開頭的金鑰，直接連到 Anthropic | 需要大量使用、或想用其他模型 |",
+  "overview": "這個插件把 Anthropic 的 **Claude** 人工智慧放進 Scratch。角色可以把問題丟給 Claude、拿到回答後說出來，做成聊天機器人、問答遊戲、故事接龍、作業小幫手等作品。\n\n除了文字，Claude 也能「看」舞台：[[askStage]] 會把當下的舞台畫面一起送出，讓 Claude 描述畫面、猜你畫了什麼，或幫你檢查作品。\n\n> 使用前要先有**自己的 Anthropic API 金鑰**，用 [[setApiKey]] 填入。插件會直接連到 Anthropic，費用算在金鑰所屬的帳號。\n\n### 開始使用\n- 到 Anthropic 的 Claude Console 申請 API 金鑰（`sk-ant-` 開頭）\n- 在綠旗腳本最前面放 [[setApiKey]]，填入金鑰\n- 用 [[ask]] 發問，再用 [[getAnswer]] 拿回答",
   "highlights": [
     {
       "icon": "💬",
@@ -53,7 +53,7 @@ OSEP.addPlugin({
   "groups": [
     {
       "name": "連線設定",
-      "intro": "大部分情況下**不需要**用到這一組。只有老師設了使用密碼、或要改用自己的金鑰／自己的中繼時才需要。",
+      "intro": "使用這個插件前，一定要先用 [[setApiKey]] 填入自己的 Anthropic API 金鑰。",
       "blocks": [
         {
           "opcode": "setAccessCode",
@@ -67,6 +67,7 @@ OSEP.addPlugin({
               "desc": "老師提供的使用密碼。前後的空白會自動去掉。"
             }
           },
+          "hidden": true,
           "summary": "填入中繼伺服器的使用密碼。",
           "detail": "如果中繼伺服器有設定使用密碼（`ACCESS_CODE`），每次發問都要附上正確的密碼才會被接受。把這塊放在綠旗腳本的最前面即可，整個專案只要設定一次。\n\n沒有設定使用密碼的中繼，不需要用這塊積木。",
           "tips": "密碼錯誤時，[[getStatus]] 會顯示「錯誤：使用密碼錯誤」。"
@@ -80,11 +81,11 @@ OSEP.addPlugin({
             "KEY": {
               "type": "string",
               "value": "sk-ant-...",
-              "desc": "自己的 Anthropic API 金鑰（`sk-ant-` 開頭）。保留預設的 `sk-ant-...` 或清空，代表不使用金鑰、改回中繼。"
+              "desc": "自己的 Anthropic API 金鑰（`sk-ant-` 開頭）。保留預設的 `sk-ant-...` 或清空，代表沒有金鑰，發問時會出現「請先用「Claude金鑰」積木設定你的 Claude API 金鑰」。"
             }
           },
-          "summary": "改用自己的 API 金鑰，直接連到 Anthropic。",
-          "detail": "填入金鑰後，插件會直接呼叫 Anthropic 的 API，不再經過中繼，因此**不受中繼的每日次數與模型限制**，費用算在金鑰所屬的帳號。\n\n金鑰可以到 Anthropic 的 Claude Console 申請。",
+          "summary": "填入自己的 API 金鑰，連到 Anthropic。",
+          "detail": "**使用這個插件一定要先設定金鑰。** 插件會直接呼叫 Anthropic 的 API，費用算在金鑰所屬的帳號。\n\n金鑰可以到 Anthropic 的 Claude Console 申請。把這塊放在綠旗腳本的最前面，整個專案只要設定一次。",
           "tips": "> ! 金鑰如果直接打在積木裡，會跟著 .sb3 專案檔一起儲存。分享或上傳專案前，記得把金鑰刪掉。"
         },
         {
@@ -99,6 +100,7 @@ OSEP.addPlugin({
               "desc": "自己部署的 Google Apps Script 網址（`/exec` 結尾）。保留預設文字不會有任何改變；清空則回到 OSEP 預設的中繼。"
             }
           },
+          "hidden": true,
           "summary": "改用另一個中繼伺服器（Google Apps Script）。",
           "detail": "插件已經內建 OSEP 的中繼網址，一般不用設定。如果學校想用自己的 Google 帳號架一個中繼（例如要有獨立的次數上限），可以照插件資料夾裡 `gas/README.md` 的步驟部署，再用這塊積木填入網址。"
         }
@@ -151,7 +153,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "選擇要用哪一個 Claude 模型。",
-          "detail": "| 模型 | 特色 |\n|---|---|\n| `claude-haiku-5-5`（預設） | 回答快、適合大部分課堂活動 |\n| `claude-sonnet-5-5` | 比較聰明，適合需要推理、寫程式或較長的回答；速度較慢 |\n\n透過 OSEP 中繼時只能用這兩個模型；選其他名稱會出現「錯誤：中繼不允許使用這個模型」。用自己的金鑰時則可以填入任何 Claude 模型名稱。"
+          "detail": "| 模型 | 特色 |\n|---|---|\n| `claude-haiku-5-5`（預設） | 回答快、適合大部分課堂活動 |\n| `claude-sonnet-5-5` | 比較聰明，適合需要推理、寫程式或較長的回答；速度較慢 |\n\n選單外的模型也可以直接輸入名稱（要是你的金鑰能使用的 Claude 模型）。"
         },
         {
           "opcode": "setMemory",
@@ -213,7 +215,7 @@ OSEP.addPlugin({
             "TOKENS": {
               "type": "number",
               "value": "1024",
-              "desc": "回答最多可以多長，範圍 1～16000（預設 1024）。透過 OSEP 中繼時最多 2048。"
+              "desc": "回答最多可以多長，範圍 1～16000（預設 1024）。"
             }
           },
           "summary": "限制回答的最大長度。",
@@ -421,6 +423,12 @@ OSEP.addPlugin({
           "type": "hat"
         },
         {
+          "use": "setApiKey",
+          "args": {
+            "KEY": "sk-ant-..."
+          }
+        },
+        {
           "use": "setSystem",
           "args": {
             "SYSTEM": "你是親切的助教，請用繁體中文簡短回答。"
@@ -470,6 +478,12 @@ OSEP.addPlugin({
           "t": "當 🏁 被點擊",
           "cat": "events",
           "type": "hat"
+        },
+        {
+          "use": "setApiKey",
+          "args": {
+            "KEY": "sk-ant-..."
+          }
         },
         {
           "use": "setSystem",
@@ -524,7 +538,7 @@ OSEP.addPlugin({
     },
     {
       "title": "畫圖讓 Claude 猜",
-      "intro": "用畫筆在舞台上畫圖，按空白鍵讓 Claude 猜你畫了什麼。",
+      "intro": "用畫筆在舞台上畫圖，按空白鍵讓 Claude 猜你畫了什麼。（記得先在綠旗腳本用 [[setApiKey]] 設定金鑰）",
       "script": [
         {
           "t": "當 [K] 鍵被按下",
@@ -569,16 +583,16 @@ OSEP.addPlugin({
       "a": "用 [[setSystem]]，在身份說明裡加上「請用繁體中文回答」。預設的身份文字已經包含這句，只要記得把那塊積木放進腳本。"
     },
     {
-      "q": "出現「錯誤：今天的使用次數已達上限」？",
-      "a": "OSEP 中繼有每日次數上限（所有使用者共用）。可以等明天再試，或改用自己的金鑰（[[setApiKey]]）。"
+      "q": "出現「錯誤：請求太頻繁或額度不足」？",
+      "a": "等一下再試。如果一直出現，到 Claude Console 檢查金鑰所屬帳號的額度與用量上限。"
     },
     {
       "q": "各種錯誤訊息是什麼意思？",
-      "a": "| 訊息 | 原因與解決方法 |\n|---|---|\n| 請先設定 Claude API 金鑰或中繼網址 | 中繼網址被清空了。重新整理頁面，或用 [[setProxyUrl]] 填回網址 |\n| 使用密碼錯誤 | 用 [[setAccessCode]] 填入老師給的正確密碼 |\n| 中繼不允許使用這個模型 | 中繼只開放選單裡的兩個模型 |\n| 連不到中繼 | 網路斷線，或自己部署的 GAS 存取權不是「任何人」 |\n| API 金鑰錯誤或已失效 | 檢查自己填的金鑰 |\n| 請求太頻繁或額度不足 | 等一下再試；用自己的金鑰時，檢查帳號額度 |\n| Claude 伺服器忙碌中 | Claude 那邊暫時太忙，稍後再試 |\n| 等待逾時 | 超過 90 秒沒有回應。可換成 haiku 模型或把最大代幣調小 |\n| 無法擷取舞台畫面 | 舞台截圖失敗，重新整理頁面再試 |"
+      "a": "| 訊息 | 原因與解決方法 |\n|---|---|\n| 請先用「Claude金鑰」積木設定你的 Claude API 金鑰 | 還沒設定金鑰。在綠旗腳本最前面用 [[setApiKey]] 填入金鑰 |\n| API 金鑰錯誤或已失效 | 檢查自己填的金鑰 |\n| 請求太頻繁或額度不足 | 等一下再試；檢查金鑰所屬帳號的額度 |\n| Claude 伺服器忙碌中 | Claude 那邊暫時太忙，稍後再試 |\n| 等待逾時 | 超過 90 秒沒有回應。可換成 haiku 模型或把最大代幣調小 |\n| 無法擷取舞台畫面 | 舞台截圖失敗，重新整理頁面再試 |"
     },
     {
       "q": "可以用 Opus 或其他模型嗎？",
-      "a": "OSEP 中繼只開放 `claude-haiku-5-5` 與 `claude-sonnet-5-5`。用自己的金鑰時，可以在 [[setModel]] 直接輸入其他模型名稱。"
+      "a": "選單只列出 `claude-haiku-5-5` 與 `claude-sonnet-5-5`，也可以在 [[setModel]] 直接輸入其他 Claude 模型名稱。較大的模型費用較高、速度也較慢。"
     },
     {
       "q": "回答要等很久？",
@@ -586,7 +600,7 @@ OSEP.addPlugin({
     },
     {
       "q": "學生的問題會被存起來嗎？",
-      "a": "問題會經由中繼送到 Anthropic 產生回答。插件本身不會另外儲存對話；開啟記憶時，對話只暫存在瀏覽器裡，重新整理頁面就會消失。"
+      "a": "問題會直接送到 Anthropic 產生回答。插件本身不會另外儲存對話；開啟記憶時，對話只暫存在瀏覽器裡，重新整理頁面就會消失。"
     }
   ],
   "changelog": [
@@ -601,6 +615,10 @@ OSEP.addPlugin({
     {
       "date": "2026-11-17",
       "text": "積木重新分成五組；卡片改為紫色星空風格"
+    },
+    {
+      "date": "2026-11-21",
+      "text": "改成只能用自己的 API 金鑰：拿掉預設的中繼網址，隱藏「設定使用密碼」「設定中繼(GAS)網址」兩塊積木（舊專案裡的這兩塊仍可執行）"
     }
   ]
 });

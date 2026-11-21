@@ -62,6 +62,7 @@ class Scratch3Claude {
                 {
                     opcode: 'setAccessCode',
                     blockType: BlockType.COMMAND,
+                    hideFromPalette: true, // 中繼暫停使用（2026-11-21）；舊專案裡的積木仍可執行
                     text: msg.set_access_code[L],
                     arguments: {
                         CODE: {type: ArgumentType.STRING, defaultValue: ' '}
@@ -78,6 +79,7 @@ class Scratch3Claude {
                 {
                     opcode: 'setProxyUrl',
                     blockType: BlockType.COMMAND,
+                    hideFromPalette: true, // 中繼暫停使用（2026-11-21）；舊專案裡的積木仍可執行
                     text: msg.set_proxy_url[L],
                     arguments: {
                         URL: {type: ArgumentType.STRING, defaultValue: 'https://script.google.com/macros/s/.../exec'}

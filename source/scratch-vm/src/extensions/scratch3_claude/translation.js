@@ -109,8 +109,8 @@ export const status_truncated = {
 // 錯誤（key = ClaudeClient 的錯誤 code）
 export const errors = {
     NO_KEY: {
-        'en': 'Please set an API key or relay URL first',
-        'zh-tw': '請先設定 Claude API 金鑰或中繼網址'
+        'en': 'Please set your Claude API key first (Claude API key block)',
+        'zh-tw': '請先用「Claude金鑰」積木設定你的 Claude API 金鑰'
     },
     DAILY_LIMIT: {
         'en': 'Daily usage limit reached, try again tomorrow',

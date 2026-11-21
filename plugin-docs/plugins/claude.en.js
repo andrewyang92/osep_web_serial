@@ -11,13 +11,12 @@ OSEP.addText('claude', 'en', {
 
 Claude can also "see" the stage: [[askStage]] sends the current stage image along with the question, so Claude can describe the scene, guess what you drew, or give feedback on your project.
 
-> No setup is needed. By default the plugin connects through the OSEP relay server, and all users share a daily usage limit.
+> You need **your own Anthropic API key**. Enter it with [[setApiKey]]. The plugin connects to Anthropic directly, and usage is billed to the key's account.
 
-### Two ways to connect
-| Method | How | Best for |
-|---|---|---|
-| OSEP relay (default) | Nothing to set up. If your teacher set an access code, enter it with [[setAccessCode]] | Class and everyday use |
-| Your own API key | Enter a key starting with \`sk-ant-\` with [[setApiKey]] to connect to Anthropic directly | Heavy use, or other models |`,
+### Getting started
+- Get an API key (starts with \`sk-ant-\`) from Anthropic's Claude Console
+- Put [[setApiKey]] at the top of the green flag script and enter the key
+- Ask with [[ask]], then read the answer with [[getAnswer]]`,
 
   highlights: [
     {icon: '💬', title: 'Ask with one block', text: '"talk text of" sends a question and "Claude answer" gives the reply. The block waits for Claude automatically.'},
@@ -27,7 +26,7 @@ Claude can also "see" the stage: [[askStage]] sends the current stage image alon
   ],
 
   groups: [
-    {name: 'Connection', intro: 'Most of the time you **do not need** this group. Use it only when your teacher set an access code, or to use your own key or relay.'},
+    {name: 'Connection', intro: 'Before using this plugin, you must enter your own Anthropic API key with [[setApiKey]].'},
     {name: 'Setup', intro: "Set Claude's role, the model, and whether it remembers the conversation. Usually placed at the start of the green flag script."},
     {name: 'Fine-tuning', intro: 'Adjust the style and length of answers. Optional: defaults are used if you skip them.'},
     {name: 'Asking', intro: 'Three ways to ask. All three blocks **wait for Claude to finish answering** before the next block runs.'},
@@ -44,11 +43,11 @@ You do not need this block for a relay without an access code.`,
       tips: 'With a wrong code, [[getStatus]] shows "Error: Wrong access code".'
     },
     setApiKey: {
-      args: {KEY: 'Your own Anthropic API key (starts with `sk-ant-`). Leaving the default `sk-ant-...` or clearing it means no key: the relay is used again.'},
-      summary: 'Use your own API key to connect to Anthropic directly.',
-      detail: `With a key, the plugin calls the Anthropic API directly instead of the relay, so the **relay's daily limit and model list do not apply**. Usage is billed to the key's account.
+      args: {KEY: 'Your own Anthropic API key (starts with `sk-ant-`). Leaving the default `sk-ant-...` or clearing it means no key, and asking gives "Please set your Claude API key first".'},
+      summary: 'Enter your own API key to connect to Anthropic.',
+      detail: `**You must set a key to use this plugin.** The plugin calls the Anthropic API directly, and usage is billed to the key's account.
 
-You can get a key from Anthropic's Claude Console.`,
+You can get a key from Anthropic's Claude Console. Put this block at the top of the green flag script; once per project is enough.`,
       tips: '> ! A key typed into the block is saved in the .sb3 project file. Delete the key before you share or upload the project.'
     },
     setProxyUrl: {
@@ -76,7 +75,7 @@ Without this block, Claude gets no role at all.`,
 | \`claude-haiku-5-5\` (default) | Fast answers, fine for most class activities |
 | \`claude-sonnet-5-5\` | Smarter: reasoning, code, longer answers. Slower |
 
-Through the OSEP relay only these two models are allowed; other names give "Error: This model is not allowed by the relay". With your own key you can type any Claude model name.`
+You can also type another model name that is not in the menu (it must be a Claude model your key can use).`
     },
     setMemory: {
       args: {ONOFF: 'Turn conversation memory on or off.'},
@@ -97,7 +96,7 @@ Turning memory off also clears what was remembered.`,
 Without this block, the model's own default is used.`
     },
     setMaxTokens: {
-      args: {TOKENS: 'The longest the answer can be, from 1 to 16000 (default 1024). Through the OSEP relay the maximum is 2048.'},
+      args: {TOKENS: 'The longest the answer can be, from 1 to 16000 (default 1024).'},
       summary: 'Limit how long an answer can be.',
       detail: `A token is the unit AI uses to measure text. An English word is about 1 to 2 tokens. Smaller numbers give shorter, faster answers.
 
@@ -186,6 +185,7 @@ The answer is kept in [[getAnswer]] as usual.`,
       intro: 'The sprite asks what you want to talk about, then says Claude\'s answer, over and over.',
       script: [
         {t: 'when 🏁 clicked', cat: 'events', type: 'hat'},
+        {use: 'setApiKey', args: {KEY: 'sk-ant-...'}},
         {use: 'setSystem', args: {SYSTEM: 'You are a friendly tutor. Answer briefly in English.'}},
         {t: 'forever', cat: 'control', type: 'c', body: [
           {t: 'ask [Q] and wait', cat: 'sensing', args: {Q: 'What do you want to ask Claude?'}},
@@ -200,6 +200,7 @@ The answer is kept in [[getAnswer]] as usual.`,
       intro: 'Give Claude a role and turn on memory for a continuous conversation.',
       script: [
         {t: 'when 🏁 clicked', cat: 'events', type: 'hat'},
+        {use: 'setApiKey', args: {KEY: 'sk-ant-...'}},
         {use: 'setSystem', args: {SYSTEM: 'You are an octopus teacher who lives under the sea. Use words a primary school student understands, 50 words or fewer.'}},
         {use: 'setMemory', args: {ONOFF: {v: 'on', menu: true}}},
         {use: 'clearHistory'},
@@ -212,7 +213,7 @@ The answer is kept in [[getAnswer]] as usual.`,
     },
     {
       title: 'Draw and let Claude guess',
-      intro: 'Draw on the stage with the pen, then press space to let Claude guess what you drew.',
+      intro: 'Draw on the stage with the pen, then press space to let Claude guess what you drew. (Set your key with [[setApiKey]] in the green flag script first.)',
       script: [
         {t: 'when [K] key pressed', cat: 'events', type: 'hat', args: {K: {v: 'space', menu: true}}},
         {t: 'say [M]', cat: 'looks', args: {M: 'Let me see…'}},
@@ -225,28 +226,26 @@ The answer is kept in [[getAnswer]] as usual.`,
 
   faq: [
     {q: 'Claude answers in the wrong language?', a: 'Use [[setSystem]] and add "Answer in English" (or the language you want) to the role.'},
-    {q: 'I see "Error: Daily usage limit reached, try again tomorrow"?', a: 'The OSEP relay has a daily limit shared by all users. Try again tomorrow, or use your own key ([[setApiKey]]).'},
+    {q: 'I see "Error: Too many requests or out of credit"?', a: 'Wait and try again. If it keeps happening, check the credit and usage limits of the key\'s account in the Claude Console.'},
     {q: 'What do the error messages mean?', a: `| Message | Cause and fix |
 |---|---|
-| Please set an API key or relay URL first | The relay URL was cleared. Reload the page, or enter it again with [[setProxyUrl]] |
-| Wrong access code | Enter the right code from your teacher with [[setAccessCode]] |
-| This model is not allowed by the relay | The relay only allows the two models in the menu |
-| Cannot reach the relay | No internet, or your own GAS deployment's access is not "Anyone" |
+| Please set your Claude API key first | No key yet. Enter one with [[setApiKey]] at the top of the green flag script |
 | Invalid API key | Check the key you entered |
-| Too many requests or out of credit | Wait and try again; with your own key, check the account credit |
+| Too many requests or out of credit | Wait and try again; check the credit of the key's account |
 | Claude is busy right now | Claude is overloaded for a moment. Try again later |
 | Timed out | No answer within 90 seconds. Use the haiku model or a smaller max token |
 | Could not capture the stage | Taking the stage picture failed. Reload the page and try again |`},
-    {q: 'Can I use Opus or other models?', a: 'The OSEP relay only allows `claude-haiku-5-5` and `claude-sonnet-5-5`. With your own key you can type another model name into [[setModel]].'},
+    {q: 'Can I use Opus or other models?', a: 'The menu lists `claude-haiku-5-5` and `claude-sonnet-5-5`. You can also type another Claude model name into [[setModel]]. Larger models cost more and are slower.'},
     {q: 'Answers take a long time?', a: `- Use \`claude-haiku-5-5\` (the default)
 - Ask for short answers with [[setMaxTokens]] or in the role
 - With memory on for a long time, requests grow longer. Clear them with [[clearHistory]]`},
-    {q: 'Are students\' questions stored?', a: 'Questions go through the relay to Anthropic to produce the answer. The plugin itself does not store conversations. With memory on, the conversation is kept only in the browser and disappears when the page is reloaded.'}
+    {q: 'Are students\' questions stored?', a: 'Questions go directly to Anthropic to produce the answer. The plugin itself does not store conversations. With memory on, the conversation is kept only in the browser and disappears when the page is reloaded.'}
   ],
 
   changelog: [
     {date: '2026-11-11', text: 'Plugin created, with the OSEP relay and your own key as connection options'},
     {date: '2026-11-14', text: 'Block text changed to match the OpenAI plugin'},
-    {date: '2026-11-17', text: 'Blocks regrouped into five groups; card changed to the purple starry style'}
+    {date: '2026-11-17', text: 'Blocks regrouped into five groups; card changed to the purple starry style'},
+    {date: '2026-11-21', text: 'Your own API key is now required: the built-in relay address was removed, and the "set class access code" and "set relay (GAS) URL" blocks are hidden (they still run in old projects)'}
   ]
 });
