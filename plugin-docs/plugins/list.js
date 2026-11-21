@@ -3,4 +3,5 @@ OSEP_PLUGIN_LIST = [
     'textSentiment',
     'faceExpressionMediapipe',
     'decisionTree',
+    'yoloDetection',
 ];
