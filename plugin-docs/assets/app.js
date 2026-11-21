@@ -483,7 +483,7 @@
         const visible = OSEP.blocksOf(p);
 
         root.appendChild(h(`
-            <div class="p-hero">
+            <div class="p-hero" style="--pc: ${esc((p.color && p.color.primary) || '#4C97FF')}">
                 ${starsSvg(1400, 380, 55, id.length * 13)}
                 <div class="p-hero-inner">
                     <img class="card" src="${esc(p.card)}" alt="${esc(T('cardAlt', p.name))}" onerror="this.style.visibility='hidden'">

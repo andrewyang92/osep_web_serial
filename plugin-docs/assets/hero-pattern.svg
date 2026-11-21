@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <!-- 首頁主視覺的背景圖樣：Scratch 各類積木的輪廓（淡色，可重複拼接） -->
+  <defs>
+    <path id="cmd" d="M0 4a4 4 0 0 1 4-4h8l4 4h12l4-4h64a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4h-64l-4 4h-12l-4-4h-8a4 4 0 0 1-4-4z"/>
+    <path id="cmdS" d="M0 4a4 4 0 0 1 4-4h8l4 4h12l4-4h36a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4h-36l-4 4h-12l-4-4h-8a4 4 0 0 1-4-4z"/>
+    <rect id="rep" width="76" height="28" rx="14"/>
+    <path id="bool" d="M14 0h52l14 14-14 14h-52l-14-14z"/>
+    <path id="hat" d="M0 22c18-22 62-22 80 0h20a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4h-68l-4 4h-12l-4-4h-8a4 4 0 0 1-4-4z"/>
+  </defs>
+  <g fill-opacity=".16" stroke-opacity=".38" stroke-width="1.5">
+    <use href="#hat" x="22" y="18" fill="#FFBF00" stroke="#CC9900"/>
+    <use href="#cmd" x="22" y="72" fill="#4C97FF" stroke="#3373CC"/>
+    <use href="#cmdS" x="22" y="104" fill="#9966FF" stroke="#774DCB"/>
+    <use href="#rep" x="196" y="40" fill="#59C059" stroke="#389438"/>
+    <use href="#bool" x="300" y="120" fill="#5CB1D6" stroke="#2E8EB8"/>
+    <use href="#cmd" x="388" y="30" fill="#FF8C1A" stroke="#DB6E00"/>
+    <use href="#cmdS" x="388" y="62" fill="#FFAB19" stroke="#CF8B17"/>
+    <use href="#rep" x="150" y="196" fill="#CF63CF" stroke="#BD42BD"/>
+    <use href="#cmd" x="300" y="214" fill="#0FBD8C" stroke="#0B8E69"/>
+    <use href="#bool" x="40" y="236" fill="#59C059" stroke="#389438"/>
+    <use href="#rep" x="470" y="160" fill="#4C97FF" stroke="#3373CC"/>
+  </g>
+</svg>
