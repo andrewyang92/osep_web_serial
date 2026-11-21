@@ -17,12 +17,23 @@ OSEP.addText('gasoLASS', 'en', {
 
 > All data is downloaded live from the internet. If the network is down or a data source is under maintenance, nothing can be read.
 
+> ! As checked on 2026-11-22, LASS AirBox data stopped at **2026-09-01** and has not been updated since, so the "LASS AirBox" blocks currently get no data (empty values). The EdiGreen map still shows live values, but that is Edimax's own data, which the plugin cannot read. The air quality station and weather forecast blocks are not affected.
+
 Station names, city names in the Chinese interface, and the text values from the weather forecast are in Chinese, because the data sources provide them that way.
+
+### Related websites
+- [LASS (Location Aware Sensing System)](https://pm25.lass-net.org/)
+- [EdiGreen AirBox map](https://airbox.edimaxcloud.com/): find nearby AirBoxes and their station names
+- [Data of all AirBoxes (JSON)](https://pm25.lass-net.org/data/last-all-airbox.json): look up a device ID by station name
+- [Ministry of Environment air quality network](https://airtw.moenv.gov.tw/): station locations and live AQI
+- [CWA open data platform](https://opendata.cwa.gov.tw/): register; after signing in, get your key on the [authorization key](https://opendata.cwa.gov.tw/user/authkey) page
 
 Original plugin author: gasolin ([scratch3-internet](https://github.com/gasolin/scratch3-internet)).`,
 
   groups: [
-    {name: 'LASS AirBox', intro: 'Read the latest readings from one AirBox. Download with [[fetchLASS]]; when the data arrives, [[onLASSReceived]] fires, and [[parseAttrFromLASS]] reads the values.'},
+    {name: 'LASS AirBox', intro: `Read the latest readings from one AirBox. Download with [[fetchLASS]]; when the data arrives, [[onLASSReceived]] fires, and [[parseAttrFromLASS]] reads the values.
+
+> ! LASS AirBox data currently stops at 2026-09-01 (checked 2026-11-22), so these blocks get no data for now.`},
     {name: 'Air quality stations', intro: "Data from the Ministry of Environment's air quality monitoring stations, about 80 across Taiwan. No setup needed."},
     {name: 'Weather forecast', intro: 'The Central Weather Administration\'s "36-hour weather forecast". First register on the CWA open data platform to get your own authorization key.'}
   ],
@@ -30,14 +41,27 @@ Original plugin author: gasolin ([scratch3-internet](https://github.com/gasolin/
   blocks: {
     openEdiGreen: {
       summary: "Open Edimax's AirBox website in a new tab.",
-      detail: 'Find an AirBox near you on the map and look up its device ID (the MAC address string, for example `74DA38F208E2`).'
+      detail: `Click an AirBox on the map (a round icon) to see its **station name** (for example 明利國小), latitude and longitude, PM2.5, temperature and humidity.
+
+> The EdiGreen website **does not show device IDs**. Note the station name, then look up the device ID with [[openAirBoxDeviceData]].
+
+Diamond icons are Ministry of Environment stations; read them with [[getEPAData]], no device ID needed.`
     },
     openAirBoxDeviceData: {
       summary: 'Open the latest data of every AirBox (JSON) in a new tab.',
-      detail: 'It is long. `device_id` is the device ID and `s_d0` is PM2.5. Useful for teachers to look up device IDs in advance.'
+      detail: `This opens the data of every AirBox on LASS, one entry per device. To find a device ID by station name:
+
+- On the [[openEdiGreen]] map, click the AirBox you want and note its station name (for example 明利國小)
+- Open the data with this block (or open [this address](https://pm25.lass-net.org/data/last-all-airbox.json) directly)
+- Press **Ctrl+F** (⌘+F on a Mac) and search for the station name to find the entry with \`"name": "明利國小"\`
+- The \`"device_id"\` in the same entry is the device ID, for example \`"device_id": "74DA38ED059C"\`
+
+The same entry also has \`SiteName\` (the full name), \`gps_lat\` and \`gps_lon\` (latitude, longitude), which you can compare with the map to make sure it is the same device.
+
+> The data is long. In Chrome or Edge, tick "Pretty-print" at the top of the page to see one entry at a time more clearly.`
     },
     fetchLASS: {
-      args: {id: 'The AirBox device ID (12 letters or digits).'},
+      args: {id: 'The AirBox device ID (12 letters or digits, for example `74DA38ED059C`). See [[openAirBoxDeviceData]] for how to find it.'},
       summary: "Download this AirBox's latest data.",
       detail: `When the download finishes, [[onLASSReceived]] fires once.
 
@@ -150,8 +174,10 @@ Weather phenomenon and comfort are Chinese text from the CWA, also in the Englis
   ],
 
   faq: [
-    {q: 'The AirBox values are empty?', a: `- The device ID is wrong, or that AirBox has not uploaded data for a long time
+    {q: 'The AirBox values are empty?', a: `- As checked on 2026-11-22, LASS AirBox data stopped at 2026-09-01, so no AirBox can be read. Open [the data of all AirBoxes](https://pm25.lass-net.org/data/last-all-airbox.json) and check the \`version\` date at the end to see whether it has resumed
+- The device ID is wrong, or that AirBox has not uploaded data for a long time
 - The data was not downloaded yet when you read it: put the reading blocks under "When data is received from LASS"`},
+    {q: 'I cannot find the device ID (MAC address) on the EdiGreen map?', a: 'The EdiGreen map only shows station names, not device IDs. Note the station name, then open [the data of all AirBoxes](https://pm25.lass-net.org/data/last-all-airbox.json), press Ctrl+F and search for the name; the `device_id` in that entry is the device ID. See [[openAirBoxDeviceData]] for the full steps.'},
     {q: 'The weather forecast cannot be read?', a: `- Use your own key from the CWA open data platform
 - Wait a moment (about 2 seconds) after [[authorization]]
 - The network must be able to reach opendata.cwa.gov.tw`},
@@ -160,6 +186,7 @@ Weather phenomenon and comfort are Chinese text from the CWA, also in the Englis
   ],
 
   changelog: [
-    {date: '2026-11-22', text: 'Documentation page created'}
+    {date: '2026-11-22', text: 'Documentation page created'},
+    {date: '2026-11-22', text: 'Added related website links and steps to look up a device ID by station name; noted that LASS AirBox data has not been updated since 2026-09-01'}
   ]
 });

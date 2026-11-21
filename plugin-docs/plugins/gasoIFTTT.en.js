@@ -17,13 +17,18 @@ Each event can carry 3 values (value1 to value3). In the IFTTT action, use \`{{V
 
 > The plugin only sends. It cannot see whether IFTTT ran the action. To check, look at the Activity log on the IFTTT website.
 
-### Before you start (on the IFTTT website)
+### Before you start (on the [IFTTT website](https://ifttt.com/))
 - Sign up and create an Applet
 - For "If This", choose **Webhooks** → "Receive a web request" and enter an event name, for example \`scratch_score\`
 - For "Then That", choose the action (Email, Google Sheets…)
-- Find your **key** on the Webhooks service's settings (Documentation) page
+- On the [Webhooks service page](https://ifttt.com/maker_webhooks), click **Documentation** at the top right; the string after **Your key is** is your key
 
 > Whether Webhooks needs a paid plan, and which actions are available, is up to IFTTT's current terms.
+
+### Related websites
+- [IFTTT home](https://ifttt.com/): sign up, sign in, create Applets
+- [Webhooks service](https://ifttt.com/maker_webhooks): the service to choose for "If This"; Documentation shows your key and a test tool
+- [Webhooks settings](https://ifttt.com/maker_webhooks/settings): view or regenerate your key (sign-in required)
 
 Original plugin author: gasolin ([scratch3-internet](https://github.com/gasolin/scratch3-internet)).`,
 

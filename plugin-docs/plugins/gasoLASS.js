@@ -27,11 +27,11 @@ OSEP.addPlugin({
   "blockIcon": "",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_lass",
   "tagline": "讀取台灣的空氣品質與天氣資料：空氣盒子、環境部測站、氣象署天氣預報。",
-  "overview": "這個插件把台灣常用的三種開放資料帶進 Scratch，可以做空氣品質看板、出門提醒、天氣播報員等作品：\n\n| 資料 | 來源 | 需要 |\n|---|---|---|\n| 空氣盒子的 PM2.5、溫度、濕度 | LASS 開源公益環境感測網路 | 空氣盒子的設備編號 |\n| 測站的 AQI、PM2.5、PM10、臭氧 | 環境部空氣品質監測網 | 不用設定 |\n| 各縣市 36 小時天氣預報 | 中央氣象署開放資料平臺 | 自己的授權碼 |\n\n> 資料都是即時從網路下載的，網路不通或資料來源網站維修時就讀不到。\n\n插件原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
+  "overview": "這個插件把台灣常用的三種開放資料帶進 Scratch，可以做空氣品質看板、出門提醒、天氣播報員等作品：\n\n| 資料 | 來源 | 需要 |\n|---|---|---|\n| 空氣盒子的 PM2.5、溫度、濕度 | LASS 開源公益環境感測網路 | 空氣盒子的設備編號 |\n| 測站的 AQI、PM2.5、PM10、臭氧 | 環境部空氣品質監測網 | 不用設定 |\n| 各縣市 36 小時天氣預報 | 中央氣象署開放資料平臺 | 自己的授權碼 |\n\n> 資料都是即時從網路下載的，網路不通或資料來源網站維修時就讀不到。\n\n> ! 2026-11-22 檢查時，LASS 的空氣盒子資料停在 **2026-09-01**，之後沒有再更新，所以「LASS 空氣盒子」這一組積木目前讀不到資料（會是空的）。EdiGreen 地圖上的數值還有更新，但那是 Edimax 網站自己的資料，插件讀不到。環境部測站、氣象署的積木不受影響。\n\n### 相關網站\n- [LASS 開源公益環境感測網路](https://pm25.lass-net.org/)\n- [EdiGreen 空氣盒子地圖](https://airbox.edimaxcloud.com/)：找附近的空氣盒子、看站名\n- [全部空氣盒子的資料（JSON）](https://pm25.lass-net.org/data/last-all-airbox.json)：用站名查設備編號\n- [環境部空氣品質監測網](https://airtw.moenv.gov.tw/)：測站位置與即時 AQI\n- [中央氣象署開放資料平臺](https://opendata.cwa.gov.tw/)：註冊會員；登入後到 [取得授權碼](https://opendata.cwa.gov.tw/user/authkey) 頁面拿授權碼\n\n插件原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)）。",
   "groups": [
     {
       "name": "LASS 空氣盒子",
-      "intro": "讀取一台空氣盒子最新的感測值。先用 [[fetchLASS]] 下載，收到後 [[onLASSReceived]] 會觸發，再用 [[parseAttrFromLASS]] 讀值。",
+      "intro": "讀取一台空氣盒子最新的感測值。先用 [[fetchLASS]] 下載，收到後 [[onLASSReceived]] 會觸發，再用 [[parseAttrFromLASS]] 讀值。\n\n> ! 目前 LASS 的空氣盒子資料停在 2026-09-01（2026-11-22 檢查），這一組積木暫時讀不到資料。",
       "blocks": [
         {
           "opcode": "openEdiGreen",
@@ -39,7 +39,7 @@ OSEP.addPlugin({
           "text": "開啟 EdiGreen 空氣盒子網站",
           "textEn": "Open the EdiGreen AirBox website",
           "summary": "在新分頁開啟 Edimax 的空氣盒子網站。",
-          "detail": "可以在地圖上找附近的空氣盒子，查看它的設備編號（MAC 位址那一串，例如 `74DA38F208E2`）。"
+          "detail": "在地圖上點一個空氣盒子（圓形的圖示），會跳出它的**站名**（例如「明利國小」）、經緯度、PM2.5、溫度和濕度。\n\n> EdiGreen 網站**不會顯示設備編號**。記下站名，再用 [[openAirBoxDeviceData]] 查出設備編號。\n\n菱形的圖示是環境部的測站，要用 [[getEPAData]] 讀，不需要設備編號。"
         },
         {
           "opcode": "openAirBoxDeviceData",
@@ -47,7 +47,7 @@ OSEP.addPlugin({
           "text": "開啟空氣盒子設備資料",
           "textEn": "Open the AirBox device data",
           "summary": "在新分頁開啟所有空氣盒子的最新資料（JSON）。",
-          "detail": "資料很長，裡面的 `device_id` 就是設備編號，`s_d0` 是 PM2.5。適合老師先找好要用的設備編號。"
+          "detail": "打開的是 LASS 上所有空氣盒子的資料，每一台一筆。用站名查設備編號的步驟：\n\n- 先在 [[openEdiGreen]] 的地圖上點選想用的空氣盒子，記下站名（例如「明利國小」）\n- 用這塊積木打開資料（或直接開 [這個網址](https://pm25.lass-net.org/data/last-all-airbox.json)）\n- 按 **Ctrl＋F**（Mac 是 ⌘＋F）搜尋站名，找到 `\"name\": \"明利國小\"` 那一筆\n- 同一筆裡的 `\"device_id\"` 就是設備編號，例如 `\"device_id\": \"74DA38ED059C\"`\n\n同一筆裡還有 `SiteName`（完整名稱，例如「花蓮縣立明利國小」）、`gps_lat`、`gps_lon`（緯度、經度），可以和地圖上的經緯度對照，確認是同一台。\n\n> 瀏覽器顯示的資料很長。Chrome、Edge 可以勾選畫面上方的「美化排版」（Pretty-print），一筆一筆比較好看。"
         },
         {
           "opcode": "fetchLASS",
@@ -58,7 +58,7 @@ OSEP.addPlugin({
             "id": {
               "type": "string",
               "value": "74DA38F208E2",
-              "desc": "空氣盒子的設備編號（12 個英文字母或數字）。"
+              "desc": "空氣盒子的設備編號（12 個英文字母或數字，例如 `74DA38ED059C`）。找法見 [[openAirBoxDeviceData]]。"
             }
           },
           "summary": "下載這台空氣盒子最新的資料。",
@@ -609,7 +609,11 @@ OSEP.addPlugin({
   "faq": [
     {
       "q": "空氣盒子讀到的值是空的？",
-      "a": "- 設備編號打錯，或那台空氣盒子已經很久沒有上傳資料\n- 讀值時資料還沒下載完：把讀值的積木放在「當收到 LASS 資料時」底下"
+      "a": "- 2026-11-22 檢查時，LASS 的空氣盒子資料停在 2026-09-01 沒有更新，所有空氣盒子都讀不到。可以打開 [全部空氣盒子的資料](https://pm25.lass-net.org/data/last-all-airbox.json) 看最後的 `version` 日期，確認資料有沒有恢復\n- 設備編號打錯，或那台空氣盒子已經很久沒有上傳資料\n- 讀值時資料還沒下載完：把讀值的積木放在「當收到 LASS 資料時」底下"
+    },
+    {
+      "q": "在 EdiGreen 地圖上找不到設備編號（MAC 位址）？",
+      "a": "EdiGreen 地圖只顯示站名，不顯示設備編號。記下站名，再到 [全部空氣盒子的資料](https://pm25.lass-net.org/data/last-all-airbox.json) 用 Ctrl＋F 搜尋站名，同一筆的 `device_id` 就是設備編號。詳細步驟見 [[openAirBoxDeviceData]]。"
     },
     {
       "q": "天氣預報讀不到？",
@@ -628,6 +632,10 @@ OSEP.addPlugin({
     {
       "date": "2026-11-22",
       "text": "建立說明頁"
+    },
+    {
+      "date": "2026-11-22",
+      "text": "加上相關網站連結、用站名查設備編號的步驟；註明 LASS 空氣盒子資料自 2026-09-01 起沒有更新"
     }
   ]
 });

@@ -14,11 +14,16 @@ ThingSpeak keeps data in "channels", and each channel has 8 fields (field1 to fi
 - **Write**: set the write key → fill in the fields to send → send
 - **Read**: download data with the read key and channel ID, then take it apart with the JSON plugin
 
-### Before you start (on the ThingSpeak website)
-- Sign up and create a channel (New Channel), ticking the fields you want
+### Before you start (on the [ThingSpeak website](https://thingspeak.mathworks.com/))
+- Sign up for a MathWorks account and sign in, then click **New Channel** on [My Channels](https://thingspeak.mathworks.com/channels) and tick the fields you want (Field 1 to 8)
 - The channel's "API Keys" page shows the **Write API Key**, **Read API Key** and **Channel ID**
 
 > Free accounts can only send data at intervals (about once every 15 seconds); data sent too fast is dropped. Check ThingSpeak's website for the current limits.
+
+### Related websites
+- [ThingSpeak home](https://thingspeak.mathworks.com/): sign up, sign in
+- [My Channels](https://thingspeak.mathworks.com/channels): your channels; open one to see its charts and API Keys (sign-in required)
+- [Create a new channel](https://thingspeak.mathworks.com/channels/new) (sign-in required)
 
 Original plugin author: gasolin ([scratch3-internet](https://github.com/gasolin/scratch3-internet)).`,
 

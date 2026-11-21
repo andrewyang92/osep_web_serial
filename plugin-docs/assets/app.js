@@ -237,7 +237,10 @@
             const label = b.text.replace(/\s*\[[A-Za-z0-9_]+\]\s*/g, ' ( ) ').replace(/\s+/g, ' ').trim();
             return `<a class="blkref" href="#/p/${pid}/${op}">${esc(T('q', label))}</a>`;
         })
-        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+|#[^)\s]*)\)/g, '<a href="$2"$3>$1</a>'.replace('$3', ''));
+        // 外部網站在新分頁打開，站內連結（#…）照常
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+|#[^)\s]*)\)/g, (m, text, href) =>
+            (href.charAt(0) === '#' ? `<a href="${href}">${text}</a>` :
+                `<a href="${href}" target="_blank" rel="noopener">${text}</a>`));
     const md = (src, plugin) => {
         if (!src) return '';
         if (Array.isArray(src)) src = src.join('\n\n');
