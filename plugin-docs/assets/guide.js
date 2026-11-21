@@ -127,6 +127,12 @@ window.OSEP_GUIDE_HTML = `
 </tbody></table></div>
 <p>想讓好幾段腳本並排（例如兩段同時開始的綠旗腳本），把 <code>script</code> 寫成陣列的陣列：<code>script: [[…第一段…], […第二段…]]</code>。</p>
 
+<h3>產生可以下載的範例檔（.sb3）</h3>
+<p>範例寫好後，在 <code>plugin-docs</code> 資料夾執行：</p>
+<pre><code>node tools/make-examples.js            （全部插件）
+node tools/make-examples.js 插件id      （只做一個插件）</code></pre>
+<p>工具會把每個範例（中文、英文各一份）轉成 <code>examples/&lt;插件id&gt;/zh-1.sb3</code>、<code>en-1.sb3</code>…，並更新 <code>plugins/examples.js</code>，範例旁邊就會出現「下載範例檔」按鈕。範例用到的造型會做成寫著名字的示意圖，音效先用「喵」代替，專案裡的註解會提醒使用者替換。內建積木要在工具的對照表（<code>CORE</code>）裡才轉得出來，沒有的會印出 ⚠。</p>
+
 <h2>調整插件的順序或暫時隱藏</h2>
 <p>編輯 <code>plugins/list.js</code>：網站依這裡的順序顯示；把某一行刪掉（或在前面加 <code>//</code>）就不會顯示那個插件。</p>
 
@@ -259,6 +265,12 @@ window.OSEP_GUIDE_HTML_EN = `
 <tr><td><code>{use: 'getAnswer'}</code> or <code>{t: '…', type: 'reporter'}</code></td><td>A block inside the input</td></tr>
 </tbody></table></div>
 <p>To show several scripts side by side (for example two green-flag scripts that start together), make <code>script</code> an array of arrays: <code>script: [[…first…], […second…]]</code>.</p>
+
+<h3>Make downloadable example files (.sb3)</h3>
+<p>After writing the examples, run this in the <code>plugin-docs</code> folder:</p>
+<pre><code>node tools/make-examples.js            (all plugins)
+node tools/make-examples.js pluginId    (one plugin)</code></pre>
+<p>The tool turns every example (one Chinese and one English copy) into <code>examples/&lt;plugin id&gt;/zh-1.sb3</code>, <code>en-1.sb3</code> and so on, and updates <code>plugins/examples.js</code>, so a "Download example" button appears next to each example. Costumes used in an example become placeholder images showing their names, and sounds use "Meow" for now; a comment in the project reminds users to replace them. Built-in blocks must be in the tool's table (<code>CORE</code>); missing ones are reported with ⚠.</p>
 
 <h2>Change the plugin order or hide a plugin</h2>
 <p>Edit <code>plugins/list.js</code>. The site follows this order. Delete a line (or put <code>//</code> in front of it) to hide that plugin.</p>

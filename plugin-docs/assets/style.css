@@ -410,6 +410,10 @@ img { max-width: 100%; }
     border-bottom: 1px solid #E3E3E8;
     padding-bottom: 4px;
 }
+/* 範例檔下載按鈕 */
+.example-head .ex-dl { margin-top: 10px; font-size: 14.5px; padding: 7px 16px; }
+.example-head .ex-dls { display: flex; flex-wrap: wrap; gap: 8px; }
+.example-head .ex-dl-tip { font-size: 13px; color: var(--ink-3); margin-top: 6px; }
 .palette-group { min-width: 0; }
 .palette-group.wide { grid-column: 1 / -1; }
 .palette-group .pal-item { margin-bottom: 14px; }

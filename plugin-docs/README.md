@@ -24,6 +24,8 @@ plugins/
   decisionTree.js / .en.js
 images/<插件id>/        card.png、small.svg、block-icon.svg
 tools/extract-plugin.js 從插件原始碼產生／同步資料檔
+tools/make-examples.js  把範例轉成可下載的 .sb3（examples/<插件id>/zh-1.sb3、en-1.sb3…，清單在 plugins/examples.js）
+examples/               範例檔（工具產生）
 ```
 
 ## 新增一個插件（3 步）
