@@ -4,6 +4,7 @@
 
 - 打開：直接雙擊 `index.html`（不需要伺服器），或放到 GitHub Pages
 - 網站內的「新增插件」頁面有完整的圖文步驟
+- 中文／English：右上角的按鈕切換，或網址加 `?lang=en`（選過的語言會記住）
 
 ## 資料夾
 
@@ -16,9 +17,11 @@ assets/                 網站程式（一般不用改）
   style.css             樣式
 plugins/
   list.js              要顯示哪些插件、順序
-  claude.js             一個插件一個檔案
-  textSentiment.js
-  faceExpressionMediapipe.js
+  claude.js             一個插件一個檔案（積木資料＋中文說明）
+  claude.en.js          英文說明（OSEP.addText），沒有就顯示中文
+  textSentiment.js / .en.js
+  faceExpressionMediapipe.js / .en.js
+  decisionTree.js / .en.js
 images/<插件id>/        card.png、small.svg、block-icon.svg
 tools/extract-plugin.js 從插件原始碼產生／同步資料檔
 ```
@@ -31,7 +34,9 @@ node tools/extract-plugin.js ../node_modules/scratch-vm/src/extensions/scratch3_
 
 # 2. 把卡片圖複製到 images/<插件id>/card.png 與 small.svg
 
-# 3. 打開 plugins/<插件id>.js，把 TODO 換成說明，雙擊 index.html 檢查
+# 3. 打開 plugins/<插件id>.js，把 TODO 換成說明
+
+# 4. 新增 plugins/<插件id>.en.js 寫英文說明（格式見「新增插件」頁），雙擊 index.html 檢查
 ```
 
 插件更新後再執行一次第 1 步，就能同步積木文字與參數，已寫好的說明會保留。

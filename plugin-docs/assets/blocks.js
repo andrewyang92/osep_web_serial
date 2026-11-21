@@ -70,7 +70,7 @@
             const p = window.OSEP && window.OSEP.get(pid);
             const b = p && window.OSEP.findBlock(p, op);
             if (!b) {
-                return {type: 'command', text: `⚠ 找不到積木 ${node.use}`, colors: ['#9AA0A6', '#8A9096', '#6B7177'], argDefs: {}, argVals: {}};
+                return {type: 'command', text: `⚠ ${window.OSEP_LANG === 'en' ? 'block not found:' : '找不到積木'} ${node.use}`, colors: ['#9AA0A6', '#8A9096', '#6B7177'], argDefs: {}, argVals: {}};
             }
             return {
                 type: node.type || b.type,
@@ -182,7 +182,7 @@
             if (r.elseBody) {
                 const mid = el('div', 'blk c-mid');
                 setColors(mid, r.colors);
-                mid.appendChild(el('span', 'blk-label', r.elseText || '否則'));
+                mid.appendChild(el('span', 'blk-label', r.elseText || (window.OSEP_LANG === 'en' ? 'else' : '否則')));
                 wrap.appendChild(mid);
                 wrap.appendChild(mouth(r.elseBody));
             }

@@ -145,7 +145,7 @@ const menuItems = (info, menuName) => {
     const m = info.menus && info.menus[menuName];
     if (!m) return null;
     const items = Array.isArray(m) ? m : m.items;
-    if (!Array.isArray(items)) return {dynamic: true};
+    if (!Array.isArray(items)) return {dynamic: true, acceptReporters: !Array.isArray(m) && !!m.acceptReporters};
     return {
         acceptReporters: !Array.isArray(m) && !!m.acceptReporters,
         items: items.map(it => (typeof it === 'object' ? {text: String(it.text), value: String(it.value)} : {text: String(it), value: String(it)}))
@@ -156,25 +156,37 @@ const convertArgs = (blockZh, blockEn) => {
     const out = {};
     Object.keys(blockZh.arguments || {}).forEach(name => {
         const a = blockZh.arguments[name];
+        const aEn = (blockEn.arguments || {})[name] || {};
         const arg = {};
+        const str = v => String(v === undefined || v === null ? '' : v);
         if (a.menu) {
             const mz = menuItems(infoZh, a.menu);
+            const me = menuItems(infoEn, aEn.menu || a.menu);
             arg.type = 'menu';
             if (mz && !mz.dynamic) {
                 arg.options = mz.items.map(i => i.text);
-                const def = mz.items.find(i => i.value === String(a.defaultValue));
-                arg.value = def ? def.text : String(a.defaultValue === undefined ? '' : a.defaultValue);
+                const def = mz.items.find(i => i.value === str(a.defaultValue));
+                arg.value = def ? def.text : str(a.defaultValue);
                 arg.values = mz.items.map(i => i.value);
+                if (me && !me.dynamic) {
+                    arg.optionsEn = me.items.map(i => i.text);
+                    const defEn = me.items.find(i => i.value === str(aEn.defaultValue));
+                    arg.valueEn = defEn ? defEn.text : str(aEn.defaultValue);
+                }
                 if (mz.acceptReporters) arg.acceptReporters = true;
             } else {
-                arg.value = String(a.defaultValue === undefined ? '' : a.defaultValue);
+                arg.value = str(a.defaultValue);
+                arg.valueEn = str(aEn.defaultValue);
                 arg.dynamic = true;
+                if (mz && mz.acceptReporters) arg.acceptReporters = true;
             }
         } else {
             const t = String(a.type || 'string');
             arg.type = t === 'number' || t === 'angle' ? 'number' : t === 'Boolean' ? 'boolean' : t === 'color' ? 'color' : 'string';
-            if (a.defaultValue !== undefined) arg.value = String(a.defaultValue);
+            if (a.defaultValue !== undefined) arg.value = str(a.defaultValue);
+            if (aEn.defaultValue !== undefined) arg.valueEn = str(aEn.defaultValue);
         }
+        if (arg.valueEn === arg.value) delete arg.valueEn;
         out[name] = arg;
     });
     return out;
@@ -243,7 +255,10 @@ const newGroups = groups.filter(g => g.length).map((blocks, gi) => {
                 });
                 if (nb.args && ob.args) {
                     Object.keys(nb.args).forEach(k => {
-                        if (ob.args[k] && ob.args[k].desc) nb.args[k].desc = ob.args[k].desc;
+                        const od = ob.args[k];
+                        // 手寫檔可以只寫說明文字：args: {NAME: '說明'}
+                        if (typeof od === 'string') nb.args[k].desc = od;
+                        else if (od && od.desc) nb.args[k].desc = od.desc;
                     });
                 }
             }

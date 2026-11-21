@@ -117,6 +117,7 @@ OSEP.addPlugin({
             "SYSTEM": {
               "type": "string",
               "value": "你是親切的助教，請用繁體中文簡短回答。",
+              "valueEn": "You are a friendly assistant. Answer briefly.",
               "desc": "對 Claude 的角色說明與規則，例如身份、說話方式、回答長度、要用什麼語言。"
             }
           },
@@ -138,6 +139,10 @@ OSEP.addPlugin({
               ],
               "value": "claude-haiku-5-5",
               "values": [
+                "claude-haiku-5-5",
+                "claude-sonnet-5-5"
+              ],
+              "optionsEn": [
                 "claude-haiku-5-5",
                 "claude-sonnet-5-5"
               ],
@@ -165,6 +170,11 @@ OSEP.addPlugin({
                 "on",
                 "off"
               ],
+              "optionsEn": [
+                "on",
+                "off"
+              ],
+              "valueEn": "on",
               "acceptReporters": true,
               "desc": "開啟或關閉對話記憶。"
             }
@@ -225,6 +235,7 @@ OSEP.addPlugin({
             "QUESTION": {
               "type": "string",
               "value": "你好！用一句話介紹你自己。",
+              "valueEn": "Hello! Introduce yourself in one sentence.",
               "desc": "要問 Claude 的話。可以放「詢問的答案」、變數或字串組合。"
             }
           },
@@ -257,6 +268,7 @@ OSEP.addPlugin({
             "QUESTION": {
               "type": "string",
               "value": "你好！用一句話介紹你自己。",
+              "valueEn": "Hello! Introduce yourself in one sentence.",
               "desc": "要問 Claude 的話。"
             }
           },
@@ -287,6 +299,7 @@ OSEP.addPlugin({
             "QUESTION": {
               "type": "string",
               "value": "舞台上有什麼？",
+              "valueEn": "What do you see on the stage?",
               "desc": "關於舞台畫面的問題。"
             }
           },

@@ -75,6 +75,12 @@ OSEP.addPlugin({
                 "on",
                 "on-flipped"
               ],
+              "optionsEn": [
+                "off",
+                "on",
+                "on flipped"
+              ],
+              "valueEn": "on",
               "desc": "「開啟」畫面像照鏡子；「翻轉」畫面左右不鏡像；「關閉」關掉攝影機。"
             }
           },
@@ -159,6 +165,16 @@ OSEP.addPlugin({
                 "disgusted",
                 "surprised"
               ],
+              "optionsEn": [
+                "neutral",
+                "happy",
+                "sad",
+                "angry",
+                "fearful",
+                "disgusted",
+                "surprised"
+              ],
+              "valueEn": "happy",
               "acceptReporters": true,
               "desc": "要等待的情緒。"
             }
@@ -194,6 +210,16 @@ OSEP.addPlugin({
                 "disgusted",
                 "surprised"
               ],
+              "optionsEn": [
+                "neutral",
+                "happy",
+                "sad",
+                "angry",
+                "fearful",
+                "disgusted",
+                "surprised"
+              ],
+              "valueEn": "happy",
               "acceptReporters": true,
               "desc": "要比較的情緒。"
             }
@@ -247,6 +273,16 @@ OSEP.addPlugin({
                 "disgusted",
                 "surprised"
               ],
+              "optionsEn": [
+                "neutral",
+                "happy",
+                "sad",
+                "angry",
+                "fearful",
+                "disgusted",
+                "surprised"
+              ],
+              "valueEn": "happy",
               "acceptReporters": true,
               "desc": "要查分數的情緒。"
             }
@@ -296,6 +332,20 @@ OSEP.addPlugin({
                 "mouthFrown",
                 "eyeWide"
               ],
+              "optionsEn": [
+                "smile",
+                "mouth open",
+                "left eye closed",
+                "right eye closed",
+                "eyebrows raised",
+                "eyebrows lowered",
+                "pucker lips",
+                "cheek puff",
+                "nose wrinkle",
+                "mouth corners down",
+                "eyes wide open"
+              ],
+              "valueEn": "smile",
               "acceptReporters": true,
               "desc": "要讀取的臉部動作。"
             }
@@ -391,6 +441,16 @@ OSEP.addPlugin({
                 "pitch",
                 "roll"
               ],
+              "optionsEn": [
+                "x",
+                "y",
+                "width",
+                "height",
+                "turn left/right (°)",
+                "look up/down (°)",
+                "tilt (°)"
+              ],
+              "valueEn": "x",
               "acceptReporters": true,
               "desc": "要讀取的位置或角度。"
             }

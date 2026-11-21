@@ -73,6 +73,12 @@ OSEP.addPlugin({
                 "zh",
                 "en"
               ],
+              "optionsEn": [
+                "all",
+                "Chinese",
+                "English"
+              ],
+              "valueEn": "all",
               "desc": "要載入哪個語言的模型。只會用到中文的作品選「中文」，下載量比較少。"
             }
           },
@@ -99,6 +105,12 @@ OSEP.addPlugin({
                 "zh",
                 "en"
               ],
+              "optionsEn": [
+                "all",
+                "Chinese",
+                "English"
+              ],
+              "valueEn": "all",
               "desc": "要檢查的模型。「全部」代表中文和英文都要就緒。"
             }
           },
@@ -154,6 +166,7 @@ OSEP.addPlugin({
             "defaultText": {
               "type": "string",
               "value": "請輸入文字",
+              "valueEn": "Please enter text",
               "desc": "要分析的文字，常放「詢問的答案」或變數。超過 500 個字只會分析前 500 個字。"
             }
           },
