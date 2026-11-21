@@ -449,7 +449,7 @@ img { max-width: 100%; }
     justify-content: space-between;
     gap: 16px;
 }
-.bcard-top .blk-area { overflow-x: auto; padding-bottom: 4px; min-width: 0; }
+.bcard-top .blk-area { overflow-x: auto; overflow-y: hidden; padding: 2px 0 8px; min-width: 0; }
 .btype {
     flex: none;
     font-size: 12.5px;

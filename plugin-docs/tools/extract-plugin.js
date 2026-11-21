@@ -108,6 +108,20 @@ setGlobal('window', global);
 setGlobal('document', makeStub());
 setGlobal('navigator', {userAgent: 'node', language: 'zh-TW'});
 setGlobal('localStorage', {getItem: () => null, setItem () {}, removeItem () {}});
+// 建構時就開攝影機、發網路請求的插件（例如 tm2scratch、tmpose2scratch）
+setGlobal('XMLHttpRequest', function () {
+    return makeStub();
+});
+try {
+    if (global.navigator && !global.navigator.mediaDevices) {
+        Object.defineProperty(global.navigator, 'mediaDevices', {
+            value: {getUserMedia: () => new Promise(() => {}), enumerateDevices: () => Promise.resolve([])},
+            configurable: true
+        });
+    }
+} catch (e) {
+    // 改不了就算了
+}
 
 let formatMessage;
 try {

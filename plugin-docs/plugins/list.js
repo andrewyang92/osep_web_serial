@@ -8,4 +8,7 @@ OSEP_PLUGIN_LIST = [
     'gasoThingSpeak',
     'gasoLASS',
     'gasoJSON',
+    'qrcode',
+    'tm2scratch',
+    'tmpose2scratch',
 ];
