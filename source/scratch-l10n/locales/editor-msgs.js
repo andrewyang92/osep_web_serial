@@ -60594,6 +60594,8 @@ export default {
     "gui.extension.faceExpressionMediapipe.description":"使用 MediaPipe 辨識臉部表情、臉部動作與頭部角度",
     "gui.extension.decisionTree.title":"決策樹",
     "gui.extension.decisionTree.description":"用 Google 試算表的資料訓練決策樹，畫出樹狀圖並進行預測",
+    "gui.extension.yoloDetection.title":"YOLO 物件辨識",
+    "gui.extension.yoloDetection.description":"用 YOLO 辨識圖片、舞台或攝影機畫面中的人、動物和物品",
     "gui.extension.claude.description":"使用 Claude 的人工智慧模型進行自然語言處理任務",
   }
 };

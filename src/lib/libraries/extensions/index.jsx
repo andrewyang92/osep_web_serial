@@ -160,6 +160,8 @@ import faceExpressionMediapipeImage from "./faceExpressionMediapipe/faceExpressi
 import faceExpressionMediapipeIconURL from "./faceExpressionMediapipe/faceExpressionMediapipe-small.svg";
 import decisionTreeImage from "./decisionTree/decisionTree.png";
 import decisionTreeIconURL from "./decisionTree/decisionTree-small.svg";
+import yoloDetectionImage from "./yoloDetection/yoloDetection.png";
+import yoloDetectionIconURL from "./yoloDetection/yoloDetection-small.svg";
 
 const version = "v2-0.2.4";
 
@@ -1419,6 +1421,30 @@ const extensions = [
     featured: true,
     disabled: false,
     internetConnectionRequired: false,
+    useAutoScan: false,
+  },
+  {
+    name: (
+      <FormattedMessage
+        defaultMessage="YOLO Object Detection"
+        description="YOLO object detection"
+        id="gui.extension.yoloDetection.title"
+      />
+    ),
+    extensionId: "yoloDetection",
+    collaborator: "Andrew Yang",
+    iconURL: yoloDetectionImage,
+    insetIconURL: yoloDetectionIconURL,
+    description: (
+      <FormattedMessage
+        defaultMessage="Detect people, animals and objects in images, the stage or the camera with YOLO."
+        description="YOLO object detection for images, stage and video."
+        id="gui.extension.yoloDetection.description"
+      />
+    ),
+    featured: true,
+    disabled: false,
+    internetConnectionRequired: true,
     useAutoScan: false,
   },
 ];

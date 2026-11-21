@@ -74200,7 +74200,8 @@ const builtinExtensions = {
   claude: () => __webpack_require__(/*! ../extensions/scratch3_claude */ "./node_modules/scratch-vm/src/extensions/scratch3_claude/index.js"),
   textSentimentTF: () => __webpack_require__(/*! ../extensions/scratch3_textSentimentTF */ "./node_modules/scratch-vm/src/extensions/scratch3_textSentimentTF/index.js"),
   faceExpressionMediapipe: () => __webpack_require__(/*! ../extensions/scratch3_faceExpressionMediapipe */ "./node_modules/scratch-vm/src/extensions/scratch3_faceExpressionMediapipe/index.js"),
-  decisionTree: () => __webpack_require__(/*! ../extensions/scratch3_decisionTree */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/index.js")
+  decisionTree: () => __webpack_require__(/*! ../extensions/scratch3_decisionTree */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/index.js"),
+  yoloDetection: () => __webpack_require__(/*! ../extensions/scratch3_yoloDetection */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/index.js")
 };
 builtinExtensions['qrcode'] = () => __webpack_require__(/*! ../extensions/scratch3_qrcode */ "./node_modules/scratch-vm/src/extensions/scratch3_qrcode/index.js");
 builtinExtensions['tmpose2scratch'] = () => __webpack_require__(/*! ../extensions/scratch3_tmpose2scratch */ "./node_modules/scratch-vm/src/extensions/scratch3_tmpose2scratch/index.js");
@@ -84757,6 +84758,7 @@ class Scratch3Claude {
                 {
                     opcode: 'setAccessCode',
                     blockType: BlockType.COMMAND,
+                    hideFromPalette: true, // 中繼暫停使用（2026-11-21）；舊專案裡的積木仍可執行
                     text: msg.set_access_code[L],
                     arguments: {
                         CODE: {type: ArgumentType.STRING, defaultValue: ' '}
@@ -84773,6 +84775,7 @@ class Scratch3Claude {
                 {
                     opcode: 'setProxyUrl',
                     blockType: BlockType.COMMAND,
+                    hideFromPalette: true, // 中繼暫停使用（2026-11-21）；舊專案裡的積木仍可執行
                     text: msg.set_proxy_url[L],
                     arguments: {
                         URL: {type: ArgumentType.STRING, defaultValue: 'https://script.google.com/macros/s/.../exec'}
@@ -85374,7 +85377,7 @@ module.exports = {
  *
  * PROXY_URL：Google Apps Script 中繼的網址（部署成網頁應用程式後取得，
  *            長得像 https://script.google.com/macros/s/xxxxxxxx/exec）。
- *            設定後，使用者不需要自己的 Claude 金鑰就能使用。
+ *            設定後，使用者不需要自己的 Claude 金鑰就能使用（目前留空，不提供）。
  *            這個網址不是金鑰；真正的金鑰存在 GAS 的「指令碼屬性」裡，不會出現在網頁中。
  *            設定方式見 gas/README.md。
  *
@@ -85382,7 +85385,8 @@ module.exports = {
  * 網站是公開的，金鑰會被打包進 lib.min.js，任何人都看得到。
  */
 module.exports = {
-    PROXY_URL: 'https://script.google.com/macros/s/AKfycby5F02NvF3IWRhA3-yYLmHERDD5WKizp0Alal2cOugT7gpOfKTaGBCX1ekwHOzQd4RA5A/exec'
+    // 2026-11-21 起不提供預設中繼：使用者要用「Claude金鑰」積木輸入自己的 API 金鑰
+    PROXY_URL: ''
 };
 
 
@@ -85503,8 +85507,8 @@ exports.status_truncated = {
 // 錯誤（key = ClaudeClient 的錯誤 code）
 exports.errors = {
     NO_KEY: {
-        'en': 'Please set an API key or relay URL first',
-        'zh-tw': '請先設定 Claude API 金鑰或中繼網址'
+        'en': 'Please set your Claude API key first (Claude API key block)',
+        'zh-tw': '請先用「Claude金鑰」積木設定你的 Claude API 金鑰'
     },
     DAILY_LIMIT: {
         'en': 'Daily usage limit reached, try again tomorrow',
@@ -89014,6 +89018,1582 @@ module.exports = {
     st_missing: t('Input is missing: {list}', '預測資料缺少：{list}'),
 
     unknownMark: t('(not seen)', '（沒看過）')
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/index.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * YOLO 物件辨識（YOLOX，COCO 80 類）
+ *
+ * - 模型：YOLOX-Nano（快速）/ YOLOX-Tiny（準確），Megvii，Apache 2.0，放在網站的 static（見 yolo-config.js）
+ * - onnxruntime-web 執行期從 CDN 載入；有 WebGPU 用 GPU，沒有或失敗就用 CPU（見 yolo-loader.js）
+ * - 來源：Scratch 視訊（連續辨識）、舞台畫面、圖片網址、上傳圖片檔
+ * - 結果用舞台座標（x、y 是框的中心），視訊鏡像時左右跟著翻轉，和舞台上看到的一致
+ *
+ * 重要：不可使用 async/await（專案 babel 會產生需要 regeneratorRuntime 的程式，
+ * GUI 沒有載入它）。全部用 Promise。
+ */
+const ArgumentType = __webpack_require__(/*! ../../extension-support/argument-type */ "./node_modules/scratch-vm/src/extension-support/argument-type.js");
+const BlockType = __webpack_require__(/*! ../../extension-support/block-type */ "./node_modules/scratch-vm/src/extension-support/block-type.js");
+const formatMessage = __webpack_require__(/*! format-message */ "./node_modules/format-message/index.js");
+const msg = __webpack_require__(/*! ./translation */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/translation.js");
+const core = __webpack_require__(/*! ./yolo-core */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-core.js");
+const config = __webpack_require__(/*! ./yolo-config */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-config.js");
+const loader = __webpack_require__(/*! ./yolo-loader */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-loader.js");
+const YoloOverlay = __webpack_require__(/*! ./yolo-overlay */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-overlay.js");
+
+// 原創圖示：辨識框 + 標籤
+const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
+    '<rect x="1" y="1" width="38" height="38" rx="9" fill="#6A35D9"/>' +
+    '<rect x="8" y="12" width="24" height="20" rx="2" fill="none" stroke="#FFFFFF" stroke-width="2.4"/>' +
+    '<rect x="8" y="7" width="15" height="7" rx="1.5" fill="#FFD43B"/>' +
+    '<circle cx="20" cy="22" r="4.2" fill="#FFFFFF"/>' +
+    '<circle cx="20" cy="22" r="1.8" fill="#6A35D9"/>' +
+    '</svg>';
+const menuIconURI = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+const blockIconURI = menuIconURI;
+
+const DEFAULT_THRESHOLD = 0.5;
+// 用 CPU 辨識視訊時，每次辨識後至少休息這麼久（毫秒，乘上辨識花的時間），讓 Scratch 不會卡
+const CPU_REST_RATIO = 1;
+
+const STATUS = {
+    IDLE: 'idle',
+    LOADING: 'loading',
+    READY: 'ready',
+    CAMERA: 'camera',
+    RUNNING: 'running',
+    DETECTING: 'detecting',
+    DONE: 'done',
+    CHOOSING: 'choosing',
+    CANCELLED: 'cancelled',
+    STOPPED: 'stopped',
+    VIDEO_OFF: 'videoOff',
+    ERR_CAMERA: 'errCamera',
+    ERR_LIBRARY: 'errLibrary',
+    ERR_DOWNLOAD: 'errDownload',
+    ERR_MODEL: 'errModel',
+    ERR_IMAGE: 'errImage',
+    ERR_OTHER: 'errOther'
+};
+const STAGE_TO_STATUS = {
+    library: STATUS.ERR_LIBRARY,
+    download: STATUS.ERR_DOWNLOAD,
+    model: STATUS.ERR_MODEL,
+    image: STATUS.ERR_IMAGE,
+    camera: STATUS.ERR_CAMERA
+};
+
+const statusError = (code, message) => {
+    const err = new Error(message);
+    err.statusCode = code;
+    return err;
+};
+
+let theLocale = 'en';
+
+// ---------- 瀏覽器預設的輸入方式（測試時用 deps 取代） ----------
+
+/** 把圖片 / 視訊 / 畫布縮放成模型輸入 */
+const browserPrepareInput = (() => {
+    let canvas = null;
+    let ctx = null;
+    return (source, srcWidth, srcHeight, size) => {
+        if (!canvas) {
+            canvas = document.createElement('canvas');
+            ctx = canvas.getContext('2d', {willReadFrequently: true});
+        }
+        if (canvas.width !== size) {
+            canvas.width = size;
+            canvas.height = size;
+        }
+        const lb = core.letterbox(srcWidth, srcHeight, size);
+        ctx.fillStyle = `rgb(${core.PAD_VALUE},${core.PAD_VALUE},${core.PAD_VALUE})`;
+        ctx.fillRect(0, 0, size, size);
+        ctx.drawImage(source, 0, 0, lb.width, lb.height);
+        const pixels = ctx.getImageData(0, 0, size, size).data;
+        return {input: core.rgbaToInput(pixels, size), scale: lb.scale};
+    };
+})();
+
+/** 讀取圖片網址（需要對方允許跨網域，否則畫布無法讀取像素） */
+const browserLoadImage = url => new Promise((resolve, reject) => {
+    const img = new Image();
+    if (!/^(data|blob):/i.test(url)) img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(statusError(STATUS.ERR_IMAGE, url));
+    img.src = url;
+});
+
+/**
+ * 讓使用者選一張圖片檔
+ * 瀏覽器只允許在使用者剛點擊後開檔案視窗；如果不行，就跳出一個小對話框讓他按按鈕
+ * @returns {Promise<string|null>} 圖片的 blob 網址；取消回傳 null
+ */
+const browserChooseFile = (texts, cancelSignal) => new Promise(resolve => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    let dialog = null;
+    let done = false;
+    const finish = value => {
+        if (done) return;
+        done = true;
+        if (dialog) dialog.remove();
+        input.remove();
+        resolve(value);
+    };
+    cancelSignal.cancel = () => finish(null);
+    input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        finish(file ? URL.createObjectURL(file) : null);
+    });
+    input.addEventListener('cancel', () => finish(null));
+
+    const ua = navigator.userActivation;
+    if (!ua || ua.isActive) {
+        input.click();
+        return;
+    }
+    // 沒有使用者點擊（例如由計時器觸發）：顯示按鈕讓使用者點
+    dialog = document.createElement('div');
+    dialog.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;' +
+        'justify-content:center;background:rgba(0,0,0,.35);font-family:sans-serif;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:10px;padding:20px 24px;box-shadow:0 6px 24px rgba(0,0,0,.3);' +
+        'text-align:center;min-width:240px;';
+    const title = document.createElement('div');
+    title.textContent = texts.title;
+    title.style.cssText = 'font-size:16px;margin-bottom:14px;color:#333;';
+    const pick = document.createElement('button');
+    pick.textContent = texts.button;
+    pick.style.cssText = 'font-size:15px;padding:8px 16px;margin:0 6px;border:0;border-radius:6px;' +
+        'background:#6A35D9;color:#fff;cursor:pointer;';
+    const cancel = document.createElement('button');
+    cancel.textContent = texts.cancel;
+    cancel.style.cssText = 'font-size:15px;padding:8px 16px;margin:0 6px;border:1px solid #ccc;border-radius:6px;' +
+        'background:#fff;color:#333;cursor:pointer;';
+    pick.onclick = () => {
+        dialog.style.display = 'none';
+        input.click();
+    };
+    cancel.onclick = () => finish(null);
+    box.appendChild(title);
+    box.appendChild(pick);
+    box.appendChild(cancel);
+    dialog.appendChild(box);
+    document.body.appendChild(dialog);
+});
+
+class Scratch3YoloDetection {
+    /**
+     * @param {Runtime} runtime
+     * @param {object} [deps] 測試用：{createDetector, runDetector, prepareInput, loadImage, chooseFile,
+     *                         createOverlay, raf, now, setTimeout}
+     */
+    constructor (runtime, deps = {}) {
+        this.runtime = runtime;
+        this._createDetector = deps.createDetector || loader.createDetector;
+        this._runDetector = deps.runDetector || loader.runDetector;
+        this._prepareInput = deps.prepareInput || browserPrepareInput;
+        this._loadImage = deps.loadImage || browserLoadImage;
+        this._chooseFile = deps.chooseFile || browserChooseFile;
+        this._createOverlay = deps.createOverlay || (renderer => new YoloOverlay(renderer));
+        this._raf = deps.raf || (fn => window.requestAnimationFrame(fn));
+        this._now = deps.now || (() => performance.now());
+        this._setTimeout = deps.setTimeout || ((fn, ms) => setTimeout(fn, ms));
+
+        this._modelKey = config.DEFAULT_MODEL;
+        this._detector = null;
+        this._loadPromise = null;
+        this._loadingKey = null;
+        this._progress = 0;
+        this._queue = Promise.resolve(); // 一次只跑一個辨識（WebGPU 不能同時跑）
+
+        this._videoDetecting = false;
+        this._videoOpenedByStart = false;
+        this._lastVideoTime = -1;
+        this._restUntil = 0;
+
+        this._threshold = DEFAULT_THRESHOLD;
+        this._objects = []; // 全部候選（分數 ≥ 0.1），由高到低
+        this._source = null; // 'video' | 'stage' | 'image'
+        this._image = null; // 上傳或網址圖片（要畫在舞台上）
+        this._imageFit = null;
+        this._showBoxes = true;
+        this._overlay = null;
+        this._pendingChoose = null;
+
+        this._status = STATUS.IDLE;
+        this._errorDetail = '';
+        theLocale = this._setLocale();
+
+        if (runtime && runtime.on) {
+            // 按停止：取消還沒選的圖片（積木不會一直卡著）
+            runtime.on('PROJECT_STOP_ALL', () => {
+                if (this._pendingChoose && this._pendingChoose.cancel) this._pendingChoose.cancel();
+            });
+        }
+    }
+
+    _setLocale () {
+        const locale = formatMessage.setup().locale;
+        return locale === 'zh-tw' ? 'zh-tw' : 'en';
+    }
+
+    _t (key) {
+        const entry = msg[key];
+        if (!entry) return key;
+        return entry[theLocale] || entry.en;
+    }
+
+    _className (classId) {
+        const en = core.CLASSES[classId];
+        if (en === undefined) return '';
+        return theLocale === 'zh-tw' ? msg.CLASS_ZH[en] : en;
+    }
+
+    getInfo () {
+        theLocale = this._setLocale();
+        const classArg = {type: ArgumentType.STRING, menu: 'classMenu', defaultValue: 'person'};
+        return {
+            id: 'yoloDetection',
+            name: this._t('title'),
+            color1: '#6A35D9',
+            color2: '#5A2CBA',
+            color3: '#4A249A',
+            menuIconURI,
+            blockIconURI,
+            blocks: [
+                {
+                    opcode: 'loadModel',
+                    blockType: BlockType.COMMAND,
+                    text: this._t('loadModel'),
+                    arguments: {MODEL: {type: ArgumentType.STRING, menu: 'modelMenu', defaultValue: 'fast'}}
+                },
+                {
+                    opcode: 'videoToggle',
+                    blockType: BlockType.COMMAND,
+                    text: this._t('videoToggle'),
+                    arguments: {
+                        VIDEO_STATE: {type: ArgumentType.STRING, menu: 'videoMenu', defaultValue: 'on'}
+                    }
+                },
+                {opcode: 'startVideo', blockType: BlockType.COMMAND, text: this._t('startVideo')},
+                {opcode: 'stopVideo', blockType: BlockType.COMMAND, text: this._t('stopVideo')},
+                {opcode: 'detectStage', blockType: BlockType.COMMAND, text: this._t('detectStage')},
+                {
+                    opcode: 'detectUrl',
+                    blockType: BlockType.COMMAND,
+                    text: this._t('detectUrl'),
+                    arguments: {URL: {type: ArgumentType.STRING, defaultValue: 'https://'}}
+                },
+                {opcode: 'detectFile', blockType: BlockType.COMMAND, text: this._t('detectFile')},
+                '---',
+                {
+                    opcode: 'showBoxes',
+                    blockType: BlockType.COMMAND,
+                    text: this._t('showBoxes'),
+                    arguments: {STATE: {type: ArgumentType.STRING, menu: 'showMenu', defaultValue: 'show'}}
+                },
+                {
+                    opcode: 'setThreshold',
+                    blockType: BlockType.COMMAND,
+                    text: this._t('setThreshold'),
+                    arguments: {VALUE: {type: ArgumentType.NUMBER, defaultValue: 50}}
+                },
+                {opcode: 'clearResults', blockType: BlockType.COMMAND, text: this._t('clearResults')},
+                {opcode: 'getStatus', blockType: BlockType.REPORTER, text: this._t('status')},
+                '---',
+                {
+                    opcode: 'whenDetected',
+                    blockType: BlockType.HAT,
+                    text: this._t('whenDetected'),
+                    isEdgeActivated: true,
+                    arguments: {CLASS: classArg}
+                },
+                {
+                    opcode: 'isDetected',
+                    blockType: BlockType.BOOLEAN,
+                    text: this._t('isDetected'),
+                    arguments: {CLASS: classArg}
+                },
+                {opcode: 'getCount', blockType: BlockType.REPORTER, text: this._t('count')},
+                {
+                    opcode: 'getClassCount',
+                    blockType: BlockType.REPORTER,
+                    text: this._t('classCount'),
+                    arguments: {CLASS: classArg}
+                },
+                {
+                    opcode: 'getObjectProp',
+                    blockType: BlockType.REPORTER,
+                    text: this._t('objectProp'),
+                    arguments: {
+                        INDEX: {type: ArgumentType.NUMBER, defaultValue: 1},
+                        PROP: {type: ArgumentType.STRING, menu: 'objectPropMenu', defaultValue: 'name'}
+                    }
+                },
+                {
+                    opcode: 'getClassProp',
+                    blockType: BlockType.REPORTER,
+                    text: this._t('classProp'),
+                    arguments: {
+                        CLASS: classArg,
+                        PROP: {type: ArgumentType.STRING, menu: 'classPropMenu', defaultValue: 'x'}
+                    }
+                },
+                {opcode: 'getAllLabels', blockType: BlockType.REPORTER, text: this._t('allLabels')}
+            ],
+            menus: {
+                modelMenu: {
+                    acceptReporters: false,
+                    items: [
+                        {text: this._t('model_fast'), value: 'fast'},
+                        {text: this._t('model_accurate'), value: 'accurate'}
+                    ]
+                },
+                videoMenu: {
+                    acceptReporters: false,
+                    items: [
+                        {text: this._t('off'), value: 'off'},
+                        {text: this._t('on'), value: 'on'},
+                        {text: this._t('onFlipped'), value: 'on-flipped'}
+                    ]
+                },
+                showMenu: {
+                    acceptReporters: false,
+                    items: [
+                        {text: this._t('show'), value: 'show'},
+                        {text: this._t('hide'), value: 'hide'}
+                    ]
+                },
+                classMenu: {
+                    acceptReporters: true,
+                    items: core.CLASSES.map((en, i) => ({text: this._className(i), value: en}))
+                },
+                objectPropMenu: {
+                    acceptReporters: true,
+                    items: ['name', 'confidence', 'x', 'y', 'width', 'height']
+                        .map(k => ({text: this._t(`prop_${k}`), value: k}))
+                },
+                classPropMenu: {
+                    acceptReporters: true,
+                    items: ['x', 'y', 'width', 'height', 'confidence']
+                        .map(k => ({text: this._t(`prop_${k}`), value: k}))
+                }
+            }
+        };
+    }
+
+    // ---------- 狀態 ----------
+
+    _setStatus (code, detail) {
+        this._status = code;
+        this._errorDetail = detail || '';
+    }
+
+    _handleError (error) {
+        const code = (error && (error.statusCode || STAGE_TO_STATUS[error.stage])) || STATUS.ERR_OTHER;
+        const cause = (error && error.cause) || error;
+        const detail = cause && cause.message ? cause.message : String(cause);
+        console.error('YOLO 物件辨識錯誤:', error); // eslint-disable-line no-console
+        this._setStatus(code, code === STATUS.ERR_IMAGE ? '' : detail);
+    }
+
+    // ---------- 模型 ----------
+
+    /**
+     * 確保目前選的模型已載入（同時呼叫只載入一次）
+     * @returns {Promise}
+     */
+    _ensureModel () {
+        const key = this._modelKey;
+        if (this._detector && this._detector.key === key) return Promise.resolve();
+        if (this._loadPromise && this._loadingKey === key) return this._loadPromise;
+        const previous = this._loadPromise || Promise.resolve();
+        this._loadingKey = key;
+        this._progress = 0;
+        this._setStatus(STATUS.LOADING);
+        const p = previous.catch(() => {})
+            .then(() => this._createDetector(key, {
+                onProgress: v => {
+                    this._progress = Math.max(this._progress, v);
+                },
+                // 背景的 GPU 版好了：如果還是同一個模型，就換成 GPU
+                onUpgrade: gpu => this._upgradeDetector(key, gpu)
+            }))
+            .then(det => {
+                det.key = key;
+                this._swapDetector(det);
+                console.log(`YOLO 模型載入完成：${det.name}（${det.provider}）`); // eslint-disable-line no-console
+                if (this._status === STATUS.LOADING) this._setStatus(STATUS.READY);
+            });
+        this._loadPromise = p;
+        const clear = () => {
+            if (this._loadPromise === p) {
+                this._loadPromise = null;
+                this._loadingKey = null;
+            }
+        };
+        p.then(clear, clear);
+        return p;
+    }
+
+    /** 換成新的 detector；舊的等目前的辨識跑完再釋放 */
+    _swapDetector (det) {
+        const old = this._detector;
+        this._detector = det;
+        if (old && old !== det) this._release(old);
+    }
+
+    _release (det) {
+        if (det && det.session && det.session.release) {
+            this._queue = this._queue.then(() => det.session.release()).catch(() => {});
+        }
+    }
+
+    _upgradeDetector (key, gpu) {
+        const cur = this._detector;
+        if (cur && cur.key === key && cur.provider !== 'GPU' && this._modelKey === key) {
+            gpu.key = key;
+            this._swapDetector(gpu);
+            this._restUntil = 0;
+            console.log(`YOLO 改用 GPU：${gpu.name}`); // eslint-disable-line no-console
+        } else {
+            this._release(gpu); // 已經換了別的模型
+        }
+    }
+
+    loadModel (args) {
+        this._modelKey = config.MODELS[args.MODEL] ? args.MODEL : config.DEFAULT_MODEL;
+        return this._ensureModel().catch(err => this._handleError(err));
+    }
+
+    /**
+     * 排隊執行一次辨識
+     * @param {CanvasImageSource} source
+     * @param {object} info {width, height, fit, mirror}
+     * @returns {Promise<Array>} 舞台結果
+     */
+    _detect (source, info) {
+        const job = this._queue.then(() => {
+            const det = this._detector;
+            const {input, scale} = this._prepareInput(source, info.width, info.height, det.size);
+            return this._runDetector(det, input).then(data => core.postprocess(data, {
+                size: det.size,
+                scale,
+                imgWidth: info.width,
+                imgHeight: info.height,
+                fit: info.fit,
+                mirror: info.mirror
+            }));
+        });
+        this._queue = job.catch(() => {});
+        return job;
+    }
+
+    // ---------- 舞台上的框 ----------
+
+    _overlayLayer () {
+        if (!this._overlay && this.runtime.renderer) {
+            this._overlay = this._createOverlay(this.runtime.renderer);
+            this._overlay.setVisible(this._showBoxes);
+        }
+        return this._overlay;
+    }
+
+    _redraw () {
+        const overlay = this._overlayLayer();
+        if (!overlay || !this._showBoxes) return; // 隱藏時不畫，重新顯示時再畫
+        if (!this._source) {
+            overlay.clear();
+            return;
+        }
+        overlay.draw({
+            objects: this._visibleObjects(),
+            labelOf: o => `${this._className(o.classId)} ${Math.round(o.score * 100)}%`,
+            image: this._source === 'image' ? this._image : null,
+            fit: this._imageFit
+        });
+        if (this.runtime.requestRedraw) this.runtime.requestRedraw();
+    }
+
+    _setResults (source, objects, image, fit) {
+        this._source = source;
+        this._objects = objects;
+        this._image = image || null;
+        this._imageFit = fit || null;
+        this._redraw();
+    }
+
+    showBoxes (args) {
+        this._showBoxes = args.STATE !== 'hide';
+        const overlay = this._overlayLayer();
+        if (overlay) overlay.setVisible(this._showBoxes);
+        if (this._showBoxes) this._redraw();
+    }
+
+    setThreshold (args) {
+        let v = Number(args.VALUE);
+        if (!isFinite(v)) return;
+        v = Math.min(Math.max(v, 10), 100);
+        this._threshold = v / 100;
+        this._redraw();
+    }
+
+    clearResults () {
+        this._setResults(null, []);
+    }
+
+    // ---------- 視訊 ----------
+
+    _video () {
+        return this.runtime.ioDevices && this.runtime.ioDevices.video;
+    }
+
+    _isVideoEnabled () {
+        const v = this._video();
+        return Boolean(v && v.provider && v.provider.enabled);
+    }
+
+    _getVideoElement () {
+        const v = this._video();
+        if (!v || !v.provider || !v.videoReady) return null;
+        return v.provider.video;
+    }
+
+    _isMirrored () {
+        const v = this._video();
+        // Scratch 預設是鏡像；「翻轉」= 不鏡像
+        return !v || v.mirror !== false;
+    }
+
+    videoToggle (args) {
+        const v = this._video();
+        if (!v) return;
+        this._videoOpenedByStart = false; // 使用者自己控制視訊
+        if (args.VIDEO_STATE === 'off') {
+            v.disableVideo();
+            return;
+        }
+        v.mirror = args.VIDEO_STATE === 'on';
+        const p = v.enableVideo();
+        if (p) return p.then(() => {});
+    }
+
+    _openVideo () {
+        const v = this._video();
+        if (!v || !v.provider) return Promise.reject(statusError(STATUS.ERR_CAMERA, '找不到視訊裝置'));
+        if (!this._isVideoEnabled()) {
+            this._videoOpenedByStart = true;
+            v.mirror = true;
+        }
+        // 使用者拒絕攝影機時 enableVideo 不會 reject，只是 provider.video 是 null
+        return Promise.resolve(v.enableVideo()).then(() => {
+            if (!v.provider.video) throw statusError(STATUS.ERR_CAMERA, '攝影機無法開啟');
+        });
+    }
+
+    /** 回傳 Promise：積木會等到模型與攝影機準備好（或失敗）才往下執行 */
+    startVideo () {
+        if (this._videoDetecting) {
+            if (!this._isVideoEnabled()) {
+                this._setStatus(STATUS.CAMERA);
+                return this._openVideo().catch(err => this._handleError(err));
+            }
+            return;
+        }
+        return this._ensureModel()
+            .then(() => {
+                this._setStatus(STATUS.CAMERA);
+                return this._openVideo();
+            })
+            .then(() => {
+                if (this._videoDetecting) return;
+                this._setStatus(STATUS.RUNNING);
+                this._videoDetecting = true;
+                this._lastVideoTime = -1;
+                this._restUntil = 0;
+                this._setResults('video', []);
+                this._loop();
+            })
+            .catch(err => {
+                this._handleError(err);
+                this._closeVideoIfOpenedByStart();
+            });
+    }
+
+    _closeVideoIfOpenedByStart () {
+        if (this._videoOpenedByStart) {
+            this._videoOpenedByStart = false;
+            const v = this._video();
+            if (v) v.disableVideo();
+        }
+    }
+
+    _stopVideoDetection () {
+        if (!this._videoDetecting) return false;
+        this._videoDetecting = false;
+        this._closeVideoIfOpenedByStart();
+        return true;
+    }
+
+    stopVideo () {
+        const wasRunning = this._stopVideoDetection();
+        if (wasRunning || this._source === 'video') {
+            this._setResults(null, []);
+            this._setStatus(STATUS.STOPPED);
+        }
+    }
+
+    _loop () {
+        if (!this._videoDetecting) return;
+        this._processFrame();
+        this._raf(() => this._loop());
+    }
+
+    _processFrame () {
+        if (this._frameBusy) return;
+        const videoEl = this._getVideoElement();
+        if (!videoEl || videoEl.readyState < 2 || !videoEl.videoWidth) {
+            if (!this._isVideoEnabled() && this._status !== STATUS.VIDEO_OFF) {
+                this._setStatus(STATUS.VIDEO_OFF);
+                this._setResults('video', []);
+            }
+            return;
+        }
+        if (this._status !== STATUS.RUNNING) this._setStatus(STATUS.RUNNING);
+        if (this._now() < this._restUntil) return;
+        // 同一幀不重複辨識
+        if (videoEl.currentTime === this._lastVideoTime) return;
+        this._lastVideoTime = videoEl.currentTime;
+
+        this._frameBusy = true;
+        const start = this._now();
+        this._detect(videoEl, {
+            width: videoEl.videoWidth,
+            height: videoEl.videoHeight,
+            fit: 'stretch',
+            mirror: this._isMirrored()
+        }).then(objects => {
+            if (this._videoDetecting) this._setResults('video', objects);
+        }, err => {
+            console.error('YOLO 視訊辨識錯誤:', err); // eslint-disable-line no-console
+        }).then(() => {
+            this._frameBusy = false;
+            // CPU 辨識會佔用主執行緒，休息一下讓 Scratch 能順暢執行
+            if (this._detector && this._detector.provider === 'CPU') {
+                this._restUntil = this._now() + ((this._now() - start) * CPU_REST_RATIO);
+            }
+        });
+    }
+
+    // ---------- 圖片 ----------
+
+    /** 圖片辨識前：停止視訊辨識（不然下一幀會蓋掉結果），載入模型 */
+    _beforeImage () {
+        this._stopVideoDetection();
+        return this._ensureModel();
+    }
+
+    _detectImage (img) {
+        const width = img.naturalWidth || img.width;
+        const height = img.naturalHeight || img.height;
+        if (!width || !height) return Promise.reject(statusError(STATUS.ERR_IMAGE, '圖片大小為 0'));
+        this._setStatus(STATUS.DETECTING);
+        return this._detect(img, {width, height, fit: 'contain', mirror: false}).then(objects => {
+            this._setResults('image', objects, img, core.stageFit(width, height, 'contain'));
+            this._setStatus(STATUS.DONE);
+        });
+    }
+
+    detectUrl (args) {
+        const url = String(args.URL).trim();
+        return this._beforeImage()
+            .then(() => {
+                this._setStatus(STATUS.DETECTING);
+                return this._loadImage(url);
+            })
+            .then(img => this._detectImage(img))
+            .catch(err => {
+                // 圖片能載入但跨網域不能讀像素時，getImageData 會丟 SecurityError
+                if (err && err.name === 'SecurityError') err.statusCode = STATUS.ERR_IMAGE;
+                this._handleError(err);
+            });
+    }
+
+    detectFile () {
+        if (this._pendingChoose) return; // 已經在選了
+        const cancelSignal = {};
+        this._pendingChoose = cancelSignal;
+        // 先開檔案視窗（要趁使用者剛點擊），模型在背景同時載入
+        const modelReady = this._beforeImage();
+        modelReady.catch(() => {}); // 錯誤在選完圖片後處理
+        this._setStatus(STATUS.CHOOSING);
+        return this._chooseFile({
+            title: this._t('pickTitle'),
+            button: this._t('pickButton'),
+            cancel: this._t('pickCancel')
+        }, cancelSignal)
+            .then(url => {
+                this._pendingChoose = null;
+                if (!url) {
+                    this._setStatus(STATUS.CANCELLED);
+                    return;
+                }
+                return modelReady
+                    .then(() => this._loadImage(url))
+                    .then(img => this._detectImage(img));
+            })
+            .catch(err => {
+                this._pendingChoose = null;
+                this._handleError(err);
+            });
+    }
+
+    /** 拍下目前的舞台畫面（不含自己的框） */
+    _snapshotStage () {
+        const renderer = this.runtime.renderer;
+        if (!renderer || !renderer.requestSnapshot) {
+            return Promise.reject(statusError(STATUS.ERR_OTHER, '找不到舞台'));
+        }
+        const overlay = this._overlay;
+        if (overlay) overlay.setVisible(false);
+        return new Promise(resolve => renderer.requestSnapshot(resolve))
+            .then(dataUrl => {
+                if (overlay) overlay.setVisible(this._showBoxes);
+                return this._loadImage(dataUrl);
+            }, err => {
+                if (overlay) overlay.setVisible(this._showBoxes);
+                throw err;
+            });
+    }
+
+    detectStage () {
+        return this._beforeImage()
+            .then(() => {
+                this._setStatus(STATUS.DETECTING);
+                return this._snapshotStage();
+            })
+            .then(img => {
+                const width = img.naturalWidth || img.width;
+                const height = img.naturalHeight || img.height;
+                return this._detect(img, {width, height, fit: 'stretch', mirror: false});
+            })
+            .then(objects => {
+                this._setResults('stage', objects);
+                this._setStatus(STATUS.DONE);
+            })
+            .catch(err => this._handleError(err));
+    }
+
+    // ---------- 回報積木 ----------
+
+    _visibleObjects () {
+        return core.filterByScore(this._objects, this._threshold);
+    }
+
+    _classIdOf (value) {
+        return core.classIdOf(value, msg.CLASS_ZH);
+    }
+
+    _ofClass (value) {
+        const id = this._classIdOf(value);
+        if (id < 0) return [];
+        return this._visibleObjects().filter(o => o.classId === id);
+    }
+
+    _prop (o, prop) {
+        if (!o) return prop === 'name' ? '' : 0;
+        switch (String(prop)) {
+        case 'name': return this._className(o.classId);
+        case 'confidence': return Math.round(o.score * 100);
+        case 'x': return o.x;
+        case 'y': return o.y;
+        case 'width': return o.width;
+        case 'height': return o.height;
+        default: return 0;
+        }
+    }
+
+    whenDetected (args) {
+        return this._ofClass(args.CLASS).length > 0;
+    }
+
+    isDetected (args) {
+        return this.whenDetected(args);
+    }
+
+    getCount () {
+        return this._visibleObjects().length;
+    }
+
+    getClassCount (args) {
+        return this._ofClass(args.CLASS).length;
+    }
+
+    getObjectProp (args) {
+        const i = Math.floor(Number(args.INDEX));
+        const list = this._visibleObjects();
+        return this._prop(i >= 1 ? list[i - 1] : null, args.PROP);
+    }
+
+    getClassProp (args) {
+        return this._prop(this._ofClass(args.CLASS)[0], args.PROP);
+    }
+
+    getAllLabels () {
+        const seen = [];
+        for (const o of this._visibleObjects()) {
+            const name = this._className(o.classId);
+            if (seen.indexOf(name) < 0) seen.push(name);
+        }
+        return seen.join(theLocale === 'zh-tw' ? '、' : ', ');
+    }
+
+    getStatus () {
+        let text = this._t(`status_${this._status}`);
+        if (this._status === STATUS.LOADING && this._progress > 0 && this._progress < 1) {
+            text += ` ${Math.round(this._progress * 100)}%`;
+        }
+        if ((this._status === STATUS.READY || this._status === STATUS.RUNNING || this._status === STATUS.DONE) &&
+            this._detector) {
+            text += `（${this._detector.name}，${this._detector.provider}）`;
+        }
+        if (this._errorDetail && this._status.indexOf('err') === 0) text += `（${this._errorDetail}）`;
+        return text;
+    }
+}
+
+module.exports = Scratch3YoloDetection;
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-core.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * YOLOX 物件辨識的純計算部分（不依賴 Scratch、瀏覽器，可在 Node 測試）
+ *
+ * YOLOX 官方 ONNX（0.1.1rc0）的前後處理（參考 YOLOX demo/ONNXRuntime/onnx_inference.py）：
+ * - 輸入：1×3×S×S，BGR，0～255 不正規化；圖片等比例縮放後貼在左上角，其餘填 114
+ * - 輸出：1×N×85（N = 各 stride 格點總數）；每列 [cx, cy, w, h, objectness, 80 類分數]
+ *   cx、cy 是相對格點的位移、w、h 是 log 值，需要依 stride 8 / 16 / 32 解碼；
+ *   objectness 與類別分數已經過 sigmoid
+ */
+
+const STAGE_WIDTH = 480;
+const STAGE_HEIGHT = 360;
+const PAD_VALUE = 114;
+const STRIDES = [8, 16, 32];
+
+// COCO 80 類（順序與模型輸出一致）
+const CLASSES = [
+    'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat',
+    'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+    'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella',
+    'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite',
+    'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle',
+    'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange',
+    'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant',
+    'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
+    'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
+    'teddy bear', 'hair drier', 'toothbrush'
+];
+
+/**
+ * 等比例縮放到 size×size（貼左上角）
+ * @returns {{scale: number, width: number, height: number}} 縮放後圖片在輸入中的大小
+ */
+const letterbox = (srcWidth, srcHeight, size) => {
+    const scale = Math.min(size / srcWidth, size / srcHeight);
+    return {
+        scale,
+        width: Math.max(1, Math.round(srcWidth * scale)),
+        height: Math.max(1, Math.round(srcHeight * scale))
+    };
+};
+
+/**
+ * RGBA 像素（size×size，已經 letterbox）轉成模型輸入：CHW、BGR、0～255
+ * @param {Uint8ClampedArray|Uint8Array} rgba
+ * @param {number} size
+ * @returns {Float32Array}
+ */
+const rgbaToInput = (rgba, size) => {
+    const area = size * size;
+    const out = new Float32Array(3 * area);
+    for (let i = 0; i < area; i++) {
+        const p = i * 4;
+        out[i] = rgba[p + 2]; // B
+        out[area + i] = rgba[p + 1]; // G
+        out[(2 * area) + i] = rgba[p]; // R
+    }
+    return out;
+};
+
+/** 各 stride 的格點數總和（416 → 3549） */
+const anchorCount = size => STRIDES.reduce((n, s) => n + ((size / s) * (size / s)), 0);
+
+/**
+ * 解碼模型輸出成候選框（模型輸入座標，x1/y1/x2/y2）
+ * @param {Float32Array} data 1×N×(5+C) 攤平
+ * @param {number} size 模型輸入邊長
+ * @param {number} numClasses
+ * @param {number} minScore 低於這個分數的直接丟掉
+ */
+const decode = (data, size, numClasses, minScore) => {
+    const stride = 5 + numClasses;
+    const total = anchorCount(size);
+    if (data.length < total * stride) throw new Error(`模型輸出長度不符：${data.length}`);
+    const boxes = [];
+    let row = 0;
+    for (const s of STRIDES) {
+        const g = size / s;
+        for (let gy = 0; gy < g; gy++) {
+            for (let gx = 0; gx < g; gx++, row++) {
+                const o = row * stride;
+                const obj = data[o + 4];
+                if (obj < minScore) continue;
+                let best = 0;
+                let bestId = 0;
+                for (let c = 0; c < numClasses; c++) {
+                    const v = data[o + 5 + c];
+                    if (v > best) {
+                        best = v;
+                        bestId = c;
+                    }
+                }
+                const score = obj * best;
+                if (score < minScore) continue;
+                const cx = (data[o] + gx) * s;
+                const cy = (data[o + 1] + gy) * s;
+                const w = Math.exp(data[o + 2]) * s;
+                const h = Math.exp(data[o + 3]) * s;
+                boxes.push({
+                    x1: cx - (w / 2), y1: cy - (h / 2), x2: cx + (w / 2), y2: cy + (h / 2),
+                    score, classId: bestId
+                });
+            }
+        }
+    }
+    return boxes;
+};
+
+const iou = (a, b) => {
+    const w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1);
+    const h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+    if (w <= 0 || h <= 0) return 0;
+    const inter = w * h;
+    const union = ((a.x2 - a.x1) * (a.y2 - a.y1)) + ((b.x2 - b.x1) * (b.y2 - b.y1)) - inter;
+    return union > 0 ? inter / union : 0;
+};
+
+/** 同類別的 NMS（不同類別互不影響），結果依分數由高到低 */
+const nms = (boxes, iouThreshold, maxCount) => {
+    const sorted = boxes.slice().sort((a, b) => b.score - a.score);
+    const kept = [];
+    for (const b of sorted) {
+        if (kept.length >= maxCount) break;
+        if (!kept.some(k => k.classId === b.classId && iou(k, b) > iouThreshold)) kept.push(b);
+    }
+    return kept;
+};
+
+/** 模型輸入座標 → 原圖像素座標（並裁切在圖內） */
+const toImageBoxes = (boxes, scale, imgWidth, imgHeight) => {
+    const clip = (v, max) => Math.min(Math.max(v, 0), max);
+    return boxes.map(b => ({
+        x1: clip(b.x1 / scale, imgWidth),
+        y1: clip(b.y1 / scale, imgHeight),
+        x2: clip(b.x2 / scale, imgWidth),
+        y2: clip(b.y2 / scale, imgHeight),
+        score: b.score,
+        classId: b.classId
+    })).filter(b => b.x2 - b.x1 >= 1 && b.y2 - b.y1 >= 1);
+};
+
+/**
+ * 原圖怎麼放到舞台（480×360）上
+ * - 'contain'：等比例縮放、置中（上傳圖片、網址圖片）
+ * - 'stretch'：拉滿舞台（視訊、舞台畫面，和 Scratch 顯示的一樣）
+ * @returns {{sx: number, sy: number, ox: number, oy: number}} 舞台像素 = 原圖像素 × s + o
+ */
+const stageFit = (imgWidth, imgHeight, mode) => {
+    if (mode === 'stretch') {
+        return {sx: STAGE_WIDTH / imgWidth, sy: STAGE_HEIGHT / imgHeight, ox: 0, oy: 0};
+    }
+    const s = Math.min(STAGE_WIDTH / imgWidth, STAGE_HEIGHT / imgHeight);
+    return {
+        sx: s, sy: s,
+        ox: (STAGE_WIDTH - (imgWidth * s)) / 2,
+        oy: (STAGE_HEIGHT - (imgHeight * s)) / 2
+    };
+};
+
+const round1 = v => Math.round(v * 10) / 10;
+
+/**
+ * 原圖框 → 舞台結果
+ * left/top/right/bottom 是舞台畫布像素（左上角 0,0，畫框用）；
+ * x、y 是 Scratch 座標（中心 0,0、y 向上）；mirror 時左右翻轉（和鏡像的視訊畫面一致）
+ */
+const toStageObjects = (boxes, fit, mirror) => boxes.map(b => {
+    let left = (b.x1 * fit.sx) + fit.ox;
+    let right = (b.x2 * fit.sx) + fit.ox;
+    if (mirror) {
+        const l = STAGE_WIDTH - right;
+        right = STAGE_WIDTH - left;
+        left = l;
+    }
+    const top = (b.y1 * fit.sy) + fit.oy;
+    const bottom = (b.y2 * fit.sy) + fit.oy;
+    return {
+        classId: b.classId,
+        label: CLASSES[b.classId],
+        score: b.score,
+        left, top, right, bottom,
+        x: round1(((left + right) / 2) - (STAGE_WIDTH / 2)),
+        y: round1((STAGE_HEIGHT / 2) - ((top + bottom) / 2)),
+        width: round1(right - left),
+        height: round1(bottom - top)
+    };
+});
+
+/**
+ * 從模型輸出到舞台結果的完整流程
+ * @param {Float32Array} data 模型輸出
+ * @param {object} info {size, scale, imgWidth, imgHeight, fit: 'contain'|'stretch', mirror}
+ * @param {object} [opts] {minScore, iouThreshold, maxCount}
+ */
+const postprocess = (data, info, opts = {}) => {
+    const minScore = typeof opts.minScore === 'number' ? opts.minScore : 0.1;
+    const iouThreshold = typeof opts.iouThreshold === 'number' ? opts.iouThreshold : 0.45;
+    const maxCount = opts.maxCount || 100;
+    const raw = decode(data, info.size, CLASSES.length, minScore);
+    const kept = nms(raw, iouThreshold, maxCount);
+    const imgBoxes = toImageBoxes(kept, info.scale, info.imgWidth, info.imgHeight);
+    return toStageObjects(imgBoxes, stageFit(info.imgWidth, info.imgHeight, info.fit), Boolean(info.mirror));
+};
+
+/** 依信心門檻（0～1）篩選，保持分數由高到低 */
+const filterByScore = (objects, threshold) => objects.filter(o => o.score >= threshold);
+
+/**
+ * 選單或變數的值 → 類別索引；接受英文（大小寫不拘）或中文名稱
+ * @param {*} value
+ * @param {object} [zhNames] {英文: 中文}
+ * @returns {number} 找不到回傳 -1
+ */
+const classIdOf = (value, zhNames) => {
+    const s = String(value).trim();
+    const lower = s.toLowerCase();
+    const i = CLASSES.indexOf(lower);
+    if (i >= 0) return i;
+    if (zhNames) {
+        for (let c = 0; c < CLASSES.length; c++) {
+            if (zhNames[CLASSES[c]] === s) return c;
+        }
+    }
+    return -1;
+};
+
+module.exports = {
+    STAGE_WIDTH,
+    STAGE_HEIGHT,
+    PAD_VALUE,
+    STRIDES,
+    CLASSES,
+    letterbox,
+    rgbaToInput,
+    anchorCount,
+    decode,
+    iou,
+    nms,
+    toImageBoxes,
+    stageFit,
+    toStageObjects,
+    postprocess,
+    filterByScore,
+    classIdOf
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-config.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * YOLO 物件辨識的載入設定
+ *
+ * - onnxruntime-web 執行期從 jsDelivr 載入（不必改 package.json）
+ *   先用純 wasm 版（CPU）馬上開始；有 WebGPU 的瀏覽器同時在背景準備 webgpu 版，好了就換成 GPU
+ *   （第一次在某台電腦上用 GPU 要編譯 shader，約 20～30 秒；之後瀏覽器有快取，約 1 秒）
+ * - YOLOX 模型（Megvii，Apache 2.0）只放一份在 repo 根目錄的 static/osep/yolox/：
+ *   新版頁面在 /new/，'../static/' 就是 repo 根目錄的 static/（GitHub Pages 會直接提供）；
+ *   舊版開發伺服器的頁面在 /，'../' 不會超過根目錄，一樣指到 /static/（webpack 會複製 static/）
+ */
+// 1.20.1 的 WebGPU 推論在部分 Intel 顯示卡上會一直不回來，1.23 以後正常（2026-11-21 測試）
+const ORT_VERSION = '1.24.3';
+const ORT_BASE = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
+
+module.exports = {
+    ORT_VERSION,
+    ORT_BASE,
+    ORT_WEBGPU_URL: `${ORT_BASE}ort.webgpu.min.mjs`,
+    ORT_WASM_URL: `${ORT_BASE}ort.wasm.min.mjs`,
+    MODELS: {
+        // 快速：視訊比較順（COCO AP 25.8）
+        fast: {url: '../static/osep/yolox/yolox_nano.onnx', size: 416, name: 'YOLOX-Nano'},
+        // 準確：比較準，但比較慢（COCO AP 32.8）
+        accurate: {url: '../static/osep/yolox/yolox_tiny.onnx', size: 416, name: 'YOLOX-Tiny'}
+    },
+    DEFAULT_MODEL: 'fast'
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-loader.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * 載入 onnxruntime-web 與 YOLOX 模型
+ * - 先建立 CPU（wasm）版，馬上可以用
+ * - 有 WebGPU 時同時在背景建立 GPU 版並暖機（編譯 shader），成功後用 onUpgrade 通知換成 GPU
+ *   CPU 版和 GPU 版是兩個獨立的 onnxruntime 模組，可以同時執行
+ * 不可使用 async/await。
+ */
+const config = __webpack_require__(/*! ./yolo-config */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-config.js");
+
+/** 瀏覽器預設：用動態 import 從 CDN 載入（避開 webpack 4 打包 ES module 的問題） */
+const defaultImport = url => {
+    const dynamicImport = new Function('url', 'return import(url)'); // eslint-disable-line no-new-func
+    return dynamicImport(url);
+};
+
+/** 每一個錯誤都帶 stage，讓插件知道是哪一步失敗 */
+const stageError = (stage, cause) => {
+    const err = new Error(stage);
+    err.stage = stage;
+    err.cause = cause;
+    return err;
+};
+
+// GPU 暖機推論最多等多久（毫秒）；第一次編譯 shader 可能要 20～30 秒，慢的電腦更久
+const WARMUP_TIMEOUT = 120000;
+
+/** Promise 加上逾時 */
+const withTimeout = (promise, ms, message) => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(v => {
+        clearTimeout(timer);
+        resolve(v);
+    }, e => {
+        clearTimeout(timer);
+        reject(e);
+    });
+});
+
+// GPU 失敗過一次就記住，之後換模型直接用 CPU，不必再等逾時
+let gpuFailed = false;
+// 同一個 webgpu 模組不能同時跑兩個推論（"Session already started"），GPU 暖機要排隊
+let gpuChain = Promise.resolve();
+
+const hasWebGPU = () => typeof navigator !== 'undefined' && Boolean(navigator.gpu);
+
+/**
+ * 下載模型並回報進度（0～1）
+ * @param {string} url
+ * @param {function} fetchFn
+ * @param {function} [onProgress]
+ * @returns {Promise<Uint8Array>}
+ */
+const fetchModel = (url, fetchFn, onProgress) => fetchFn(url).then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}：${url}`);
+    const total = Number(res.headers && res.headers.get && res.headers.get('content-length')) || 0;
+    if (!res.body || !res.body.getReader || !total || !onProgress) {
+        return res.arrayBuffer().then(buf => new Uint8Array(buf));
+    }
+    const reader = res.body.getReader();
+    const chunks = [];
+    let loaded = 0;
+    const pump = () => reader.read().then(({done, value}) => {
+        if (done) return;
+        chunks.push(value);
+        loaded += value.length;
+        onProgress(Math.min(loaded / total, 1));
+        return pump();
+    });
+    return pump().then(() => {
+        const out = new Uint8Array(loaded);
+        let offset = 0;
+        for (const c of chunks) {
+            out.set(c, offset);
+            offset += c.length;
+        }
+        return out;
+    });
+});
+
+/**
+ * @param {string} modelKey 'fast' 或 'accurate'
+ * @param {object} [opts]
+ * @param {function} [opts.importer] 測試用：取代動態 import
+ * @param {function} [opts.fetch] 測試用：取代 fetch
+ * @param {function} [opts.onProgress] 下載進度（0～1）
+ * @param {object} [opts.config] 取代 yolo-config
+ * @param {boolean} [opts.webgpu] 測試用：強制使用（或不用）WebGPU
+ * @param {number} [opts.warmupTimeout] GPU 暖機逾時（毫秒）
+ * @param {function} [opts.onUpgrade] GPU 版準備好時呼叫，參數是 GPU 版的 detector；
+ *                                    沒給就不會在背景準備 GPU
+ * @returns {Promise<{ort, session, provider: string, inputName: string, outputName: string, size: number}>}
+ *          先回傳 CPU 版；CPU 版建立失敗而有 WebGPU 時，改等 GPU 版
+ */
+const createDetector = (modelKey, opts = {}) => {
+    const cfg = Object.assign({}, config, opts.config || {});
+    const model = cfg.MODELS[modelKey] || cfg.MODELS[cfg.DEFAULT_MODEL];
+    const importer = opts.importer || defaultImport;
+    const fetchFn = opts.fetch || (url => fetch(url));
+    const useGPU = opts.webgpu === undefined ? (!gpuFailed && hasWebGPU()) : opts.webgpu;
+    const warmupTimeout = opts.warmupTimeout || WARMUP_TIMEOUT;
+
+    // 載入 onnxruntime（webgpu 版或 wasm 版是兩個獨立的模組）
+    const loadOrt = url => Promise.resolve()
+        .then(() => importer(url))
+        .then(lib => {
+            const ort = lib.default && lib.default.InferenceSession ? lib.default : lib;
+            ort.env.wasm.wasmPaths = cfg.ORT_BASE;
+            // 沒有跨來源隔離（GitHub Pages）就不能多執行緒
+            const isolated = typeof self !== 'undefined' && self.crossOriginIsolated;
+            ort.env.wasm.numThreads = isolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
+            return ort;
+        })
+        .catch(e => { throw stageError('library', e); });
+
+    const createSession = (ort, bytes, ep) => ort.InferenceSession.create(bytes, {
+        executionProviders: [ep],
+        graphOptimizationLevel: 'all'
+    }).catch(e => { throw stageError('model', e); });
+
+    const result = (ort, session, provider) => ({
+        ort,
+        session,
+        provider,
+        inputName: session.inputNames[0],
+        outputName: session.outputNames[0],
+        size: model.size,
+        name: model.name
+    });
+
+    const cpuDetector = bytes => loadOrt(cfg.ORT_WASM_URL)
+        .then(ort => createSession(ort, bytes, 'wasm').then(session => result(ort, session, 'CPU')));
+
+    // GPU：建好後先跑一次暖機推論（編譯 shader）；失敗或逾時就放棄 GPU。
+    // 有些電腦的 WebGPU 能建 session 但推論不會回來，所以一定要有逾時。
+    const gpuDetector = bytes => {
+        const job = gpuChain.then(() => {
+            if (gpuFailed) throw new Error('WebGPU 先前已失敗');
+            return loadOrt(cfg.ORT_WEBGPU_URL);
+        })
+            .then(ort => createSession(ort, bytes, 'webgpu').then(session => {
+                const det = result(ort, session, 'GPU');
+                const input = new Float32Array(3 * model.size * model.size).fill(cfg.PAD_VALUE || 114);
+                return withTimeout(runDetector(det, input), warmupTimeout, 'WebGPU 暖機逾時').then(() => det);
+            }))
+            .catch(err => {
+                console.warn('YOLO WebGPU 無法使用，維持 CPU:', err); // eslint-disable-line no-console
+                gpuFailed = true;
+                throw err;
+            });
+        gpuChain = job.catch(() => {});
+        return job;
+    };
+
+    return fetchModel(model.url, fetchFn, opts.onProgress)
+        .catch(e => { throw stageError('download', e); })
+        .then(bytes => cpuDetector(bytes)
+            .then(det => {
+                if (useGPU && opts.onUpgrade) {
+                    gpuDetector(bytes).then(opts.onUpgrade, () => {});
+                }
+                return det;
+            }, cpuErr => {
+                if (!useGPU) throw cpuErr;
+                console.warn('YOLO CPU 版無法建立，改試 GPU:', cpuErr); // eslint-disable-line no-console
+                return gpuDetector(bytes).catch(() => {
+                    throw cpuErr;
+                });
+            }));
+};
+
+/**
+ * 執行一次辨識
+ * @param {object} detector createDetector 的結果
+ * @param {Float32Array} input 1×3×S×S
+ * @returns {Promise<Float32Array>}
+ */
+const runDetector = (detector, input) => {
+    const {ort, session, inputName, outputName, size} = detector;
+    const tensor = new ort.Tensor('float32', input, [1, 3, size, size]);
+    return session.run({[inputName]: tensor}).then(out => {
+        const t = out[outputName];
+        // WebGPU 的輸出也已經下載回 CPU（預設 preferredOutputLocation = cpu）
+        const data = t.data;
+        if (tensor.dispose) tensor.dispose();
+        return data;
+    });
+};
+
+/** 測試用：清除「GPU 失敗過」的記錄 */
+const resetGpuState = () => {
+    gpuFailed = false;
+    gpuChain = Promise.resolve();
+};
+
+module.exports = {createDetector, runDetector, fetchModel, hasWebGPU, withTimeout, resetGpuState};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/yolo-overlay.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * 在舞台上畫辨識框（和上傳的圖片）
+ *
+ * 用 Scratch renderer 的 bitmap skin，放在畫筆圖層（在視訊之上、角色之下），
+ * 不會動到畫筆插件畫的東西。畫布是舞台的 2 倍解析度，文字比較清楚。
+ */
+const STAGE_WIDTH = 480;
+const STAGE_HEIGHT = 360;
+const RESOLUTION = 2;
+const PEN_LAYER = 'pen';
+
+// 依類別編號輪流使用的框線顏色
+const COLORS = ['#FF3B30', '#FF9500', '#FFCC00', '#34C759', '#00C7BE', '#32ADE6', '#007AFF',
+    '#5856D6', '#AF52DE', '#FF2D55'];
+// 淺色底用黑字，其他用白字
+const DARK_TEXT = ['#FFCC00', '#34C759', '#00C7BE', '#32ADE6'];
+
+class YoloOverlay {
+    /**
+     * @param {object} renderer Scratch RenderWebGL
+     */
+    constructor (renderer) {
+        this._renderer = renderer;
+        this._skinId = -1;
+        this._drawableId = -1;
+        this._visible = false;
+        this._canvas = document.createElement('canvas');
+        this._canvas.width = STAGE_WIDTH * RESOLUTION;
+        this._canvas.height = STAGE_HEIGHT * RESOLUTION;
+        this._ctx = this._canvas.getContext('2d');
+    }
+
+    _ensure () {
+        if (this._drawableId !== -1 || !this._renderer) return;
+        this._skinId = this._renderer.createBitmapSkin(this._canvas, RESOLUTION);
+        this._drawableId = this._renderer.createDrawable(PEN_LAYER);
+        this._renderer.updateDrawableSkinId(this._drawableId, this._skinId);
+        this._renderer.updateDrawableVisible(this._drawableId, this._visible);
+    }
+
+    _commit () {
+        this._ensure();
+        if (this._skinId === -1) return;
+        this._renderer.updateBitmapSkin(this._skinId, this._canvas, RESOLUTION);
+    }
+
+    /** 拍舞台畫面時暫時藏起來，免得把自己的框也拍進去 */
+    setVisible (visible) {
+        this._visible = visible;
+        if (this._drawableId !== -1) this._renderer.updateDrawableVisible(this._drawableId, visible);
+    }
+
+    clear () {
+        this._ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        this._commit();
+    }
+
+    /**
+     * @param {object} opts
+     * @param {Array} opts.objects toStageObjects 的結果（left/top/right/bottom 是舞台像素）
+     * @param {function} opts.labelOf 物件 → 顯示文字
+     * @param {CanvasImageSource} [opts.image] 要一起顯示的圖片（上傳、網址）
+     * @param {object} [opts.fit] stageFit 的結果（有圖片時用）
+     */
+    draw (opts) {
+        const ctx = this._ctx;
+        ctx.save();
+        ctx.setTransform(RESOLUTION, 0, 0, RESOLUTION, 0, 0);
+        ctx.clearRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+        if (opts.image && opts.fit) {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, STAGE_WIDTH, STAGE_HEIGHT);
+            const w = (opts.image.naturalWidth || opts.image.width) * opts.fit.sx;
+            const h = (opts.image.naturalHeight || opts.image.height) * opts.fit.sy;
+            ctx.drawImage(opts.image, opts.fit.ox, opts.fit.oy, w, h);
+        }
+        ctx.font = 'bold 12px "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif';
+        ctx.textBaseline = 'top';
+        ctx.lineWidth = 2;
+        // 低分的先畫，高分的蓋在上面
+        const list = opts.objects.slice().reverse();
+        for (const o of list) {
+            const color = COLORS[o.classId % COLORS.length];
+            ctx.strokeStyle = color;
+            ctx.strokeRect(o.left, o.top, o.right - o.left, o.bottom - o.top);
+            const text = opts.labelOf(o);
+            const tw = ctx.measureText(text).width + 8;
+            const th = 16;
+            const ty = o.top >= th ? o.top - th : o.top;
+            const tx = Math.min(Math.max(o.left - 1, 0), STAGE_WIDTH - tw);
+            ctx.fillStyle = color;
+            ctx.fillRect(tx, ty, tw, th);
+            ctx.fillStyle = DARK_TEXT.indexOf(color) >= 0 ? '#000000' : '#FFFFFF';
+            ctx.fillText(text, tx + 4, ty + 2);
+        }
+        ctx.restore();
+        this._commit();
+    }
+
+    dispose () {
+        if (this._drawableId !== -1) {
+            this._renderer.destroyDrawable(this._drawableId, PEN_LAYER);
+            this._renderer.destroySkin(this._skinId);
+        }
+        this._drawableId = -1;
+        this._skinId = -1;
+    }
+}
+
+module.exports = YoloOverlay;
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/translation.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/* 中英文字（CommonJS，可直接在 Node 測試） */
+const t = (en, zh) => ({'en': en, 'zh-tw': zh});
+
+// COCO 80 類的中文名稱（key 與 yolo-core.js 的 CLASSES 相同）
+const CLASS_ZH = {
+    'person': '人', 'bicycle': '腳踏車', 'car': '汽車', 'motorcycle': '機車', 'airplane': '飛機',
+    'bus': '公車', 'train': '火車', 'truck': '卡車', 'boat': '船', 'traffic light': '紅綠燈',
+    'fire hydrant': '消防栓', 'stop sign': '停車標誌', 'parking meter': '停車計時器', 'bench': '長椅',
+    'bird': '鳥', 'cat': '貓', 'dog': '狗', 'horse': '馬', 'sheep': '羊', 'cow': '牛',
+    'elephant': '大象', 'bear': '熊', 'zebra': '斑馬', 'giraffe': '長頸鹿', 'backpack': '背包',
+    'umbrella': '雨傘', 'handbag': '手提包', 'tie': '領帶', 'suitcase': '行李箱', 'frisbee': '飛盤',
+    'skis': '滑雪板', 'snowboard': '單板滑雪板', 'sports ball': '球', 'kite': '風箏',
+    'baseball bat': '棒球棒', 'baseball glove': '棒球手套', 'skateboard': '滑板', 'surfboard': '衝浪板',
+    'tennis racket': '網球拍', 'bottle': '瓶子', 'wine glass': '高腳杯', 'cup': '杯子', 'fork': '叉子',
+    'knife': '刀子', 'spoon': '湯匙', 'bowl': '碗', 'banana': '香蕉', 'apple': '蘋果',
+    'sandwich': '三明治', 'orange': '柳橙', 'broccoli': '花椰菜', 'carrot': '紅蘿蔔', 'hot dog': '熱狗',
+    'pizza': '披薩', 'donut': '甜甜圈', 'cake': '蛋糕', 'chair': '椅子', 'couch': '沙發',
+    'potted plant': '盆栽', 'bed': '床', 'dining table': '餐桌', 'toilet': '馬桶', 'tv': '電視',
+    'laptop': '筆電', 'mouse': '滑鼠', 'remote': '遙控器', 'keyboard': '鍵盤', 'cell phone': '手機',
+    'microwave': '微波爐', 'oven': '烤箱', 'toaster': '烤麵包機', 'sink': '水槽', 'refrigerator': '冰箱',
+    'book': '書', 'clock': '時鐘', 'vase': '花瓶', 'scissors': '剪刀', 'teddy bear': '泰迪熊',
+    'hair drier': '吹風機', 'toothbrush': '牙刷'
+};
+
+module.exports = {
+    CLASS_ZH,
+
+    title: t('YOLO Object Detection', 'YOLO 物件辨識'),
+
+    // 積木：準備
+    loadModel: t('load YOLO model [MODEL]', '載入 YOLO 模型 [MODEL]'),
+    videoToggle: t('set video to [VIDEO_STATE]', '視訊設為 [VIDEO_STATE]'),
+    startVideo: t('start video object detection', '開始視訊物件辨識'),
+    stopVideo: t('stop video object detection', '停止視訊物件辨識'),
+    detectStage: t('detect objects on stage', '辨識舞台畫面'),
+    detectUrl: t('detect objects in image URL [URL]', '辨識圖片網址 [URL]'),
+    detectFile: t('choose an image file to detect', '選擇圖片檔來辨識'),
+    showBoxes: t('[STATE] detection boxes', '[STATE] 辨識框'),
+    setThreshold: t('set confidence threshold to [VALUE] %', '信心門檻設為 [VALUE] %'),
+    clearResults: t('clear detection results', '清除辨識結果'),
+    status: t('detection status', '辨識狀態'),
+
+    // 積木：結果
+    whenDetected: t('when [CLASS] is detected', '當偵測到 [CLASS]'),
+    isDetected: t('[CLASS] detected?', '偵測到 [CLASS]?'),
+    count: t('number of objects', '物件數量'),
+    classCount: t('number of [CLASS]', '[CLASS] 的數量'),
+    objectProp: t('object [INDEX] [PROP]', '第 [INDEX] 個物件的 [PROP]'),
+    classProp: t('[CLASS] [PROP]', '[CLASS] 的 [PROP]'),
+    allLabels: t('all detected objects', '所有偵測到的物件'),
+
+    // 選單
+    model_fast: t('fast (Nano)', '快速 (Nano)'),
+    model_accurate: t('accurate (Tiny)', '準確 (Tiny)'),
+    off: t('off', '關閉'),
+    on: t('on', '開啟'),
+    onFlipped: t('on flipped', '左右翻轉'),
+    show: t('show', '顯示'),
+    hide: t('hide', '隱藏'),
+    prop_name: t('name', '名稱'),
+    prop_confidence: t('confidence', '信心度'),
+    prop_x: t('x', 'x'),
+    prop_y: t('y', 'y'),
+    prop_width: t('width', '寬'),
+    prop_height: t('height', '高'),
+
+    // 狀態
+    status_idle: t('Not started', '尚未開始'),
+    status_loading: t('Loading YOLO model…', 'YOLO 模型載入中…'),
+    status_ready: t('Ready', '已就緒'),
+    status_camera: t('Opening camera…', '開啟攝影機中…'),
+    status_running: t('Detecting video', '視訊辨識中'),
+    status_detecting: t('Detecting image…', '圖片辨識中…'),
+    status_done: t('Done', '辨識完成'),
+    status_choosing: t('Choosing an image…', '選擇圖片中…'),
+    status_cancelled: t('No image chosen', '沒有選擇圖片'),
+    status_stopped: t('Stopped', '已停止'),
+    status_videoOff: t('Video is off', '視訊已關閉'),
+    status_errCamera: t('Error: cannot open the camera', '錯誤：無法開啟攝影機'),
+    status_errLibrary: t('Error: cannot load onnxruntime (check the network)',
+        '錯誤：無法載入 onnxruntime（請檢查網路）'),
+    status_errDownload: t('Error: cannot download the model', '錯誤：無法下載模型'),
+    status_errModel: t('Error: cannot start the model', '錯誤：模型無法啟動'),
+    status_errImage: t('Error: cannot read the image (wrong URL, or the site does not allow it)',
+        '錯誤：無法讀取圖片（網址錯誤，或該網站不允許讀取）'),
+    status_errOther: t('Error', '錯誤'),
+
+    // 選擇圖片的對話框（瀏覽器不允許直接開檔案視窗時才出現）
+    pickTitle: t('Choose an image to detect', '選擇要辨識的圖片'),
+    pickButton: t('Choose image…', '選擇圖片…'),
+    pickCancel: t('Cancel', '取消')
 };
 
 
@@ -162416,6 +163996,23 @@ const translationMap = {
   featured: true,
   disabled: false,
   internetConnectionRequired: false,
+  useAutoScan: false
+}, {
+  name: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "YOLO Object Detection",
+    id: "gui.extension.yoloDetection.title"
+  }),
+  extensionId: "yoloDetection",
+  collaborator: "Andrew Yang",
+  iconURL: "static/osep/yoloDetection.png",
+  insetIconURL: "static/osep/yoloDetection-small.svg",
+  description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "Detect people, animals and objects in images, the stage or the camera with YOLO.",
+    id: "gui.extension.yoloDetection.description"
+  }),
+  featured: true,
+  disabled: false,
+  internetConnectionRequired: true,
   useAutoScan: false
 }]);
 
@@ -459499,6 +461096,8 @@ __webpack_require__.r(__webpack_exports__);
     "gui.extension.faceExpressionMediapipe.description":"使用 MediaPipe 辨識臉部表情、臉部動作與頭部角度",
     "gui.extension.decisionTree.title":"決策樹",
     "gui.extension.decisionTree.description":"用 Google 試算表的資料訓練決策樹，畫出樹狀圖並進行預測",
+    "gui.extension.yoloDetection.title":"YOLO 物件辨識",
+    "gui.extension.yoloDetection.description":"用 YOLO 辨識圖片、舞台或攝影機畫面中的人、動物和物品",
     "gui.extension.llmstudio.description":"使用LLM Studio AI的人工智慧模型進行自然語言處理任務",
     "gui.extension.llmstudio.title":"LLM Studio AI",
     "gui.extension.urltxt.description": "訪問網站和取得文字檔內容",

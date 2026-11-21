@@ -1,0 +1,12 @@
+YOLOX 模型檔（OSEP 插件 yoloDetection 使用）
+
+yolox_nano.onnx、yolox_tiny.onnx 來自 YOLOX 官方 GitHub release 0.1.1rc0，未經修改：
+  https://github.com/Megvii-BaseDetection/YOLOX/releases/tag/0.1.1rc0
+著作權屬 Megvii Inc.（曠視科技），依 Apache License 2.0 授權（全文見同資料夾的 LICENSE）。
+原專案：https://github.com/Megvii-BaseDetection/YOLOX
+
+SHA-256
+  yolox_nano.onnx  c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d
+  yolox_tiny.onnx  427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7
+
+模型以 COCO 資料集訓練，可辨識 80 類物品。
