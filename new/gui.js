@@ -87083,6 +87083,10 @@ module.exports = {
  * - 訓練功能暫時關閉（TRAINING_ENABLED = false）：讀入資料後自動用全部資料建樹，只開放「看圖」；
  *   訓練設定、正確率、預測的積木隱藏（opcode 保留，舊專案仍可載入）
  * - 訓練：dt-core.js（C4.5 風格，文字欄位多分支、數字欄位自動找門檻）
+ * - 分層順序：預設由演算法挑；「決策樹分層順序設為」可自己指定每一層問哪個欄位
+ * - 機率：「在 [條件] 的情況下，答案為「是」的機率」直接從資料計算（和樹無關）
+ * - 欄位下拉選單（columnMenu）：列出目前資料的欄位（不含答案欄）；還沒讀資料時列範例資料的欄位。
+ *   讀入資料後呼叫 runtime.requestToolboxExtensionsUpdate()，讓積木區的預設值換成新資料的欄位
  * - 顯示：tree-view.js 產生 HTML，用 window.open 在新視窗顯示；
  *   彈出視窗被瀏覽器擋住時，改在本頁用浮動視窗顯示
  *
@@ -87138,6 +87142,7 @@ class Scratch3DecisionTree {
         this._features = null; // null = 全部
         this._trainPercent = 70;
         this._maxDepth = 5;
+        this._order = null; // 自訂分層順序；null = 演算法自動挑
         this._model = null;
 
         this._input = {};
@@ -87192,6 +87197,12 @@ class Scratch3DecisionTree {
             blockIconURI,
             blocks: this._blocks(s),
             menus: {
+                columns: {acceptReporters: true, items: 'columnMenu'},
+                layers: {acceptReporters: true, items: 'layerMenu'},
+                yesNo: {
+                    acceptReporters: true,
+                    items: [s('yes'), s('no')]
+                },
                 prop: {
                     acceptReporters: false,
                     items: ['depth', 'leaves', 'nTrain', 'nTest', 'features', 'target']
@@ -87238,6 +87249,38 @@ class Scratch3DecisionTree {
             },
             {opcode: 'getRules', blockType: BlockType.REPORTER, text: s('rules')}
         ];
+        const firstCol = this._featureColumns()[0] || '';
+        const order = [
+            {
+                opcode: 'setLayer', blockType: BlockType.COMMAND, text: s('setLayer'),
+                arguments: {
+                    LAYER: {type: ArgumentType.STRING, menu: 'layers', defaultValue: '1'},
+                    COL: {type: ArgumentType.STRING, menu: 'columns', defaultValue: firstCol}
+                }
+            },
+            {
+                opcode: 'setLayerOrder', blockType: BlockType.COMMAND, text: s('setLayerOrder'),
+                arguments: {COLS: {type: ArgumentType.STRING, defaultValue: s('defOrder')}}
+            },
+            {opcode: 'useAutoOrder', blockType: BlockType.COMMAND, text: s('useAutoOrder')}
+        ];
+        const prob = [
+            {
+                opcode: 'condition', blockType: BlockType.REPORTER, text: s('condition'),
+                arguments: {
+                    COL: {type: ArgumentType.STRING, menu: 'columns', defaultValue: firstCol},
+                    YN: {type: ArgumentType.STRING, menu: 'yesNo', defaultValue: s('yes')}
+                }
+            },
+            {
+                opcode: 'condAnd', blockType: BlockType.REPORTER, text: s('condAnd'),
+                arguments: {A: {type: ArgumentType.STRING, defaultValue: ''}, B: {type: ArgumentType.STRING, defaultValue: ''}}
+            },
+            {
+                opcode: 'probability', blockType: BlockType.REPORTER, text: s('probability'),
+                arguments: {COND: {type: ArgumentType.STRING, defaultValue: s('defCond')}}
+            }
+        ];
         const show = [
             {opcode: 'showTree', blockType: BlockType.COMMAND, text: s('showTree')},
             {opcode: 'closeTree', blockType: BlockType.COMMAND, text: s('closeTree')}
@@ -87260,13 +87303,14 @@ class Scratch3DecisionTree {
             {opcode: 'getPath', blockType: BlockType.REPORTER, text: s('path')}
         ];
         if (this._trainingEnabled) {
-            return data.concat(['---'], train, ['---'], show, ['---'], predict);
+            return data.concat(['---'], train, order, ['---'], show, ['---'], predict, prob);
         }
-        // 訓練關閉：只留讀資料、狀態和看圖；其他積木隱藏（opcode 不變，舊專案仍可載入）
+        // 訓練關閉：只留讀資料、狀態、分層順序、看圖和機率；其他積木隱藏（opcode 不變，舊專案仍可載入）
         const hide = b => Object.assign({}, b, {hideFromPalette: true});
         const hidden = ['setTarget', 'setFeatures'];
         return data.map(b => (hidden.indexOf(b.opcode) >= 0 ? hide(b) : b))
-            .concat([status], ['---'], show, train.filter(b => b !== status).map(hide), predict.map(hide));
+            .concat([status], ['---'], order, ['---'], show, ['---'], prob,
+                train.filter(b => b !== status).map(hide), predict.map(hide));
     }
 
     /* ---------- 資料 ---------- */
@@ -87290,13 +87334,49 @@ class Scratch3DecisionTree {
             return false;
         }
         this._data = yn;
-        if (this._trainingEnabled) {
-            this._setStatus('st_dataReady', {rows: yn.rows.length, cols: yn.columns.length});
-        } else if (this._build(100)) {
-            // 訓練關閉：直接用全部資料建樹，給「在新視窗顯示決策樹」用
-            this._setStatus('st_dataReadyTree', {rows: yn.rows.length, cols: yn.columns.length});
+        this._autoBuild();
+        // 欄位下拉選單的預設值換成新資料的欄位
+        if (this.runtime && typeof this.runtime.requestToolboxExtensionsUpdate === 'function') {
+            this.runtime.requestToolboxExtensionsUpdate();
         }
         return true;
+    }
+
+    /** 可以用來判斷的欄位（不含答案欄）；還沒讀資料時用範例資料的欄位 */
+    _featureColumns () {
+        if (!this._data) {
+            const sample = samples.tennisYesNo(theLocale);
+            return Object.keys(sample.rows[0]).filter(c => c !== sample.target);
+        }
+        const cols = this._data.columns;
+        const target = this._target || cols[cols.length - 1];
+        return cols.filter(c => c !== target);
+    }
+
+    columnMenu () {
+        return this._featureColumns();
+    }
+
+    layerMenu () {
+        const n = Math.max(5, this._featureColumns().length);
+        const list = [];
+        for (let i = 1; i <= n; i++) list.push(String(i));
+        return list;
+    }
+
+    /** 資料或分層順序改變後：訓練關閉時直接用全部資料建樹，給「在新視窗顯示決策樹」用 */
+    _autoBuild () {
+        const d = this._data;
+        if (this._trainingEnabled) {
+            this._model = null;
+            this._setStatus('st_dataReady', {rows: d.rows.length, cols: d.columns.length});
+        } else if (this._build(100)) {
+            if (this._order) {
+                this._setStatus('st_orderTree', {rows: d.rows.length, order: this._order.join(' → ')});
+            } else {
+                this._setStatus('st_dataReadyTree', {rows: d.rows.length, cols: d.columns.length});
+            }
+        }
     }
 
     useSample () {
@@ -87325,6 +87405,36 @@ class Scratch3DecisionTree {
     setFeatures (args) {
         this._features = core.isAllKeyword(args.COLS) ? null : core.splitList(args.COLS);
         this._model = null;
+    }
+
+    /* ---------- 分層順序 ---------- */
+
+    setLayerOrder (args) {
+        if (core.isAllKeyword(args.COLS)) {
+            this._order = null;
+        } else {
+            const list = [];
+            core.splitList(args.COLS).forEach(c => {
+                if (list.indexOf(c) < 0) list.push(c);
+            });
+            this._order = list;
+        }
+        if (this._data) this._autoBuild();
+    }
+
+    setLayer (args) {
+        const n = Math.round(Number(args.LAYER));
+        const col = String(args.COL).trim();
+        if (!isFinite(n) || n < 1 || n > 20 || !col) return;
+        const order = this._order ? this._order.slice() : [];
+        order[n - 1] = col;
+        this._order = order;
+        if (this._data) this._autoBuild();
+    }
+
+    useAutoOrder () {
+        this._order = null;
+        if (this._data) this._autoBuild();
     }
 
     getColumns () {
@@ -87385,8 +87495,29 @@ class Scratch3DecisionTree {
             }
             features = this._features.filter(f => f !== target);
         }
+        if (this._order) {
+            for (let i = 0; i < this._order.length; i++) {
+                if (!this._order[i]) {
+                    this._setStatus('st_orderGap', {n: i + 1});
+                    return false;
+                }
+                if (this._order.indexOf(this._order[i]) !== i) {
+                    this._setStatus('st_orderDup', {col: this._order[i]});
+                    return false;
+                }
+            }
+            const missing = this._order.filter(f => cols.indexOf(f) < 0);
+            if (missing.length) {
+                this._setStatus('st_badOrder', {missing: missing.join(', '), cols: cols.join(', ')});
+                return false;
+            }
+            if (this._order.indexOf(target) >= 0) {
+                this._setStatus('st_orderHasTarget', {col: target});
+                return false;
+            }
+        }
         const m = core.train(this._data.rows, {
-            target, features, maxDepth: this._maxDepth, trainPercent,
+            target, features, maxDepth: this._maxDepth, trainPercent, order: this._order,
             valueOrder: [this._t('yes'), this._t('no')] // 是 一律在左
         });
         if (m.error) {
@@ -87601,6 +87732,72 @@ class Scratch3DecisionTree {
         return this._last ? round1(this._last.confidence) : '';
     }
 
+    /* ---------- 機率 ---------- */
+
+    /**
+     * 「晴天=是, 有風=是」→ {晴天: 是, 有風: 是}；只寫欄位名稱（「晴天, 有風」）代表「是」
+     * @returns {object|null} 有錯時設定狀態並回傳 null
+     */
+    _parseCond (text) {
+        const cols = this._data.columns;
+        const conds = {};
+        const parts = core.splitList(text);
+        for (let i = 0; i < parts.length; i++) {
+            const m = parts[i].match(/^([^=:：]+)[=:：](.*)$/);
+            const col = (m ? m[1] : parts[i]).trim();
+            const val = m ? m[2].trim() : this._t('yes');
+            if (cols.indexOf(col) < 0) {
+                this._setStatus('st_badCond', {col, cols: cols.join(', ')});
+                return null;
+            }
+            const b = core.yesNoValue(val);
+            if (b === null) {
+                this._setStatus('st_condNotYesNo', {col, val});
+                return null;
+            }
+            conds[col] = this._t(b ? 'yes' : 'no');
+        }
+        return conds;
+    }
+
+    /** 「[晴天] 為 [是]」→ 晴天=是，可以放進機率積木 */
+    condition (args) {
+        const col = String(args.COL).trim();
+        return col ? `${col}=${String(args.YN).trim()}` : '';
+    }
+
+    /** 「[A] 且 [B]」→ A, B（空的略過） */
+    condAnd (args) {
+        return [args.A, args.B].map(x => String(x === null || typeof x === 'undefined' ? '' : x).trim())
+            .filter(Boolean)
+            .join(', ');
+    }
+
+    probability (args) {
+        if (!this._data) {
+            this._setStatus('st_noData');
+            return '';
+        }
+        const cols = this._data.columns;
+        const target = this._target || cols[cols.length - 1];
+        if (cols.indexOf(target) < 0) {
+            this._setStatus('st_badTarget', {col: target, cols: cols.join(', ')});
+            return '';
+        }
+        const conds = this._parseCond(args.COND);
+        if (!conds) return '';
+        const r = core.probability(this._data.rows, conds, target, this._t('yes'));
+        const cond = Object.keys(conds).map(k => `${k}=${conds[k]}`)
+            .join(theLocale === 'zh-tw' ? '、' : ', ');
+        if (!r.n) {
+            this._setStatus('st_probNone', {cond});
+            return '';
+        }
+        const p = round1(r.p);
+        this._setStatus(cond ? 'st_prob' : 'st_probAll', {cond, n: r.n, hit: r.hit, target, p});
+        return p;
+    }
+
     getPath () {
         const r = this._last;
         if (!r) return '';
@@ -87632,6 +87829,8 @@ module.exports = Scratch3DecisionTree;
  * - 資料格式：Google 試算表插件的 JSON，[{欄位: 值, ...}, ...]，值通常都是字串
  *
  * - 目前只接受「是非」資料（checkYesNo）：每一格都要是 是/否、有/沒有… 這類答案，不接受數字
+ * - 自訂分層順序（opts.order）：第 1 層一律問 order[0]、第 2 層問 order[1]…，不用演算法挑
+ * - 條件機率（probability）：直接從資料數「符合條件的筆數」中答案是某個值的比例，和樹無關
  *
  * 注意：不可使用 async/await（見專案的 regeneratorRuntime 調查）。
  */
@@ -88013,11 +88212,15 @@ function sortValues (values, valueOrder) {
 
 /**
  * opts.valueOrder：文字欄位分支的固定順序，例：['是', '否'] → 「是」一律在左
+ * opts.order：自訂分層順序（欄位陣列）。第 k 層（根是第 1 層）一律用 order[k-1]；
+ *   答案已經全部一樣就不再往下分；不略過任何欄位、不合併子節點、不受 maxDepth 限制
  */
 function train (rows, opts) {
     const target = opts.target;
     const valueOrder = opts.valueOrder || null;
-    const maxDepth = Math.max(1, Math.min(20, Math.round(Number(opts.maxDepth) || 5)));
+    const order = opts.order && opts.order.length ? opts.order.slice() : null;
+    const maxDepth = order ? order.length :
+        Math.max(1, Math.min(20, Math.round(Number(opts.maxDepth) || 5)));
     const minSamples = Math.max(2, Math.round(Number(opts.minSamples) || 2));
     let trainPercent = Number(opts.trainPercent);
     if (!isFinite(trainPercent)) trainPercent = 70;
@@ -88031,7 +88234,7 @@ function train (rows, opts) {
     // 欄位型別、略過「每列都不一樣」的文字欄（例如姓名、編號）
     const featureInfo = [];
     const skipped = [];
-    opts.features.forEach(f => {
+    (order || opts.features).forEach(f => {
         if (f === target) return;
         const numeric = columnIsNumeric(usable, f);
         if (!numeric) {
@@ -88040,11 +88243,12 @@ function train (rows, opts) {
                 distinct[r[f]] = true;
             });
             const nd = Object.keys(distinct).length;
-            if (nd === usable.length && usable.length >= 6) {
+            // 自訂順序：照使用者排的用，不略過
+            if (!order && nd === usable.length && usable.length >= 6) {
                 skipped.push({feature: f, reason: 'unique'});
                 return;
             }
-            if (nd < 2) {
+            if (!order && nd < 2) {
                 skipped.push({feature: f, reason: 'constant'});
                 return;
             }
@@ -88080,28 +88284,43 @@ function train (rows, opts) {
         };
     }
 
+    /** 自訂順序：這一層固定用 feature；欄位在這群資料只有一種值時也照樣分（只有一個分支） */
+    function forcedSplit (subset, feature) {
+        if (types[feature] === 'number') {
+            const s = scoreNumeric(subset, feature, target);
+            if (s) return s;
+        }
+        const s = scoreCategorical(subset, feature, target, 0);
+        if (s) return s;
+        return {feature, kind: 'cat', values: [subset[0][feature]], groups: {[subset[0][feature]]: subset}};
+    }
+
     function build (subset, available, depth) {
         const n = subset.length;
         const counts = countBy(subset, target);
         const nClasses = Object.keys(counts).length;
-        if (nClasses <= 1 || depth >= maxDepth || n < minSamples || !available.length) {
+        if (nClasses <= 1 || depth >= maxDepth || (!order && n < minSamples) || !available.length) {
             return leaf(counts, n);
         }
-        const baseH = entropyOfCounts(counts, n);
-        const candidates = [];
-        available.forEach(f => {
-            const s = types[f] === 'number' ?
-                scoreNumeric(subset, f, target) :
-                scoreCategorical(subset, f, target, baseH);
-            if (s && s.gain > EPS) candidates.push(s);
-        });
-        if (!candidates.length) return leaf(counts, n);
-        const avg = candidates.reduce((a, s) => a + s.gain, 0) / candidates.length;
         let best = null;
-        candidates.forEach(s => {
-            if (s.gain + EPS < avg) return;
-            if (!best || s.ratio > best.ratio + EPS) best = s;
-        });
+        if (order) {
+            best = forcedSplit(subset, order[depth]);
+        } else {
+            const baseH = entropyOfCounts(counts, n);
+            const candidates = [];
+            available.forEach(f => {
+                const s = types[f] === 'number' ?
+                    scoreNumeric(subset, f, target) :
+                    scoreCategorical(subset, f, target, baseH);
+                if (s && s.gain > EPS) candidates.push(s);
+            });
+            if (!candidates.length) return leaf(counts, n);
+            const avg = candidates.reduce((a, s) => a + s.gain, 0) / candidates.length;
+            candidates.forEach(s => {
+                if (s.gain + EPS < avg) return;
+                if (!best || s.ratio > best.ratio + EPS) best = s;
+            });
+        }
 
         const node = {
             id: nextId++, leaf: false, n, counts,
@@ -88124,8 +88343,8 @@ function train (rows, opts) {
                     node: build(best.groups[v], rest, depth + 1)});
             });
         }
-        // 所有子節點都是預測同一類的葉子 → 合併成一片葉子，圖比較簡潔
-        if (node.children.every(c => c.node.leaf && c.node.prediction === node.prediction)) {
+        // 所有子節點都是預測同一類的葉子 → 合併成一片葉子，圖比較簡潔（自訂順序時保留，才看得到每一層）
+        if (!order && node.children.every(c => c.node.leaf && c.node.prediction === node.prediction)) {
             return {id: node.id, leaf: true, n, counts, prediction: node.prediction, confidence: node.confidence};
         }
         return node;
@@ -88136,7 +88355,7 @@ function train (rows, opts) {
 
     const model = {
         target, classes: classOrder, features: featureInfo, skipped,
-        maxDepth, trainPercent,
+        maxDepth, trainPercent, order,
         nRows: usable.length, droppedRows: dropped,
         nTrain: trainRows.length, nTest: testRows.length,
         tree
@@ -88235,6 +88454,23 @@ function predict (model, input) {
     };
 }
 
+/* ---------- 條件機率 ---------- */
+
+/**
+ * 從資料算條件機率：符合 conds 的資料中，target 是 value 的比例。
+ * @param {object[]} rows
+ * @param {object} conds {欄位: 值}，空物件 = 全部資料
+ * @param {string} target
+ * @param {string} value
+ * @returns {{n: number, hit: number, p: number|null}} n = 符合條件的筆數，hit = 其中答案是 value 的筆數
+ */
+function probability (rows, conds, target, value) {
+    const keys = Object.keys(conds || {});
+    const match = rows.filter(r => keys.every(k => r[k] === conds[k]));
+    const hit = match.filter(r => r[target] === value).length;
+    return {n: match.length, hit, p: match.length ? hit / match.length : null};
+}
+
 /* ---------- 規則文字 ---------- */
 
 /**
@@ -88270,6 +88506,7 @@ module.exports = {
     parseInputText,
     train,
     predict,
+    probability,
     rulesText,
     formatNumber,
     entropyOfCounts,
@@ -88323,6 +88560,8 @@ const TEXTS = {
         missing: 'missing',
         hint: 'Scroll to zoom, drag to move',
         stopHere: 'stopped here',
+        customOrder: ' (custom order: ',
+        customEnd: ')',
         close: 'Close'
     },
     'zh-tw': {
@@ -88346,6 +88585,8 @@ const TEXTS = {
         missing: '缺少',
         hint: '滾輪縮放、拖曳移動',
         stopHere: '停在這裡',
+        customOrder: '（自訂順序：',
+        customEnd: '）',
         close: '關閉'
     }
 };
@@ -88395,7 +88636,8 @@ const PAGE_SCRIPT = [
     'var hl={};if(H){H.nodeIds.forEach(function(id){hl[id]=true;});}',
     'var lastId=H?H.nodeIds[H.nodeIds.length-1]:-1;',
     // 標題列
-    'document.getElementById("ttl").textContent=T.title+"："+T.predicting+"「"+M.target+"」";',
+    'document.getElementById("ttl").textContent=T.title+"："+T.predicting+"「"+M.target+"」"+' +
+    '(M.order?T.customOrder+M.order.join(" → ")+T.customEnd:"");',
     'var acc=(M.accuracyOn==="test"?T.accuracyTest:T.accuracyTrain)+" "+pct(M.accuracy)+" ("+M.correct+"/"+M.nEval+")";',
     'document.getElementById("stats").textContent=T.train+" "+M.nTrain+" "+T.rows+"、"+T.test+" "+M.nTest+" "+T.rows+"｜"+acc+"｜"+T.depth+" "+M.depth+"、"+T.leaves+" "+M.leaves;',
     'var lg=document.getElementById("legend");M.classes.forEach(function(c){',
@@ -88528,7 +88770,8 @@ function buildHtml (model, opts) {
         model: {
             target: model.target, classes: model.classes, tree: model.tree,
             nTrain: model.nTrain, nTest: model.nTest, accuracy: model.accuracy, accuracyOn: model.accuracyOn,
-            correct: model.correct, nEval: model.nEval, depth: model.depth, leaves: model.leaves
+            correct: model.correct, nEval: model.nEval, depth: model.depth, leaves: model.leaves,
+            order: model.order || null
         },
         texts,
         highlight,
@@ -88668,6 +88911,16 @@ module.exports = {
     info: t('decision tree [PROP]', '決策樹的 [PROP]'),
     rules: t('decision tree rules', '決策樹規則'),
 
+    // 積木：分層順序
+    setLayerOrder: t('set tree layer order to [COLS]', '決策樹分層順序設為 [COLS]'),
+    setLayer: t('use [COL] for layer [LAYER] of the tree', '決策樹第 [LAYER] 層用 [COL]'),
+    useAutoOrder: t('let the tree choose each layer automatically', '決策樹改回自動選擇每層的欄位'),
+
+    // 積木：機率
+    condition: t('[COL] is [YN]', '[COL] 為 [YN]'),
+    condAnd: t('[A] and [B]', '[A] 且 [B]'),
+    probability: t('chance (%) that the answer is Yes when [COND]', '在 [COND] 的情況下，答案為「是」的機率 (%)'),
+
     // 積木：圖
     showTree: t('show decision tree in new window', '在新視窗顯示決策樹'),
     closeTree: t('close decision tree window', '關閉決策樹視窗'),
@@ -88687,6 +88940,8 @@ module.exports = {
     defCol: t('Rainy', '下雨'),
     defVal: t('No', '否'),
     defText: t('Rainy=No, Humid=Yes', '下雨=否, 濕度高=是'),
+    defOrder: t('Sunny, Windy', '晴天, 有風'),
+    defCond: t('Sunny=Yes, Windy=Yes', '晴天=是, 有風=是'),
 
     // 是非答案統一成的文字
     yes: t('Yes', '是'),
@@ -88720,6 +88975,24 @@ module.exports = {
         '「{col}」第 {line} 列是空白，每一格都要填 是 或 否'),
     st_dataReadyTree: t('Loaded {rows} rows, {cols} yes/no columns. The decision tree is ready (built from all rows).',
         '已讀入 {rows} 筆資料、{cols} 個是非欄位，決策樹已建好（用全部資料）'),
+    st_orderTree: t('Loaded {rows} rows. The decision tree follows your layer order: {order}',
+        '已讀入 {rows} 筆資料，決策樹已照你排的順序建好：{order}'),
+    st_badOrder: t('Layer order has column(s) not in the data: {missing}. Columns: {cols}. ' +
+        'To go back, use "let the tree choose each layer automatically".',
+        '分層順序裡有找不到的欄位：{missing}，資料的欄位有：{cols}（要改回自動，請用「決策樹改回自動選擇每層的欄位」）'),
+    st_orderGap: t('Layer {n} has no column yet.', '第 {n} 層還沒設定欄位'),
+    st_orderDup: t('"{col}" is used in more than one layer.', '「{col}」同時放在好幾層，每個欄位只能用一次'),
+    st_orderHasTarget: t('"{col}" is the answer column, so it cannot be a layer.',
+        '「{col}」是答案欄，不能放進分層順序'),
+    st_prob: t('{n} row(s) match {cond}; {hit} of them have {target} = Yes. Chance: {p}%',
+        '資料中符合「{cond}」的有 {n} 筆，其中 {hit} 筆「{target}」是「是」，機率 {p}%'),
+    st_probAll: t('No condition: {hit} of all {n} rows have {target} = Yes. Chance: {p}%',
+        '沒有條件：全部 {n} 筆中有 {hit} 筆「{target}」是「是」，機率 {p}%'),
+    st_probNone: t('No rows match {cond}, so the chance cannot be calculated.',
+        '資料中沒有符合「{cond}」的資料，算不出機率'),
+    st_badCond: t('Column "{col}" not found. Columns: {cols}', '條件裡的「{col}」找不到，資料的欄位有：{cols}'),
+    st_condNotYesNo: t('In the condition, "{val}" for {col} is not a yes/no answer.',
+        '條件裡 {col} 的「{val}」不是是非答案，請用 是／否'),
     st_trainingOff: t('Training is turned off for now.', '訓練功能暫時關閉'),
     st_dataReady: t('Loaded {rows} rows, {cols} columns. Not trained yet.', '已讀入 {rows} 筆資料、{cols} 個欄位，尚未訓練'),
     st_badTarget: t('Column to predict "{col}" not found. Columns: {cols}', '找不到要預測的欄位「{col}」，資料的欄位有：{cols}'),

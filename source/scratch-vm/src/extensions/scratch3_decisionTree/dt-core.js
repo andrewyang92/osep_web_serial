@@ -10,6 +10,8 @@
  * - 資料格式：Google 試算表插件的 JSON，[{欄位: 值, ...}, ...]，值通常都是字串
  *
  * - 目前只接受「是非」資料（checkYesNo）：每一格都要是 是/否、有/沒有… 這類答案，不接受數字
+ * - 自訂分層順序（opts.order）：第 1 層一律問 order[0]、第 2 層問 order[1]…，不用演算法挑
+ * - 條件機率（probability）：直接從資料數「符合條件的筆數」中答案是某個值的比例，和樹無關
  *
  * 注意：不可使用 async/await（見專案的 regeneratorRuntime 調查）。
  */
@@ -391,11 +393,15 @@ function sortValues (values, valueOrder) {
 
 /**
  * opts.valueOrder：文字欄位分支的固定順序，例：['是', '否'] → 「是」一律在左
+ * opts.order：自訂分層順序（欄位陣列）。第 k 層（根是第 1 層）一律用 order[k-1]；
+ *   答案已經全部一樣就不再往下分；不略過任何欄位、不合併子節點、不受 maxDepth 限制
  */
 function train (rows, opts) {
     const target = opts.target;
     const valueOrder = opts.valueOrder || null;
-    const maxDepth = Math.max(1, Math.min(20, Math.round(Number(opts.maxDepth) || 5)));
+    const order = opts.order && opts.order.length ? opts.order.slice() : null;
+    const maxDepth = order ? order.length :
+        Math.max(1, Math.min(20, Math.round(Number(opts.maxDepth) || 5)));
     const minSamples = Math.max(2, Math.round(Number(opts.minSamples) || 2));
     let trainPercent = Number(opts.trainPercent);
     if (!isFinite(trainPercent)) trainPercent = 70;
@@ -409,7 +415,7 @@ function train (rows, opts) {
     // 欄位型別、略過「每列都不一樣」的文字欄（例如姓名、編號）
     const featureInfo = [];
     const skipped = [];
-    opts.features.forEach(f => {
+    (order || opts.features).forEach(f => {
         if (f === target) return;
         const numeric = columnIsNumeric(usable, f);
         if (!numeric) {
@@ -418,11 +424,12 @@ function train (rows, opts) {
                 distinct[r[f]] = true;
             });
             const nd = Object.keys(distinct).length;
-            if (nd === usable.length && usable.length >= 6) {
+            // 自訂順序：照使用者排的用，不略過
+            if (!order && nd === usable.length && usable.length >= 6) {
                 skipped.push({feature: f, reason: 'unique'});
                 return;
             }
-            if (nd < 2) {
+            if (!order && nd < 2) {
                 skipped.push({feature: f, reason: 'constant'});
                 return;
             }
@@ -458,28 +465,43 @@ function train (rows, opts) {
         };
     }
 
+    /** 自訂順序：這一層固定用 feature；欄位在這群資料只有一種值時也照樣分（只有一個分支） */
+    function forcedSplit (subset, feature) {
+        if (types[feature] === 'number') {
+            const s = scoreNumeric(subset, feature, target);
+            if (s) return s;
+        }
+        const s = scoreCategorical(subset, feature, target, 0);
+        if (s) return s;
+        return {feature, kind: 'cat', values: [subset[0][feature]], groups: {[subset[0][feature]]: subset}};
+    }
+
     function build (subset, available, depth) {
         const n = subset.length;
         const counts = countBy(subset, target);
         const nClasses = Object.keys(counts).length;
-        if (nClasses <= 1 || depth >= maxDepth || n < minSamples || !available.length) {
+        if (nClasses <= 1 || depth >= maxDepth || (!order && n < minSamples) || !available.length) {
             return leaf(counts, n);
         }
-        const baseH = entropyOfCounts(counts, n);
-        const candidates = [];
-        available.forEach(f => {
-            const s = types[f] === 'number' ?
-                scoreNumeric(subset, f, target) :
-                scoreCategorical(subset, f, target, baseH);
-            if (s && s.gain > EPS) candidates.push(s);
-        });
-        if (!candidates.length) return leaf(counts, n);
-        const avg = candidates.reduce((a, s) => a + s.gain, 0) / candidates.length;
         let best = null;
-        candidates.forEach(s => {
-            if (s.gain + EPS < avg) return;
-            if (!best || s.ratio > best.ratio + EPS) best = s;
-        });
+        if (order) {
+            best = forcedSplit(subset, order[depth]);
+        } else {
+            const baseH = entropyOfCounts(counts, n);
+            const candidates = [];
+            available.forEach(f => {
+                const s = types[f] === 'number' ?
+                    scoreNumeric(subset, f, target) :
+                    scoreCategorical(subset, f, target, baseH);
+                if (s && s.gain > EPS) candidates.push(s);
+            });
+            if (!candidates.length) return leaf(counts, n);
+            const avg = candidates.reduce((a, s) => a + s.gain, 0) / candidates.length;
+            candidates.forEach(s => {
+                if (s.gain + EPS < avg) return;
+                if (!best || s.ratio > best.ratio + EPS) best = s;
+            });
+        }
 
         const node = {
             id: nextId++, leaf: false, n, counts,
@@ -502,8 +524,8 @@ function train (rows, opts) {
                     node: build(best.groups[v], rest, depth + 1)});
             });
         }
-        // 所有子節點都是預測同一類的葉子 → 合併成一片葉子，圖比較簡潔
-        if (node.children.every(c => c.node.leaf && c.node.prediction === node.prediction)) {
+        // 所有子節點都是預測同一類的葉子 → 合併成一片葉子，圖比較簡潔（自訂順序時保留，才看得到每一層）
+        if (!order && node.children.every(c => c.node.leaf && c.node.prediction === node.prediction)) {
             return {id: node.id, leaf: true, n, counts, prediction: node.prediction, confidence: node.confidence};
         }
         return node;
@@ -514,7 +536,7 @@ function train (rows, opts) {
 
     const model = {
         target, classes: classOrder, features: featureInfo, skipped,
-        maxDepth, trainPercent,
+        maxDepth, trainPercent, order,
         nRows: usable.length, droppedRows: dropped,
         nTrain: trainRows.length, nTest: testRows.length,
         tree
@@ -613,6 +635,23 @@ function predict (model, input) {
     };
 }
 
+/* ---------- 條件機率 ---------- */
+
+/**
+ * 從資料算條件機率：符合 conds 的資料中，target 是 value 的比例。
+ * @param {object[]} rows
+ * @param {object} conds {欄位: 值}，空物件 = 全部資料
+ * @param {string} target
+ * @param {string} value
+ * @returns {{n: number, hit: number, p: number|null}} n = 符合條件的筆數，hit = 其中答案是 value 的筆數
+ */
+function probability (rows, conds, target, value) {
+    const keys = Object.keys(conds || {});
+    const match = rows.filter(r => keys.every(k => r[k] === conds[k]));
+    const hit = match.filter(r => r[target] === value).length;
+    return {n: match.length, hit, p: match.length ? hit / match.length : null};
+}
+
 /* ---------- 規則文字 ---------- */
 
 /**
@@ -648,6 +687,7 @@ module.exports = {
     parseInputText,
     train,
     predict,
+    probability,
     rulesText,
     formatNumber,
     entropyOfCounts,

@@ -8,6 +8,10 @@
  * - 訓練功能暫時關閉（TRAINING_ENABLED = false）：讀入資料後自動用全部資料建樹，只開放「看圖」；
  *   訓練設定、正確率、預測的積木隱藏（opcode 保留，舊專案仍可載入）
  * - 訓練：dt-core.js（C4.5 風格，文字欄位多分支、數字欄位自動找門檻）
+ * - 分層順序：預設由演算法挑；「決策樹分層順序設為」可自己指定每一層問哪個欄位
+ * - 機率：「在 [條件] 的情況下，答案為「是」的機率」直接從資料計算（和樹無關）
+ * - 欄位下拉選單（columnMenu）：列出目前資料的欄位（不含答案欄）；還沒讀資料時列範例資料的欄位。
+ *   讀入資料後呼叫 runtime.requestToolboxExtensionsUpdate()，讓積木區的預設值換成新資料的欄位
  * - 顯示：tree-view.js 產生 HTML，用 window.open 在新視窗顯示；
  *   彈出視窗被瀏覽器擋住時，改在本頁用浮動視窗顯示
  *
@@ -63,6 +67,7 @@ class Scratch3DecisionTree {
         this._features = null; // null = 全部
         this._trainPercent = 70;
         this._maxDepth = 5;
+        this._order = null; // 自訂分層順序；null = 演算法自動挑
         this._model = null;
 
         this._input = {};
@@ -117,6 +122,12 @@ class Scratch3DecisionTree {
             blockIconURI,
             blocks: this._blocks(s),
             menus: {
+                columns: {acceptReporters: true, items: 'columnMenu'},
+                layers: {acceptReporters: true, items: 'layerMenu'},
+                yesNo: {
+                    acceptReporters: true,
+                    items: [s('yes'), s('no')]
+                },
                 prop: {
                     acceptReporters: false,
                     items: ['depth', 'leaves', 'nTrain', 'nTest', 'features', 'target']
@@ -163,6 +174,38 @@ class Scratch3DecisionTree {
             },
             {opcode: 'getRules', blockType: BlockType.REPORTER, text: s('rules')}
         ];
+        const firstCol = this._featureColumns()[0] || '';
+        const order = [
+            {
+                opcode: 'setLayer', blockType: BlockType.COMMAND, text: s('setLayer'),
+                arguments: {
+                    LAYER: {type: ArgumentType.STRING, menu: 'layers', defaultValue: '1'},
+                    COL: {type: ArgumentType.STRING, menu: 'columns', defaultValue: firstCol}
+                }
+            },
+            {
+                opcode: 'setLayerOrder', blockType: BlockType.COMMAND, text: s('setLayerOrder'),
+                arguments: {COLS: {type: ArgumentType.STRING, defaultValue: s('defOrder')}}
+            },
+            {opcode: 'useAutoOrder', blockType: BlockType.COMMAND, text: s('useAutoOrder')}
+        ];
+        const prob = [
+            {
+                opcode: 'condition', blockType: BlockType.REPORTER, text: s('condition'),
+                arguments: {
+                    COL: {type: ArgumentType.STRING, menu: 'columns', defaultValue: firstCol},
+                    YN: {type: ArgumentType.STRING, menu: 'yesNo', defaultValue: s('yes')}
+                }
+            },
+            {
+                opcode: 'condAnd', blockType: BlockType.REPORTER, text: s('condAnd'),
+                arguments: {A: {type: ArgumentType.STRING, defaultValue: ''}, B: {type: ArgumentType.STRING, defaultValue: ''}}
+            },
+            {
+                opcode: 'probability', blockType: BlockType.REPORTER, text: s('probability'),
+                arguments: {COND: {type: ArgumentType.STRING, defaultValue: s('defCond')}}
+            }
+        ];
         const show = [
             {opcode: 'showTree', blockType: BlockType.COMMAND, text: s('showTree')},
             {opcode: 'closeTree', blockType: BlockType.COMMAND, text: s('closeTree')}
@@ -185,13 +228,14 @@ class Scratch3DecisionTree {
             {opcode: 'getPath', blockType: BlockType.REPORTER, text: s('path')}
         ];
         if (this._trainingEnabled) {
-            return data.concat(['---'], train, ['---'], show, ['---'], predict);
+            return data.concat(['---'], train, order, ['---'], show, ['---'], predict, prob);
         }
-        // 訓練關閉：只留讀資料、狀態和看圖；其他積木隱藏（opcode 不變，舊專案仍可載入）
+        // 訓練關閉：只留讀資料、狀態、分層順序、看圖和機率；其他積木隱藏（opcode 不變，舊專案仍可載入）
         const hide = b => Object.assign({}, b, {hideFromPalette: true});
         const hidden = ['setTarget', 'setFeatures'];
         return data.map(b => (hidden.indexOf(b.opcode) >= 0 ? hide(b) : b))
-            .concat([status], ['---'], show, train.filter(b => b !== status).map(hide), predict.map(hide));
+            .concat([status], ['---'], order, ['---'], show, ['---'], prob,
+                train.filter(b => b !== status).map(hide), predict.map(hide));
     }
 
     /* ---------- 資料 ---------- */
@@ -215,13 +259,49 @@ class Scratch3DecisionTree {
             return false;
         }
         this._data = yn;
-        if (this._trainingEnabled) {
-            this._setStatus('st_dataReady', {rows: yn.rows.length, cols: yn.columns.length});
-        } else if (this._build(100)) {
-            // 訓練關閉：直接用全部資料建樹，給「在新視窗顯示決策樹」用
-            this._setStatus('st_dataReadyTree', {rows: yn.rows.length, cols: yn.columns.length});
+        this._autoBuild();
+        // 欄位下拉選單的預設值換成新資料的欄位
+        if (this.runtime && typeof this.runtime.requestToolboxExtensionsUpdate === 'function') {
+            this.runtime.requestToolboxExtensionsUpdate();
         }
         return true;
+    }
+
+    /** 可以用來判斷的欄位（不含答案欄）；還沒讀資料時用範例資料的欄位 */
+    _featureColumns () {
+        if (!this._data) {
+            const sample = samples.tennisYesNo(theLocale);
+            return Object.keys(sample.rows[0]).filter(c => c !== sample.target);
+        }
+        const cols = this._data.columns;
+        const target = this._target || cols[cols.length - 1];
+        return cols.filter(c => c !== target);
+    }
+
+    columnMenu () {
+        return this._featureColumns();
+    }
+
+    layerMenu () {
+        const n = Math.max(5, this._featureColumns().length);
+        const list = [];
+        for (let i = 1; i <= n; i++) list.push(String(i));
+        return list;
+    }
+
+    /** 資料或分層順序改變後：訓練關閉時直接用全部資料建樹，給「在新視窗顯示決策樹」用 */
+    _autoBuild () {
+        const d = this._data;
+        if (this._trainingEnabled) {
+            this._model = null;
+            this._setStatus('st_dataReady', {rows: d.rows.length, cols: d.columns.length});
+        } else if (this._build(100)) {
+            if (this._order) {
+                this._setStatus('st_orderTree', {rows: d.rows.length, order: this._order.join(' → ')});
+            } else {
+                this._setStatus('st_dataReadyTree', {rows: d.rows.length, cols: d.columns.length});
+            }
+        }
     }
 
     useSample () {
@@ -250,6 +330,36 @@ class Scratch3DecisionTree {
     setFeatures (args) {
         this._features = core.isAllKeyword(args.COLS) ? null : core.splitList(args.COLS);
         this._model = null;
+    }
+
+    /* ---------- 分層順序 ---------- */
+
+    setLayerOrder (args) {
+        if (core.isAllKeyword(args.COLS)) {
+            this._order = null;
+        } else {
+            const list = [];
+            core.splitList(args.COLS).forEach(c => {
+                if (list.indexOf(c) < 0) list.push(c);
+            });
+            this._order = list;
+        }
+        if (this._data) this._autoBuild();
+    }
+
+    setLayer (args) {
+        const n = Math.round(Number(args.LAYER));
+        const col = String(args.COL).trim();
+        if (!isFinite(n) || n < 1 || n > 20 || !col) return;
+        const order = this._order ? this._order.slice() : [];
+        order[n - 1] = col;
+        this._order = order;
+        if (this._data) this._autoBuild();
+    }
+
+    useAutoOrder () {
+        this._order = null;
+        if (this._data) this._autoBuild();
     }
 
     getColumns () {
@@ -310,8 +420,29 @@ class Scratch3DecisionTree {
             }
             features = this._features.filter(f => f !== target);
         }
+        if (this._order) {
+            for (let i = 0; i < this._order.length; i++) {
+                if (!this._order[i]) {
+                    this._setStatus('st_orderGap', {n: i + 1});
+                    return false;
+                }
+                if (this._order.indexOf(this._order[i]) !== i) {
+                    this._setStatus('st_orderDup', {col: this._order[i]});
+                    return false;
+                }
+            }
+            const missing = this._order.filter(f => cols.indexOf(f) < 0);
+            if (missing.length) {
+                this._setStatus('st_badOrder', {missing: missing.join(', '), cols: cols.join(', ')});
+                return false;
+            }
+            if (this._order.indexOf(target) >= 0) {
+                this._setStatus('st_orderHasTarget', {col: target});
+                return false;
+            }
+        }
         const m = core.train(this._data.rows, {
-            target, features, maxDepth: this._maxDepth, trainPercent,
+            target, features, maxDepth: this._maxDepth, trainPercent, order: this._order,
             valueOrder: [this._t('yes'), this._t('no')] // 是 一律在左
         });
         if (m.error) {
@@ -524,6 +655,72 @@ class Scratch3DecisionTree {
 
     getConfidence () {
         return this._last ? round1(this._last.confidence) : '';
+    }
+
+    /* ---------- 機率 ---------- */
+
+    /**
+     * 「晴天=是, 有風=是」→ {晴天: 是, 有風: 是}；只寫欄位名稱（「晴天, 有風」）代表「是」
+     * @returns {object|null} 有錯時設定狀態並回傳 null
+     */
+    _parseCond (text) {
+        const cols = this._data.columns;
+        const conds = {};
+        const parts = core.splitList(text);
+        for (let i = 0; i < parts.length; i++) {
+            const m = parts[i].match(/^([^=:：]+)[=:：](.*)$/);
+            const col = (m ? m[1] : parts[i]).trim();
+            const val = m ? m[2].trim() : this._t('yes');
+            if (cols.indexOf(col) < 0) {
+                this._setStatus('st_badCond', {col, cols: cols.join(', ')});
+                return null;
+            }
+            const b = core.yesNoValue(val);
+            if (b === null) {
+                this._setStatus('st_condNotYesNo', {col, val});
+                return null;
+            }
+            conds[col] = this._t(b ? 'yes' : 'no');
+        }
+        return conds;
+    }
+
+    /** 「[晴天] 為 [是]」→ 晴天=是，可以放進機率積木 */
+    condition (args) {
+        const col = String(args.COL).trim();
+        return col ? `${col}=${String(args.YN).trim()}` : '';
+    }
+
+    /** 「[A] 且 [B]」→ A, B（空的略過） */
+    condAnd (args) {
+        return [args.A, args.B].map(x => String(x === null || typeof x === 'undefined' ? '' : x).trim())
+            .filter(Boolean)
+            .join(', ');
+    }
+
+    probability (args) {
+        if (!this._data) {
+            this._setStatus('st_noData');
+            return '';
+        }
+        const cols = this._data.columns;
+        const target = this._target || cols[cols.length - 1];
+        if (cols.indexOf(target) < 0) {
+            this._setStatus('st_badTarget', {col: target, cols: cols.join(', ')});
+            return '';
+        }
+        const conds = this._parseCond(args.COND);
+        if (!conds) return '';
+        const r = core.probability(this._data.rows, conds, target, this._t('yes'));
+        const cond = Object.keys(conds).map(k => `${k}=${conds[k]}`)
+            .join(theLocale === 'zh-tw' ? '、' : ', ');
+        if (!r.n) {
+            this._setStatus('st_probNone', {cond});
+            return '';
+        }
+        const p = round1(r.p);
+        this._setStatus(cond ? 'st_prob' : 'st_probAll', {cond, n: r.n, hit: r.hit, target, p});
+        return p;
     }
 
     getPath () {

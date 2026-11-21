@@ -23,6 +23,16 @@ module.exports = {
     info: t('decision tree [PROP]', '決策樹的 [PROP]'),
     rules: t('decision tree rules', '決策樹規則'),
 
+    // 積木：分層順序
+    setLayerOrder: t('set tree layer order to [COLS]', '決策樹分層順序設為 [COLS]'),
+    setLayer: t('use [COL] for layer [LAYER] of the tree', '決策樹第 [LAYER] 層用 [COL]'),
+    useAutoOrder: t('let the tree choose each layer automatically', '決策樹改回自動選擇每層的欄位'),
+
+    // 積木：機率
+    condition: t('[COL] is [YN]', '[COL] 為 [YN]'),
+    condAnd: t('[A] and [B]', '[A] 且 [B]'),
+    probability: t('chance (%) that the answer is Yes when [COND]', '在 [COND] 的情況下，答案為「是」的機率 (%)'),
+
     // 積木：圖
     showTree: t('show decision tree in new window', '在新視窗顯示決策樹'),
     closeTree: t('close decision tree window', '關閉決策樹視窗'),
@@ -42,6 +52,8 @@ module.exports = {
     defCol: t('Rainy', '下雨'),
     defVal: t('No', '否'),
     defText: t('Rainy=No, Humid=Yes', '下雨=否, 濕度高=是'),
+    defOrder: t('Sunny, Windy', '晴天, 有風'),
+    defCond: t('Sunny=Yes, Windy=Yes', '晴天=是, 有風=是'),
 
     // 是非答案統一成的文字
     yes: t('Yes', '是'),
@@ -75,6 +87,24 @@ module.exports = {
         '「{col}」第 {line} 列是空白，每一格都要填 是 或 否'),
     st_dataReadyTree: t('Loaded {rows} rows, {cols} yes/no columns. The decision tree is ready (built from all rows).',
         '已讀入 {rows} 筆資料、{cols} 個是非欄位，決策樹已建好（用全部資料）'),
+    st_orderTree: t('Loaded {rows} rows. The decision tree follows your layer order: {order}',
+        '已讀入 {rows} 筆資料，決策樹已照你排的順序建好：{order}'),
+    st_badOrder: t('Layer order has column(s) not in the data: {missing}. Columns: {cols}. ' +
+        'To go back, use "let the tree choose each layer automatically".',
+        '分層順序裡有找不到的欄位：{missing}，資料的欄位有：{cols}（要改回自動，請用「決策樹改回自動選擇每層的欄位」）'),
+    st_orderGap: t('Layer {n} has no column yet.', '第 {n} 層還沒設定欄位'),
+    st_orderDup: t('"{col}" is used in more than one layer.', '「{col}」同時放在好幾層，每個欄位只能用一次'),
+    st_orderHasTarget: t('"{col}" is the answer column, so it cannot be a layer.',
+        '「{col}」是答案欄，不能放進分層順序'),
+    st_prob: t('{n} row(s) match {cond}; {hit} of them have {target} = Yes. Chance: {p}%',
+        '資料中符合「{cond}」的有 {n} 筆，其中 {hit} 筆「{target}」是「是」，機率 {p}%'),
+    st_probAll: t('No condition: {hit} of all {n} rows have {target} = Yes. Chance: {p}%',
+        '沒有條件：全部 {n} 筆中有 {hit} 筆「{target}」是「是」，機率 {p}%'),
+    st_probNone: t('No rows match {cond}, so the chance cannot be calculated.',
+        '資料中沒有符合「{cond}」的資料，算不出機率'),
+    st_badCond: t('Column "{col}" not found. Columns: {cols}', '條件裡的「{col}」找不到，資料的欄位有：{cols}'),
+    st_condNotYesNo: t('In the condition, "{val}" for {col} is not a yes/no answer.',
+        '條件裡 {col} 的「{val}」不是是非答案，請用 是／否'),
     st_trainingOff: t('Training is turned off for now.', '訓練功能暫時關閉'),
     st_dataReady: t('Loaded {rows} rows, {cols} columns. Not trained yet.', '已讀入 {rows} 筆資料、{cols} 個欄位，尚未訓練'),
     st_badTarget: t('Column to predict "{col}" not found. Columns: {cols}', '找不到要預測的欄位「{col}」，資料的欄位有：{cols}'),

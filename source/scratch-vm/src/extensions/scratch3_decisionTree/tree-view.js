@@ -38,6 +38,8 @@ const TEXTS = {
         missing: 'missing',
         hint: 'Scroll to zoom, drag to move',
         stopHere: 'stopped here',
+        customOrder: ' (custom order: ',
+        customEnd: ')',
         close: 'Close'
     },
     'zh-tw': {
@@ -61,6 +63,8 @@ const TEXTS = {
         missing: '缺少',
         hint: '滾輪縮放、拖曳移動',
         stopHere: '停在這裡',
+        customOrder: '（自訂順序：',
+        customEnd: '）',
         close: '關閉'
     }
 };
@@ -110,7 +114,8 @@ const PAGE_SCRIPT = [
     'var hl={};if(H){H.nodeIds.forEach(function(id){hl[id]=true;});}',
     'var lastId=H?H.nodeIds[H.nodeIds.length-1]:-1;',
     // 標題列
-    'document.getElementById("ttl").textContent=T.title+"："+T.predicting+"「"+M.target+"」";',
+    'document.getElementById("ttl").textContent=T.title+"："+T.predicting+"「"+M.target+"」"+' +
+    '(M.order?T.customOrder+M.order.join(" → ")+T.customEnd:"");',
     'var acc=(M.accuracyOn==="test"?T.accuracyTest:T.accuracyTrain)+" "+pct(M.accuracy)+" ("+M.correct+"/"+M.nEval+")";',
     'document.getElementById("stats").textContent=T.train+" "+M.nTrain+" "+T.rows+"、"+T.test+" "+M.nTest+" "+T.rows+"｜"+acc+"｜"+T.depth+" "+M.depth+"、"+T.leaves+" "+M.leaves;',
     'var lg=document.getElementById("legend");M.classes.forEach(function(c){',
@@ -243,7 +248,8 @@ function buildHtml (model, opts) {
         model: {
             target: model.target, classes: model.classes, tree: model.tree,
             nTrain: model.nTrain, nTest: model.nTest, accuracy: model.accuracy, accuracyOn: model.accuracyOn,
-            correct: model.correct, nEval: model.nEval, depth: model.depth, leaves: model.leaves
+            correct: model.correct, nEval: model.nEval, depth: model.depth, leaves: model.leaves,
+            order: model.order || null
         },
         texts,
         highlight,
