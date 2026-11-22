@@ -76,7 +76,6 @@
             noId: '有一個資料檔呼叫了 OSEP.addPlugin，但沒有 id',
             lineErr: (f, n, m) => `${f} 第 ${n} 行：${m}`,
             navHome: '擴充功能', navBlocks: '積木速查', navGuide: '新增擴充功能',
-            brandSub: '擴充功能說明', brandSmall: 'Scratch 擴充功能',
             footer: 'OSEP 擴充功能說明・資料放在 <code>plugins/</code> 資料夾，一個擴充功能一個檔案',
             switchTo: 'English', switchTitle: 'Switch to English',
             untranslated: '',
@@ -133,7 +132,6 @@
             noId: 'A data file called OSEP.addPlugin without an id',
             lineErr: (f, n, m) => `${f} line ${n}: ${m}`,
             navHome: 'Plugins', navBlocks: 'Cheat sheet', navGuide: 'Add a plugin',
-            brandSub: 'Plugin Guide', brandSmall: 'Scratch extensions',
             footer: 'OSEP Plugin Guide · data lives in the <code>plugins/</code> folder, one file per plugin',
             switchTo: '中文', switchTitle: '切換成中文',
             untranslated: 'This page has not been fully translated into English yet. Parts in Chinese are shown as they are.',
@@ -841,8 +839,6 @@
         set('.nav a[data-nav="home"]', esc(T('navHome')));
         set('.nav a[data-nav="blocks"]', esc(T('navBlocks')));
         set('.nav a[data-nav="guide"]', esc(T('navGuide')));
-        set('.brand .bt', esc(T('brandSub')));
-        set('.brand small', esc(T('brandSmall')));
         set('.footer', T('footer'));
         const nav = $('.nav');
         if (nav && !$('.lang-btn', nav)) {
