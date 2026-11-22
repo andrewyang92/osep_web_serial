@@ -6,7 +6,11 @@ const ml5 = require('ml5');
 const menuIconURI = null;
 const blockIconURI = null;
 
-const LASS_URI = 'https://pm25.lass-net.org/data/last.php?device_id=';
+// LASS（pm25.lass-net.org）的空氣盒子資料 2026-09-01 起停止更新，
+// 改用 OSEP 的中繼程式（Google Apps Script，程式在 gas/Code.gs）轉存 Edimax 空氣盒子網站的資料，格式和 LASS 相同
+// 原本：https://pm25.lass-net.org/data/last.php?device_id=
+const AIRBOX_RELAY_URL = 'https://script.google.com/macros/s/AKfycbxT8a0laP6bOTx7q0skV8eOCgNOjrmiJ04kmdwlt7fGVu0qHxaHslPb7rL7Vi5CvcLw/exec';
+const LASS_URI = AIRBOX_RELAY_URL + '?device_id=';
 const AQI_URI = 'https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=0ef90d4c-45c1-4b11-b8cc-b9a28b142096';
 const WERTHER_URL = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?format=JSON&Authorization=';
 
@@ -262,7 +266,8 @@ class gasoLASS {
     }
 
     openAirBoxDeviceData() {
-        window.open("https://pm25.lass-net.org/data/last-all-airbox.json");
+        // 原本：https://pm25.lass-net.org/data/last-all-airbox.json
+        window.open(AIRBOX_RELAY_URL);
     }
 
     async fetchLASS(args) {

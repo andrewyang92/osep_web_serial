@@ -74201,7 +74201,8 @@ const builtinExtensions = {
   textSentimentTF: () => __webpack_require__(/*! ../extensions/scratch3_textSentimentTF */ "./node_modules/scratch-vm/src/extensions/scratch3_textSentimentTF/index.js"),
   faceExpressionMediapipe: () => __webpack_require__(/*! ../extensions/scratch3_faceExpressionMediapipe */ "./node_modules/scratch-vm/src/extensions/scratch3_faceExpressionMediapipe/index.js"),
   decisionTree: () => __webpack_require__(/*! ../extensions/scratch3_decisionTree */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/index.js"),
-  yoloDetection: () => __webpack_require__(/*! ../extensions/scratch3_yoloDetection */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/index.js")
+  yoloDetection: () => __webpack_require__(/*! ../extensions/scratch3_yoloDetection */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/index.js"),
+  lassAirbox: () => __webpack_require__(/*! ../extensions/scratch3_lassAirbox */ "./node_modules/scratch-vm/src/extensions/scratch3_lassAirbox/index.js")
 };
 builtinExtensions['qrcode'] = () => __webpack_require__(/*! ../extensions/scratch3_qrcode */ "./node_modules/scratch-vm/src/extensions/scratch3_qrcode/index.js");
 builtinExtensions['tmpose2scratch'] = () => __webpack_require__(/*! ../extensions/scratch3_tmpose2scratch */ "./node_modules/scratch-vm/src/extensions/scratch3_tmpose2scratch/index.js");
@@ -90596,6 +90597,665 @@ module.exports = {
     pickCancel: t('Cancel', '取消')
 };
 
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_lassAirbox/index.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+const ArgumentType = __webpack_require__(/*! ../../extension-support/argument-type */ "./node_modules/scratch-vm/src/extension-support/argument-type.js");
+const BlockType = __webpack_require__(/*! ../../extension-support/block-type */ "./node_modules/scratch-vm/src/extension-support/block-type.js");
+const msg = __webpack_require__(/*! ./translation */ "./node_modules/scratch-vm/src/extensions/scratch3_lassAirbox/translation.js");
+const formatMessage = __webpack_require__(/*! format-message */ "./node_modules/format-message/index.js");
+// const ml5 = require('ml5');  // new/ 注入版不需要
+const menuIconURI = null;
+const blockIconURI = null;
+
+// LASS（pm25.lass-net.org）的空氣盒子資料 2026-09-01 起停止更新，
+// 改用 OSEP 的中繼程式（Google Apps Script，程式在 gas/Code.gs）轉存 Edimax 空氣盒子網站的資料，格式和 LASS 相同
+// 原本：https://pm25.lass-net.org/data/last.php?device_id=
+const AIRBOX_RELAY_URL = 'https://script.google.com/macros/s/AKfycbxT8a0laP6bOTx7q0skV8eOCgNOjrmiJ04kmdwlt7fGVu0qHxaHslPb7rL7Vi5CvcLw/exec';
+const LASS_URI = AIRBOX_RELAY_URL + '?device_id=';
+const AQI_URI = 'https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=0ef90d4c-45c1-4b11-b8cc-b9a28b142096';
+const WERTHER_URL = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?format=JSON&Authorization=';
+
+let theLocale = null;
+
+class gasoLASS {
+    constructor(runtime) {
+        theLocale = this._setLocale();
+        this.runtime = runtime;
+        this.comm = runtime.ioDevices.comm;
+        this.session = null;
+        this.runtime.registerPeripheralExtension('lassAirbox', this);
+        this.reporter = null;
+        this.onmessage = this.onmessage.bind(this);
+        this.onclose = this.onclose.bind(this);
+        this.write = this.write.bind(this);
+
+        this.decoder = new TextDecoder();
+        this.lineBuffer = '';
+
+        this.LASSData = {};
+        this.fetched = false;
+
+        this.getEPAStation();
+        this.siteName = ["基隆"];
+        this.EPAData = {};
+
+        this.weatherData = {};
+    }
+
+
+    onclose() {
+        this.session = null;
+    }
+
+    write(data, parser = null) {
+        if (this.session) {
+            return new Promise(resolve => {
+                if (parser) {
+                    this.reporter = {
+                        parser,
+                        resolve
+                    };
+                }
+                this.session.write(data);
+            });
+        }
+    }
+
+    onmessage(data) {
+        const dataStr = this.decoder.decode(data);
+        this.lineBuffer += dataStr;
+        if (this.lineBuffer.indexOf('\n') !== -1) {
+            const lines = this.lineBuffer.split('\n');
+            this.lineBuffer = lines.pop();
+            for (const l of lines) {
+                if (this.reporter) {
+                    const { parser, resolve } = this.reporter;
+                    resolve(parser(l));
+                }
+            }
+        }
+    }
+
+    scan() {
+        this.comm.getDeviceList().then(result => {
+            this.runtime.emit(this.runtime.constructor.PERIPHERAL_LIST_UPDATE, result);
+        });
+    }
+
+    _setLocale() {
+        let nowLocale = '';
+        switch (formatMessage.setup().locale) {
+            case 'zh-tw':
+                nowLocale = 'zh-tw';
+                break;
+            default:
+                nowLocale = 'en';
+                break;
+        }
+        return nowLocale;
+    }
+
+    getInfo() {
+        theLocale = this._setLocale();
+
+        return {
+            id: 'lassAirbox',
+            name: 'LASS AirBox',
+            color1: '#4a90e2',
+            color2: '#4a90e2',
+            menuIconURI: menuIconURI,
+            blockIconURI: blockIconURI,
+            blocks: [
+                {
+                    opcode: 'openEdiGreen',
+                    blockType: BlockType.COMMAND,
+                    text: msg.openEdiGreen[theLocale]
+                },
+                {
+                    opcode: 'openAirBoxDeviceData',
+                    blockType: BlockType.COMMAND,
+                    text: msg.openAirBoxDeviceData[theLocale]
+                },
+                {
+                    opcode: 'fetchLASS',
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        id: {
+                            type: ArgumentType.STRING,
+                            defaultValue: "74DA38F208E2"
+                        }
+                    },
+                    text: msg.fetchLASS[theLocale]
+                },
+                {
+                    opcode: 'onLASSReceived',
+                    blockType: BlockType.HAT,
+                    isEdgeActivated: false,
+                    arguments: {},
+                    text: msg.onLASSReceived[theLocale]
+                },
+                {
+                    opcode: 'parseAttrFromLASS',
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        attr: {
+                            type: ArgumentType.STRING,
+                            menu: 'lassAttrs',
+                            defaultValue: 'PM2.5'
+                        }
+                    },
+                    text: msg.parseAttrFromLASS[theLocale]
+                },
+                "---",
+                {
+                    opcode: 'getEPAData',
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        siteName: {
+                            type: ArgumentType.STRING,
+                            menu: 'sitename',
+                            defaultValue: "基隆"
+                        },
+                        attr: {
+                            type: ArgumentType.STRING,
+                            menu: 'EPAAttrs',
+                            defaultValue: 'aqi',
+                        }
+                    },
+                    text: msg.getEPAData[theLocale]
+                },
+                {
+                    opcode: 'EPAStation',
+                    blockType: BlockType.REPORTER,
+                    text: msg.EPAStation[theLocale]
+                },
+                "---",
+                {
+                    opcode: 'authorization',
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        apiKey: {
+                            type: ArgumentType.STRING,
+                            defaultValue: "API Key"
+                        }
+                    },
+                    text: msg.authorization[theLocale]
+                },
+                {
+                    opcode: 'getWeatherData',
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        locationName: {
+                            type: ArgumentType.STRING,
+                            menu: 'locationName',
+                            defaultValue: msg.taipeiCity[theLocale]
+                        },
+                        forecastTime: {
+                            type: ArgumentType.NUMBER,
+                            menu: 'forecastTime',
+                            defaultValue: '12'
+                        },
+                        weatherAttrs: {
+                            type: ArgumentType.STRING,
+                            menu: 'weatherAttrs',
+                            defaultValue: msg.Wx[theLocale]
+                        }
+                    },
+                    text: msg.getWeatherData[theLocale]
+                },
+            ],
+            menus: {
+                lassAttrs: {
+                    acceptReporters: true,
+                    items: ["PM2.5", msg.tempc[theLocale], msg.humidity[theLocale], msg.time[theLocale]],
+                },
+                sitename: {
+                    acceptReporters: true,
+                    items: 'get_sitename_items',
+                },
+                EPAAttrs: {
+                    acceptReporters: true,
+                    items: [
+                        { text: 'AQI', value: 'aqi' },
+                        { text: 'PM2.5', value: 'pm2.5' },
+                        { text: 'PM10', value: 'pm10' },
+                        { text: 'O3', value: 'o3' },
+                        { text: msg.publishTime[theLocale], value: 'publishtime' }
+                    ]
+                },
+                locationName: {
+                    acceptReporters: true,
+                    items: [
+                        msg.taipeiCity[theLocale],
+                        msg.newTaipeiCity[theLocale],
+                        msg.taoyuanCity[theLocale],
+                        msg.taichungCity[theLocale],
+                        msg.tainanCity[theLocale],
+                        msg.kaohsiungCity[theLocale],
+                        msg.keelungCity[theLocale],
+                        msg.hsinchuCounty[theLocale],
+                        msg.hsinchuCity[theLocale],
+                        msg.miaoliCounty[theLocale],
+                        msg.changhuaCounty[theLocale],
+                        msg.nantouCounty[theLocale],
+                        msg.yunlinCounty[theLocale],
+                        msg.chiayiCounty[theLocale],
+                        msg.chiayiCity[theLocale],
+                        msg.pingtungCounty[theLocale],
+                        msg.yilanCounty[theLocale],
+                        msg.hualienCounty[theLocale],
+                        msg.taitungCounty[theLocale],
+                        msg.penghuCounty[theLocale],
+                        msg.kinmenCounty[theLocale],
+                        msg.lienchiangCounty[theLocale],
+                    ]
+                },
+                forecastTime: {
+                    acceptReporters: true,
+                    items: ['12', '24', '36']
+                },
+                weatherAttrs: {
+                    acceptReporters: true,
+                    items: [msg.Wx[theLocale], msg.MaxT[theLocale], msg.MinT[theLocale], msg.CI[theLocale], msg.PoP[theLocale]]
+                },
+            }
+        };
+    }
+
+    openEdiGreen() {
+        window.open("https://airbox.edimaxcloud.com/");
+    }
+
+    openAirBoxDeviceData() {
+        // 原本：https://pm25.lass-net.org/data/last-all-airbox.json
+        window.open(AIRBOX_RELAY_URL);
+    }
+
+    async fetchLASS(args) {
+        const id = args.id;
+        const url = `${LASS_URI}${id}`;
+
+        await fetch(url).then(res => {
+            if (res.ok) {
+                res.json().then(json => {
+                    var jsonData = JSON.stringify(json);
+                    var feeds = JSON.parse(jsonData)["feeds"]
+                    var AirBox = feeds.length == 1 ? feeds[0]["AirBox"] : "設備不存在";
+                    this.fetched = true;
+                    this.LASSData = AirBox;
+                    this.runtime.startHats('lassAirbox_onLASSReceived', {});
+                });
+            }
+        });
+    }
+
+    onLASSReceived() {
+        if (this.fetched) return true;
+    }
+
+    parseAttrFromLASS(args) {
+        var attr = args.attr;
+        console.log(this.LASSData);
+        if (this.fetched) {
+            if (attr == "PM2.5")
+                return this.LASSData["s_d0"];
+            if (attr == msg.tempc[theLocale])
+                return this.LASSData["s_t0"];
+            if (attr == msg.humidity[theLocale])
+                return this.LASSData["s_h0"];
+            if (attr == msg.time[theLocale]) {
+                var date = this.LASSData["timestamp"].substring(0, 10);
+                var dateTime = date + " " + this.LASSData["time"];
+                return dateTime;
+            }
+        }
+        return msg.readFromLASSErr[theLocale];
+    }
+
+    get_sitename_items() {
+        return this.siteName;
+    }
+
+    async getEPAStation() {
+        try {
+            const res = await fetch(AQI_URI);
+            if (!res.ok) return;
+
+            const data = await res.json();
+            const records = Array.isArray(data) ? data : (data.records || []);
+            for (var i = 0; i < records.length; i++) {
+                var tmpSitename = records[i]["sitename"];
+                if (tmpSitename && this.siteName.indexOf(tmpSitename) === -1) {
+                    this.siteName.push(tmpSitename);
+                }
+            }
+        } catch (e) {
+            console.warn('getEPAStation failed:', e);
+        }
+    }
+
+    EPAStation() {
+        var siteName = "";
+        for (var i = 0; i < this.siteName.length; i++)
+            siteName += this.siteName[i] + ", ";
+        return siteName;
+    }
+
+    async fetchEPAData(siteName, attr) {
+        const res = await fetch(AQI_URI);
+        if (!res.ok) return undefined;
+        const data = await res.json();
+        // 環保署 API 直接回傳陣列，不是 { records: [...] }
+        const records = Array.isArray(data) ? data : (data.records || []);
+        for (var i = 0; i < records.length; i++) {
+            if (siteName === records[i]["sitename"]) {
+                return records[i][attr];
+            }
+        }
+        return undefined;
+    }
+
+    async getEPAData(args) {
+        var siteName = args.siteName;
+        var attr = args.attr;
+        const value = await this.fetchEPAData(siteName, attr);
+        return value !== undefined ? value : '';
+    }
+
+    authorization(args) {
+        var apiKey = args.apiKey;
+        const url = `${WERTHER_URL}${apiKey}`;
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                this.weatherData = data;
+            });
+    }
+
+    getWeatherData(args) {
+        var locationName = args.locationName;
+        var forecastTime = args.forecastTime;
+        var weatherAttrs = args.weatherAttrs;
+
+        var locationMap = {
+            [msg.taipeiCity[theLocale]]: 5,
+            [msg.newTaipeiCity[theLocale]]: 1,
+            [msg.taoyuanCity[theLocale]]: 13,
+            [msg.taichungCity[theLocale]]: 11,
+            [msg.tainanCity[theLocale]]: 6,
+            [msg.kaohsiungCity[theLocale]]: 15,
+            [msg.keelungCity[theLocale]]: 18,
+            [msg.hsinchuCounty[theLocale]]: 3,
+            [msg.hsinchuCity[theLocale]]: 4,
+            [msg.miaoliCounty[theLocale]]: 8,
+            [msg.changhuaCounty[theLocale]]: 20,
+            [msg.nantouCounty[theLocale]]: 14,
+            [msg.yunlinCounty[theLocale]]: 9,
+            [msg.chiayiCounty[theLocale]]: 0,
+            [msg.chiayiCity[theLocale]]: 2,
+            [msg.pingtungCounty[theLocale]]: 17,
+            [msg.yilanCounty[theLocale]]: 7,
+            [msg.hualienCounty[theLocale]]: 10,
+            [msg.taitungCounty[theLocale]]: 12,
+            [msg.penghuCounty[theLocale]]: 19,
+            [msg.kinmenCounty[theLocale]]: 16,
+            [msg.lienchiangCounty[theLocale]]: 21
+        };
+
+        locationName = locationMap[locationName];
+
+        var forecastTimeMap = {
+            '12': 0,
+            '24': 1,
+            '36': 2,
+        };
+
+        forecastTime = forecastTimeMap[forecastTime];
+
+        var weatherAttrsMap = {
+            [msg.Wx[theLocale]]: 0,
+            [msg.MaxT[theLocale]]: 4,
+            [msg.MinT[theLocale]]: 2,
+            [msg.CI[theLocale]]: 3,
+            [msg.PoP[theLocale]]: 1
+        };
+
+        weatherAttrs = weatherAttrsMap[weatherAttrs];
+
+        var jsonData = JSON.stringify(this.weatherData);
+        var parseData = JSON.parse(jsonData);
+
+        var wx8 = parseData["records"]["location"][locationName]["weatherElement"][weatherAttrs]["time"][forecastTime]["parameter"]["parameterName"];
+
+        return wx8;
+    }
+}
+
+module.exports = gasoLASS;
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_lassAirbox/translation.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+exports.openEdiGreen = {
+    'en': 'Open the EdiGreen AirBox website',
+    'zh-tw': '開啟 EdiGreen 空氣盒子網站'
+};
+
+exports.openAirBoxDeviceData = {
+    'en': 'Open the AirBox device data',
+    'zh-tw': '開啟空氣盒子設備資料'
+};
+
+exports.fetchLASS = {
+    'en': 'LASS Device [id]',
+    'zh-tw': 'LASS 設備編號 [id]'
+};
+
+exports.onLASSReceived = {
+    'en': 'When data is received from LASS',
+    'zh-tw': '當收到 LASS 資料時'
+};
+
+exports.parseAttrFromLASS = {
+    'en': 'LASS read [attr]',
+    'zh-tw': 'LASS 讀取 [attr]'
+};
+
+exports.EPAStation = {
+    'en': 'EPA Station',
+    'zh-tw': '環保署測站'
+};
+
+exports.readFromLASSErr = {
+    'en': 'Error： Data does not exist',
+    'zh-tw': '錯誤： 資料不存在',
+};
+
+exports.tempc = {
+    'en': 'Temperature (°C)',
+    'zh-tw': '溫度 °C'
+};
+
+exports.humidity = {
+    'en': 'Humidity (%)',
+    'zh-tw': '濕度 %'
+};
+
+
+exports.publishTime = {
+    'en': 'Publish Time',
+    'zh-tw': '發佈時間'
+};
+
+exports.getEPAData = {
+    'en': 'LASS AQI city [siteName] read [attr]',
+    'zh-tw': '環保署測站 [siteName] 讀取 [attr]'
+};
+
+exports.time = {
+    'en': 'Date and Time',
+    'zh-tw': '日期與時間'
+}
+
+exports.authorization = {
+    'en': 'Open weather data platform authorization key[apiKey]',
+    'zh-tw': '氣象開放資料平臺的授權碼[apiKey]'
+}
+
+exports.getWeatherData = {
+    'en': 'Query the weather forecast for [locationName] in the next [forecastTime] hours with [weatherAttrs]',
+    'zh-tw': '查詢[locationName] 未來 [forecastTime] 小時 [weatherAttrs] 的天氣預報'
+}
+
+exports.taipeiCity = {
+    'en': 'Taipei City',
+    'zh-tw': '臺北市'
+};
+
+exports.kaohsiungCity = {
+    'en': 'Kaohsiung City',
+    'zh-tw': '高雄市'
+};
+
+exports.newTaipeiCity = {
+    'en': 'New Taipei City',
+    'zh-tw': '新北市'
+};
+
+exports.taichungCity = {
+    'en': 'Taichung City',
+    'zh-tw': '臺中市'
+};
+
+exports.tainanCity = {
+    'en': 'Tainan City',
+    'zh-tw': '臺南市'
+};
+
+exports.taoyuanCity = {
+    'en': 'Taoyuan City',
+    'zh-tw': '桃園市'
+};
+
+exports.keelungCity = {
+    'en': 'Keelung City',
+    'zh-tw': '基隆市'
+};
+
+exports.hsinchuCity = {
+    'en': 'Hsinchu City',
+    'zh-tw': '新竹市'
+};
+
+exports.chiayiCity = {
+    'en': 'Chiayi City',
+    'zh-tw': '嘉義市'
+};
+
+exports.yilanCounty = {
+    'en': 'Yilan County',
+    'zh-tw': '宜蘭縣'
+};
+
+exports.hsinchuCounty = {
+    'en': 'Hsinchu County',
+    'zh-tw': '新竹縣'
+};
+
+exports.miaoliCounty = {
+    'en': 'Miaoli County',
+    'zh-tw': '苗栗縣'
+};
+
+exports.changhuaCounty = {
+    'en': 'Changhua County',
+    'zh-tw': '彰化縣'
+};
+
+exports.nantouCounty = {
+    'en': 'Nantou County',
+    'zh-tw': '南投縣'
+};
+
+exports.yunlinCounty = {
+    'en': 'Yunlin County',
+    'zh-tw': '雲林縣'
+};
+
+exports.chiayiCounty = {
+    'en': 'Chiayi County',
+    'zh-tw': '嘉義縣'
+};
+
+exports.pingtungCounty = {
+    'en': 'Pingtung County',
+    'zh-tw': '屏東縣'
+};
+
+exports.taitungCounty = {
+    'en': 'Taitung County',
+    'zh-tw': '臺東縣'
+};
+
+exports.hualienCounty = {
+    'en': 'Hualien County',
+    'zh-tw': '花蓮縣'
+};
+
+exports.penghuCounty = {
+    'en': 'Penghu County',
+    'zh-tw': '澎湖縣'
+};
+
+exports.kinmenCounty = {
+    'en': 'Kinmen County',
+    'zh-tw': '金門縣'
+};
+
+exports.lienchiangCounty = {
+    'en': 'Lienchiang County',
+    'zh-tw': '連江縣'
+};
+
+exports.Wx = {
+    'en': 'Weather Phenomenon',
+    'zh-tw': '天氣現象'
+}
+
+exports.MaxT = {
+    'en': '	Maximum Temperature',
+    'zh-tw': '最高溫度'
+}
+
+exports.MinT = {
+    'en': 'Minimum Temperature',
+    'zh-tw': '最低溫度'
+}
+
+exports.CI = {
+    'en': 'Comfort',
+    'zh-tw': '舒適度'
+}
+
+exports.PoP = {
+    'en': 'Rainfall Probability',
+    'zh-tw': '降雨機率'
+}
 
 /***/ },
 
@@ -164014,6 +164674,24 @@ const translationMap = {
   disabled: false,
   internetConnectionRequired: true,
   useAutoScan: false
+}, {
+  name: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "LASS AirBox (live data)",
+    id: "gui.extension.lassAirbox.title"
+  }),
+  extensionId: "lassAirbox",
+  collaborator: "gasolin",
+  iconURL: "static/osep/lassAirbox.png",
+  insetIconURL: "static/osep/lassAirbox-small.png",
+  description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "Air quality from AirBox (Edimax live data), EPA stations and CWA forecasts.",
+    id: "gui.extension.lassAirbox.description"
+  }),
+  featured: true,
+  disabled: false,
+  internetConnectionRequired: true,
+  useAutoScan: false,
+  helpLink: "https://github.com/gasolin/scratch3-internet"
 }]);
 
 /***/ },
@@ -461098,6 +461776,8 @@ __webpack_require__.r(__webpack_exports__);
     "gui.extension.decisionTree.description":"用 Google 試算表的資料訓練決策樹，畫出樹狀圖並進行預測",
     "gui.extension.yoloDetection.title":"YOLO 物件辨識",
     "gui.extension.yoloDetection.description":"用 YOLO 辨識圖片、舞台或攝影機畫面中的人、動物和物品",
+    "gui.extension.lassAirbox.title":"LASS 空氣盒子（即時資料）",
+    "gui.extension.lassAirbox.description":"空氣盒子（Edimax 即時資料）、環境部空品與氣象署預報",
     "gui.extension.llmstudio.description":"使用LLM Studio AI的人工智慧模型進行自然語言處理任務",
     "gui.extension.llmstudio.title":"LLM Studio AI",
     "gui.extension.urltxt.description": "訪問網站和取得文字檔內容",
