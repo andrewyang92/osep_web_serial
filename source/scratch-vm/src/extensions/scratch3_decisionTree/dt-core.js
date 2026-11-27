@@ -9,7 +9,7 @@
  *   - 用「資訊增益比」挑欄位，只在增益不低於平均的欄位中挑（避免偏好值很多的欄位）
  * - 資料格式：Google 試算表插件的 JSON，[{欄位: 值, ...}, ...]，值通常都是字串
  *
- * - 目前只接受「是非」資料（checkYesNo）：每一格都要是 是/否、有/沒有… 這類答案，不接受數字
+ * - checkYesNo：檢查是非資料（2026-11-27 起插件不再使用，資料保留原本的文字和數字）
  * - 自訂分層順序（opts.order）：第 1 層一律問 order[0]、第 2 層問 order[1]…，不用演算法挑
  * - 條件機率（probability）：直接從資料數「符合條件的筆數」中答案是某個值的比例，和樹無關
  *
@@ -637,19 +637,49 @@ function predict (model, input) {
 
 /* ---------- 條件機率 ---------- */
 
+/** 一筆資料是否符合一個條件 {col, op, value}；op：= > < >= <=（數字欄位才用大小比較） */
+function matchCond (row, c) {
+    const v = row[c.col];
+    if (c.op === '=' || !c.op) {
+        if (isNumeric(v) && isNumeric(c.value)) return Number(v) === Number(c.value);
+        return v === c.value;
+    }
+    if (!isNumeric(v) || !isNumeric(c.value)) return false;
+    const a = Number(v);
+    const b = Number(c.value);
+    switch (c.op) {
+    case '>': return a > b;
+    case '<': return a < b;
+    case '>=': return a >= b;
+    case '<=': return a <= b;
+    default: return false;
+    }
+}
+
 /**
- * 從資料算條件機率：符合 conds 的資料中，target 是 value 的比例。
+ * 從資料算條件機率：符合條件的資料中，target 是 value 的比例。
  * @param {object[]} rows
- * @param {object} conds {欄位: 值}，空物件 = 全部資料
+ * @param {object|object[]} conds {欄位: 值}（都是「=」），或 [{col, op, value}]；空 = 全部資料
  * @param {string} target
  * @param {string} value
  * @returns {{n: number, hit: number, p: number|null}} n = 符合條件的筆數，hit = 其中答案是 value 的筆數
  */
 function probability (rows, conds, target, value) {
-    const keys = Object.keys(conds || {});
-    const match = rows.filter(r => keys.every(k => r[k] === conds[k]));
+    const list = Array.isArray(conds) ? conds :
+        Object.keys(conds || {}).map(k => ({col: k, op: '=', value: conds[k]}));
+    const match = rows.filter(r => list.every(c => matchCond(r, c)));
     const hit = match.filter(r => r[target] === value).length;
     return {n: match.length, hit, p: match.length ? hit / match.length : null};
+}
+
+/** 欄位裡出現過的值（依出現順序、不含空白） */
+function distinctValues (rows, col) {
+    const list = [];
+    rows.forEach(r => {
+        const v = r[col];
+        if (v !== '' && typeof v !== 'undefined' && list.indexOf(v) < 0) list.push(v);
+    });
+    return list;
 }
 
 /* ---------- 規則文字 ---------- */
@@ -688,6 +718,9 @@ module.exports = {
     train,
     predict,
     probability,
+    matchCond,
+    distinctValues,
+    isNumeric,
     rulesText,
     formatNumber,
     entropyOfCounts,

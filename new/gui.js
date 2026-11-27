@@ -87084,9 +87084,10 @@ module.exports = {
  * 決策樹插件
  *
  * - 資料：Google 試算表插件「讀取的 Google 資料」產生的 JSON（[{欄位: 值}, ...]）
- *   目前只接受是非資料：每一格都要是 是/否、有/沒有… 這類答案（不接受數字），讀入時統一成 是 / 否
- * - 訓練功能暫時關閉（TRAINING_ENABLED = false）：讀入資料後自動用全部資料建樹，只開放「看圖」；
- *   訓練設定、正確率、預測的積木隱藏（opcode 保留，舊專案仍可載入）
+ *   文字和數字都接受，值保留原樣（2026-11-27 起不再統一成 是 / 否）
+ * - 訓練功能暫時關閉（TRAINING_ENABLED = false）：讀入資料後自動用全部資料建樹，可以看圖和預測；
+ *   訓練設定、正確率的積木隱藏（opcode 保留，舊專案仍可載入）
+ * - 「[欄位] 為 [值]」的值格子：value-field.js（文字欄位有下拉選單、數字欄位直接打字）
  * - 訓練：dt-core.js（C4.5 風格，文字欄位多分支、數字欄位自動找門檻）
  * - 分層順序：預設由演算法挑；「決策樹分層順序設為」可自己指定每一層問哪個欄位
  * - 機率：「在 [條件] 的情況下，答案為「是」的機率」直接從資料計算（和樹無關）
@@ -87105,6 +87106,7 @@ const msg = __webpack_require__(/*! ./translation */ "./node_modules/scratch-vm/
 const core = __webpack_require__(/*! ./dt-core */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/dt-core.js");
 const view = __webpack_require__(/*! ./tree-view */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/tree-view.js");
 const samples = __webpack_require__(/*! ./samples */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/samples.js");
+const valueField = __webpack_require__(/*! ./value-field */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/value-field.js");
 
 // 原創圖示：紫色樹狀節點
 const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
@@ -87157,6 +87159,32 @@ class Scratch3DecisionTree {
 
         this._status = {key: 'st_noData'};
         theLocale = this._setLocale();
+        this._useValueField = false;
+        this._waitValueField();
+    }
+
+    /**
+     * 「值」格子要等編輯器畫面出來才能註冊；還沒好時先用一般文字格，好了再更新積木區
+     */
+    _waitValueField () {
+        const win = this._window();
+        if (!win || typeof win.setTimeout !== 'function' || this._deps.noValueField) return;
+        let tries = 0;
+        const check = () => {
+            if (this._useValueField) return;
+            if (valueField.setup(this, win)) {
+                this._refreshToolbox();
+                return;
+            }
+            if (++tries < 60) win.setTimeout(check, 500);
+        };
+        win.setTimeout(check, 500);
+    }
+
+    _refreshToolbox () {
+        if (this.runtime && typeof this.runtime.requestToolboxExtensionsUpdate === 'function') {
+            this.runtime.requestToolboxExtensionsUpdate();
+        }
     }
 
     _setLocale () {
@@ -87192,7 +87220,8 @@ class Scratch3DecisionTree {
     getInfo () {
         theLocale = this._setLocale();
         const s = k => this._t(k);
-        return {
+        if (!this._deps.noValueField) this._useValueField = valueField.setup(this, this._window());
+        const info = {
             id: 'decisionTree',
             name: s('title'),
             color1: '#7B3FD9',
@@ -87203,7 +87232,9 @@ class Scratch3DecisionTree {
             blocks: this._blocks(s),
             menus: {
                 columns: {acceptReporters: true, items: 'columnMenu'},
+                answers: {acceptReporters: true, items: 'answerMenu'},
                 layers: {acceptReporters: true, items: 'layerMenu'},
+                // 舊版「[欄位] 為 [是/否]」的選單；保留，舊專案的積木才載入得了
                 yesNo: {
                     acceptReporters: true,
                     items: [s('yes'), s('no')]
@@ -87215,6 +87246,17 @@ class Scratch3DecisionTree {
                 }
             }
         };
+        if (this._useValueField) {
+            info.customFieldTypes = {
+                [valueField.KEY]: {output: 'String', outputShape: 2, implementation: {}}
+            };
+        }
+        return info;
+    }
+
+    /** 「值」格子的參數：編輯器裡用可打字＋下拉的格子，否則一般文字格 */
+    _valueArg (defaultValue) {
+        return {type: this._useValueField ? valueField.KEY : ArgumentType.STRING, defaultValue};
     }
 
     _blocks (s) {
@@ -87255,6 +87297,7 @@ class Scratch3DecisionTree {
             {opcode: 'getRules', blockType: BlockType.REPORTER, text: s('rules')}
         ];
         const firstCol = this._featureColumns()[0] || '';
+        const firstVal = this.valueOptions(firstCol)[0] || '';
         const order = [
             {
                 opcode: 'setLayer', blockType: BlockType.COMMAND, text: s('setLayer'),
@@ -87274,16 +87317,20 @@ class Scratch3DecisionTree {
                 opcode: 'condition', blockType: BlockType.REPORTER, text: s('condition'),
                 arguments: {
                     COL: {type: ArgumentType.STRING, menu: 'columns', defaultValue: firstCol},
-                    YN: {type: ArgumentType.STRING, menu: 'yesNo', defaultValue: s('yes')}
+                    YN: this._valueArg(firstVal)
                 }
             },
             {
                 opcode: 'condAnd', blockType: BlockType.REPORTER, text: s('condAnd'),
-                arguments: {A: {type: ArgumentType.STRING, defaultValue: ''}, B: {type: ArgumentType.STRING, defaultValue: ''}}
+                // 預設值空字串時 Scratch 會顯示「undefined」，所以用一個空格（condAnd 會去掉空白）
+                arguments: {A: {type: ArgumentType.STRING, defaultValue: ' '}, B: {type: ArgumentType.STRING, defaultValue: ' '}}
             },
             {
                 opcode: 'probability', blockType: BlockType.REPORTER, text: s('probability'),
-                arguments: {COND: {type: ArgumentType.STRING, defaultValue: s('defCond')}}
+                arguments: {
+                    COND: {type: ArgumentType.STRING, defaultValue: s('defCond')},
+                    ANS: {type: ArgumentType.STRING, menu: 'answers', defaultValue: this._defaultAnswer()}
+                }
             }
         ];
         const show = [
@@ -87294,8 +87341,8 @@ class Scratch3DecisionTree {
             {
                 opcode: 'setInput', blockType: BlockType.COMMAND, text: s('setInput'),
                 arguments: {
-                    COL: {type: ArgumentType.STRING, defaultValue: s('defCol')},
-                    VAL: {type: ArgumentType.STRING, defaultValue: s('defVal')}
+                    COL: {type: ArgumentType.STRING, menu: 'columns', defaultValue: firstCol},
+                    VAL: this._valueArg(firstVal)
                 }
             },
             {opcode: 'clearInput', blockType: BlockType.COMMAND, text: s('clearInput')},
@@ -87307,15 +87354,20 @@ class Scratch3DecisionTree {
             {opcode: 'getConfidence', blockType: BlockType.REPORTER, text: s('confidence')},
             {opcode: 'getPath', blockType: BlockType.REPORTER, text: s('path')}
         ];
+        // 問問題：條件積木、用條件預測、信心、路徑、機率；一欄一欄設定的預測放最後
+        const byOp = (list, op) => list.filter(b => b.opcode === op)[0];
+        const ask = [byOp(prob, 'condition'), byOp(prob, 'condAnd'), byOp(predict, 'predictText'),
+            byOp(predict, 'getConfidence'), byOp(predict, 'getPath'), byOp(prob, 'probability')];
+        const oneByOne = ['setInput', 'clearInput', 'predict'].map(op => byOp(predict, op));
         if (this._trainingEnabled) {
-            return data.concat(['---'], train, order, ['---'], show, ['---'], predict, prob);
+            return data.concat(['---'], train, order, ['---'], show, ['---'], ask, ['---'], oneByOne);
         }
-        // 訓練關閉：只留讀資料、狀態、分層順序、看圖和機率；其他積木隱藏（opcode 不變，舊專案仍可載入）
+        // 訓練關閉（用全部資料建樹）：訓練設定、正確率、規則等積木隱藏（opcode 不變，舊專案仍可載入）
         const hide = b => Object.assign({}, b, {hideFromPalette: true});
         const hidden = ['setTarget', 'setFeatures'];
         return data.map(b => (hidden.indexOf(b.opcode) >= 0 ? hide(b) : b))
-            .concat([status], ['---'], order, ['---'], show, ['---'], prob,
-                train.filter(b => b !== status).map(hide), predict.map(hide));
+            .concat([status], ['---'], order, ['---'], show, ['---'], ask, ['---'], oneByOne,
+                train.filter(b => b !== status).map(hide));
     }
 
     /* ---------- 資料 ---------- */
@@ -87330,32 +87382,52 @@ class Scratch3DecisionTree {
             this._setStatus(key || 'st_dataFormat');
             return false;
         }
-        // 只接受是非資料，統一成 是 / 否
-        const yn = core.checkYesNo(r, {yes: this._t('yes'), no: this._t('no')});
-        if (yn.error) {
-            this._data = null;
-            this._setStatus(yn.error === 'blank' ? 'st_blankCell' : 'st_notYesNo',
-                {col: yn.col, line: yn.line, val: yn.value});
-            return false;
-        }
-        this._data = yn;
+        this._data = r;
+        this._input = {};
         this._autoBuild();
-        // 欄位下拉選單的預設值換成新資料的欄位
-        if (this.runtime && typeof this.runtime.requestToolboxExtensionsUpdate === 'function') {
-            this.runtime.requestToolboxExtensionsUpdate();
-        }
+        // 下拉選單的預設值換成新資料的欄位；畫面上的值格子重畫
+        this._refreshToolbox();
+        valueField.refresh(this._window());
         return true;
+    }
+
+    /** 目前的資料；還沒讀資料時用範例資料（給下拉選單用） */
+    _menuData () {
+        if (this._data) {
+            const cols = this._data.columns;
+            return {rows: this._data.rows, columns: cols, target: this._target || cols[cols.length - 1]};
+        }
+        const sample = samples.tennis(theLocale);
+        return {rows: sample.rows, columns: Object.keys(sample.rows[0]), target: sample.target};
+    }
+
+    _isNumberColumn (rows, col) {
+        return core.columnIsNumeric(rows, col);
+    }
+
+    /** 「值」格子的下拉選項：文字欄位列出出現過的值；數字欄位、找不到的欄位回傳 [] */
+    valueOptions (col) {
+        const d = this._menuData();
+        if (d.columns.indexOf(col) < 0 || this._isNumberColumn(d.rows, col)) return [];
+        return core.distinctValues(d.rows, col);
+    }
+
+    /** 答案欄出現過的答案 */
+    answerMenu () {
+        const d = this._menuData();
+        const list = core.distinctValues(d.rows, d.target);
+        return list.length ? list : [''];
+    }
+
+    _defaultAnswer () {
+        const list = this.answerMenu();
+        return list.indexOf(this._t('yes')) >= 0 ? this._t('yes') : list[0];
     }
 
     /** 可以用來判斷的欄位（不含答案欄）；還沒讀資料時用範例資料的欄位 */
     _featureColumns () {
-        if (!this._data) {
-            const sample = samples.tennisYesNo(theLocale);
-            return Object.keys(sample.rows[0]).filter(c => c !== sample.target);
-        }
-        const cols = this._data.columns;
-        const target = this._target || cols[cols.length - 1];
-        return cols.filter(c => c !== target);
+        const d = this._menuData();
+        return d.columns.filter(c => c !== d.target);
     }
 
     columnMenu () {
@@ -87385,7 +87457,7 @@ class Scratch3DecisionTree {
     }
 
     useSample () {
-        const sample = samples.tennisYesNo(theLocale);
+        const sample = samples.tennis(theLocale);
         this._target = sample.target;
         this._targetFromSample = true;
         this._features = null;
@@ -87703,22 +87775,15 @@ class Scratch3DecisionTree {
             this._last = null;
             return '';
         }
-        // 預測資料也統一成 是 / 否（看不懂的值照原樣，預測時會當成沒看過）
-        const norm = {};
-        Object.keys(input).forEach(k => {
-            const b = core.yesNoValue(input[k]);
-            norm[k] = b === null ? input[k] : this._t(b ? 'yes' : 'no');
-        });
-        const r = core.predict(this._model, norm);
+        const r = core.predict(this._model, input);
         this._last = r;
-        const okKey = this._model.nTest ? 'st_trained' : 'st_trainedNoTest';
-        const okParams = {nTrain: this._model.nTrain, nTest: this._model.nTest, acc: round1(this._model.accuracy)};
         if (r.unknown) {
             this._setStatus('st_unknownValue', {col: r.unknown.feature, val: r.unknown.value});
         } else if (r.missing.length) {
             this._setStatus('st_missing', {list: r.missing.join(', ')});
         } else {
-            this._setStatus(okKey, okParams);
+            this._setStatus('st_predicted',
+                {target: this._model.target, pred: r.prediction, conf: round1(r.confidence)});
         }
         // 視窗開著時，把預測路徑畫上去（路徑沒變就不重畫）
         if (this._isShowing() && this._key() !== this._shownKey) this._render();
@@ -87730,7 +87795,25 @@ class Scratch3DecisionTree {
     }
 
     predictText (args) {
-        return this._predict(core.parseInputText(args.TEXT));
+        const text = String(args.TEXT === null || typeof args.TEXT === 'undefined' ? '' : args.TEXT).trim();
+        if (text[0] === '{' || !this._data) return this._predict(core.parseInputText(text));
+        // 「天氣=晴, 溫度=70」：和機率積木一樣先檢查欄位和值
+        const conds = this._parseCond(text);
+        if (!conds) {
+            this._last = null;
+            return '';
+        }
+        const notEqual = conds.filter(c => c.op !== '=')[0];
+        if (notEqual) {
+            this._setStatus('st_predictOp', {col: notEqual.col});
+            this._last = null;
+            return '';
+        }
+        const input = {};
+        conds.forEach(c => {
+            input[c.col] = c.value;
+        });
+        return this._predict(input);
     }
 
     getConfidence () {
@@ -87740,35 +87823,53 @@ class Scratch3DecisionTree {
     /* ---------- 機率 ---------- */
 
     /**
-     * 「晴天=是, 有風=是」→ {晴天: 是, 有風: 是}；只寫欄位名稱（「晴天, 有風」）代表「是」
-     * @returns {object|null} 有錯時設定狀態並回傳 null
+     * 「天氣=晴, 溫度>70」→ [{col, op, value}]；只寫欄位名稱代表「=是」
+     * 文字欄位只能用 =，值要是這一欄出現過的；數字欄位可以用 = > < >= <=
+     * @returns {object[]|null} 有錯時設定狀態並回傳 null
      */
     _parseCond (text) {
+        const rows = this._data.rows;
         const cols = this._data.columns;
-        const conds = {};
+        const conds = [];
         const parts = core.splitList(text);
         for (let i = 0; i < parts.length; i++) {
-            const m = parts[i].match(/^([^=:：]+)[=:：](.*)$/);
-            const col = (m ? m[1] : parts[i]).trim();
-            const val = m ? m[2].trim() : this._t('yes');
+            const part = parts[i].replace(/＞/g, '>').replace(/＜/g, '<').replace(/＝/g, '=');
+            const m = part.match(/^(.+?)\s*(>=|<=|>|<|=|:|：)\s*(.*)$/);
+            const col = (m ? m[1] : part).trim();
+            let op = m ? m[2] : '=';
+            if (op === ':' || op === '：') op = '=';
+            const value = m ? m[3].trim() : this._t('yes');
             if (cols.indexOf(col) < 0) {
                 this._setStatus('st_badCond', {col, cols: cols.join(', ')});
                 return null;
             }
-            const b = core.yesNoValue(val);
-            if (b === null) {
-                this._setStatus('st_condNotYesNo', {col, val});
-                return null;
+            if (this._isNumberColumn(rows, col)) {
+                if (!core.isNumeric(value)) {
+                    this._setStatus('st_condNotNumber', {col, val: value});
+                    return null;
+                }
+            } else {
+                if (op !== '=') {
+                    this._setStatus('st_condOpText', {col});
+                    return null;
+                }
+                const values = core.distinctValues(rows, col);
+                if (values.indexOf(value) < 0) {
+                    this._setStatus('st_condBadValue', {col, val: value, list: values.join('、')});
+                    return null;
+                }
             }
-            conds[col] = this._t(b ? 'yes' : 'no');
+            conds.push({col, op, value});
         }
         return conds;
     }
 
-    /** 「[晴天] 為 [是]」→ 晴天=是，可以放進機率積木 */
+    /** 「[天氣] 為 [晴]」→ 天氣=晴；數字欄位可以打「>70」→ 溫度>70。可以放進預測、機率積木 */
     condition (args) {
         const col = String(args.COL).trim();
-        return col ? `${col}=${String(args.YN).trim()}` : '';
+        const val = String(args.YN === null || typeof args.YN === 'undefined' ? '' : args.YN).trim();
+        if (!col) return '';
+        return /^(>=|<=|>|<|=|＞|＜|＝)/.test(val) ? `${col}${val}` : `${col}=${val}`;
     }
 
     /** 「[A] 且 [B]」→ A, B（空的略過） */
@@ -87789,17 +87890,24 @@ class Scratch3DecisionTree {
             this._setStatus('st_badTarget', {col: target, cols: cols.join(', ')});
             return '';
         }
+        const answers = core.distinctValues(this._data.rows, target);
+        let ans = typeof args.ANS === 'undefined' ? '' : String(args.ANS).trim();
+        if (!ans) ans = answers.indexOf(this._t('yes')) >= 0 ? this._t('yes') : answers[0]; // 舊專案沒有這一格
+        if (answers.indexOf(ans) < 0) {
+            this._setStatus('st_badAnswer', {target, ans, list: answers.join('、')});
+            return '';
+        }
         const conds = this._parseCond(args.COND);
         if (!conds) return '';
-        const r = core.probability(this._data.rows, conds, target, this._t('yes'));
-        const cond = Object.keys(conds).map(k => `${k}=${conds[k]}`)
+        const r = core.probability(this._data.rows, conds, target, ans);
+        const cond = conds.map(c => `${c.col}${c.op}${c.value}`)
             .join(theLocale === 'zh-tw' ? '、' : ', ');
         if (!r.n) {
             this._setStatus('st_probNone', {cond});
             return '';
         }
         const p = round1(r.p);
-        this._setStatus(cond ? 'st_prob' : 'st_probAll', {cond, n: r.n, hit: r.hit, target, p});
+        this._setStatus(cond ? 'st_prob' : 'st_probAll', {cond, n: r.n, hit: r.hit, target, ans, p});
         return p;
     }
 
@@ -87833,7 +87941,7 @@ module.exports = Scratch3DecisionTree;
  *   - 用「資訊增益比」挑欄位，只在增益不低於平均的欄位中挑（避免偏好值很多的欄位）
  * - 資料格式：Google 試算表插件的 JSON，[{欄位: 值, ...}, ...]，值通常都是字串
  *
- * - 目前只接受「是非」資料（checkYesNo）：每一格都要是 是/否、有/沒有… 這類答案，不接受數字
+ * - checkYesNo：檢查是非資料（2026-11-27 起插件不再使用，資料保留原本的文字和數字）
  * - 自訂分層順序（opts.order）：第 1 層一律問 order[0]、第 2 層問 order[1]…，不用演算法挑
  * - 條件機率（probability）：直接從資料數「符合條件的筆數」中答案是某個值的比例，和樹無關
  *
@@ -88461,19 +88569,49 @@ function predict (model, input) {
 
 /* ---------- 條件機率 ---------- */
 
+/** 一筆資料是否符合一個條件 {col, op, value}；op：= > < >= <=（數字欄位才用大小比較） */
+function matchCond (row, c) {
+    const v = row[c.col];
+    if (c.op === '=' || !c.op) {
+        if (isNumeric(v) && isNumeric(c.value)) return Number(v) === Number(c.value);
+        return v === c.value;
+    }
+    if (!isNumeric(v) || !isNumeric(c.value)) return false;
+    const a = Number(v);
+    const b = Number(c.value);
+    switch (c.op) {
+    case '>': return a > b;
+    case '<': return a < b;
+    case '>=': return a >= b;
+    case '<=': return a <= b;
+    default: return false;
+    }
+}
+
 /**
- * 從資料算條件機率：符合 conds 的資料中，target 是 value 的比例。
+ * 從資料算條件機率：符合條件的資料中，target 是 value 的比例。
  * @param {object[]} rows
- * @param {object} conds {欄位: 值}，空物件 = 全部資料
+ * @param {object|object[]} conds {欄位: 值}（都是「=」），或 [{col, op, value}]；空 = 全部資料
  * @param {string} target
  * @param {string} value
  * @returns {{n: number, hit: number, p: number|null}} n = 符合條件的筆數，hit = 其中答案是 value 的筆數
  */
 function probability (rows, conds, target, value) {
-    const keys = Object.keys(conds || {});
-    const match = rows.filter(r => keys.every(k => r[k] === conds[k]));
+    const list = Array.isArray(conds) ? conds :
+        Object.keys(conds || {}).map(k => ({col: k, op: '=', value: conds[k]}));
+    const match = rows.filter(r => list.every(c => matchCond(r, c)));
     const hit = match.filter(r => r[target] === value).length;
     return {n: match.length, hit, p: match.length ? hit / match.length : null};
+}
+
+/** 欄位裡出現過的值（依出現順序、不含空白） */
+function distinctValues (rows, col) {
+    const list = [];
+    rows.forEach(r => {
+        const v = r[col];
+        if (v !== '' && typeof v !== 'undefined' && list.indexOf(v) < 0) list.push(v);
+    });
+    return list;
 }
 
 /* ---------- 規則文字 ---------- */
@@ -88512,6 +88650,9 @@ module.exports = {
     train,
     predict,
     probability,
+    matchCond,
+    distinctValues,
+    isNumeric,
     rulesText,
     formatNumber,
     entropyOfCounts,
@@ -88924,7 +89065,7 @@ module.exports = {
     // 積木：機率
     condition: t('[COL] is [YN]', '[COL] 為 [YN]'),
     condAnd: t('[A] and [B]', '[A] 且 [B]'),
-    probability: t('chance (%) that the answer is Yes when [COND]', '在 [COND] 的情況下，答案為「是」的機率 (%)'),
+    probability: t('chance (%) that the answer is [ANS] when [COND]', '在 [COND] 的情況下，答案為 [ANS] 的機率 (%)'),
 
     // 積木：圖
     showTree: t('show decision tree in new window', '在新視窗顯示決策樹'),
@@ -88942,11 +89083,11 @@ module.exports = {
     defData: t('Google data', 'Google 資料'),
     defTarget: t('Play', '打網球'),
     defFeatures: t('all', '全部'),
-    defCol: t('Rainy', '下雨'),
-    defVal: t('No', '否'),
-    defText: t('Rainy=No, Humid=Yes', '下雨=否, 濕度高=是'),
-    defOrder: t('Sunny, Windy', '晴天, 有風'),
-    defCond: t('Sunny=Yes, Windy=Yes', '晴天=是, 有風=是'),
+    defCol: t('Outlook', '天氣'),
+    defVal: t('Sunny', '晴'),
+    defText: t('Outlook=Sunny, Temperature=70', '天氣=晴, 溫度=70'),
+    defOrder: t('Outlook, Wind', '天氣, 風'),
+    defCond: t('Outlook=Sunny, Wind=Strong', '天氣=晴, 風=有'),
 
     // 是非答案統一成的文字
     yes: t('Yes', '是'),
@@ -88978,8 +89119,10 @@ module.exports = {
         '「{col}」第 {line} 列的「{val}」不是是非答案，請填 是／否、有／沒有、會／不會、對／錯 或 yes／no（不接受數字）'),
     st_blankCell: t('Column "{col}", row {line} is blank. Every cell must be Yes or No.',
         '「{col}」第 {line} 列是空白，每一格都要填 是 或 否'),
-    st_dataReadyTree: t('Loaded {rows} rows, {cols} yes/no columns. The decision tree is ready (built from all rows).',
-        '已讀入 {rows} 筆資料、{cols} 個是非欄位，決策樹已建好（用全部資料）'),
+    st_dataReadyTree: t('Loaded {rows} rows, {cols} columns. The decision tree is ready (built from all rows).',
+        '已讀入 {rows} 筆資料、{cols} 個欄位，決策樹已建好（用全部資料）'),
+    st_predicted: t('Prediction: {target} = {pred} (confidence {conf}%)',
+        '預測結果：{target} = {pred}（信心 {conf}%）'),
     st_orderTree: t('Loaded {rows} rows. The decision tree follows your layer order: {order}',
         '已讀入 {rows} 筆資料，決策樹已照你排的順序建好：{order}'),
     st_badOrder: t('Layer order has column(s) not in the data: {missing}. Columns: {cols}. ' +
@@ -88989,15 +89132,23 @@ module.exports = {
     st_orderDup: t('"{col}" is used in more than one layer.', '「{col}」同時放在好幾層，每個欄位只能用一次'),
     st_orderHasTarget: t('"{col}" is the answer column, so it cannot be a layer.',
         '「{col}」是答案欄，不能放進分層順序'),
-    st_prob: t('{n} row(s) match {cond}; {hit} of them have {target} = Yes. Chance: {p}%',
-        '資料中符合「{cond}」的有 {n} 筆，其中 {hit} 筆「{target}」是「是」，機率 {p}%'),
-    st_probAll: t('No condition: {hit} of all {n} rows have {target} = Yes. Chance: {p}%',
-        '沒有條件：全部 {n} 筆中有 {hit} 筆「{target}」是「是」，機率 {p}%'),
+    st_prob: t('{n} row(s) match {cond}; {hit} of them have {target} = {ans}. Chance: {p}%',
+        '資料中符合「{cond}」的有 {n} 筆，其中 {hit} 筆「{target}」是「{ans}」，機率 {p}%'),
+    st_probAll: t('No condition: {hit} of all {n} rows have {target} = {ans}. Chance: {p}%',
+        '沒有條件：全部 {n} 筆中有 {hit} 筆「{target}」是「{ans}」，機率 {p}%'),
+    st_badAnswer: t('"{target}" has no answer "{ans}". Answers: {list}',
+        '「{target}」沒有「{ans}」這個答案，可以用：{list}'),
     st_probNone: t('No rows match {cond}, so the chance cannot be calculated.',
         '資料中沒有符合「{cond}」的資料，算不出機率'),
     st_badCond: t('Column "{col}" not found. Columns: {cols}', '條件裡的「{col}」找不到，資料的欄位有：{cols}'),
-    st_condNotYesNo: t('In the condition, "{val}" for {col} is not a yes/no answer.',
-        '條件裡 {col} 的「{val}」不是是非答案，請用 是／否'),
+    st_condNotNumber: t('"{col}" is a number column, but "{val}" is not a number.',
+        '「{col}」是數字欄位，「{val}」不是數字'),
+    st_condBadValue: t('"{col}" has no value "{val}". Values: {list}',
+        '「{col}」沒有「{val}」這個值，可以用：{list}'),
+    st_predictOp: t('To predict, give an exact value with "=" (for example {col}=70).',
+        '預測要給確切的值，請用「=」（例如 {col}=70）'),
+    st_condOpText: t('"{col}" is a text column, so only "=" can be used.',
+        '「{col}」是文字欄位，只能用「=」'),
     st_trainingOff: t('Training is turned off for now.', '訓練功能暫時關閉'),
     st_dataReady: t('Loaded {rows} rows, {cols} columns. Not trained yet.', '已讀入 {rows} 筆資料、{cols} 個欄位，尚未訓練'),
     st_badTarget: t('Column to predict "{col}" not found. Columns: {cols}', '找不到要預測的欄位「{col}」，資料的欄位有：{cols}'),
@@ -89020,6 +89171,192 @@ module.exports = {
 
     unknownMark: t('(not seen)', '（沒看過）')
 };
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/value-field.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * 「[欄位] 為 [值]」後面的「值」格子（只在 Scratch 編輯器裡有作用）
+ *
+ * - 用 scratch-blocks 內建的 FieldTextDropdown：可以打字，旁邊也有下拉箭頭
+ * - 前面選的是文字欄位 → 箭頭列出這一欄出現過的值；數字欄位 → 不顯示箭頭，直接打數字
+ * - 換了前面的欄位時，值自動換成新欄位的第一個選項（數字欄位清成空白）
+ *
+ * Scratch GUI 不會幫擴充註冊自訂欄位（customFieldTypes），所以這裡從畫面上任一個欄位
+ * 往上找到 Blockly.Field，自己註冊。找不到時（例如在 Node 測試、編輯器還沒載入）回傳 false，
+ * 插件改用一般文字格。
+ */
+'use strict';
+
+const KEY = 'value'; // getInfo 的 customFieldTypes 名稱
+const SHADOW_TYPE = 'decisionTree_value';
+const FIELD_TYPE = 'field_decisionTree_value';
+const COLUMN_MENU = 'decisionTree_menu_columns';
+const VALUE_INPUTS = ['VAL', 'YN'];
+
+let registered = false;
+let source = null; // 提供選項的插件物件：{valueOptions(col) → string[]}
+
+function workspaces (win) {
+    const B = win && win.Blockly;
+    if (!B || typeof B.getMainWorkspace !== 'function') return [];
+    let ws = null;
+    try {
+        ws = B.getMainWorkspace();
+    } catch (e) {
+        return [];
+    }
+    if (!ws) return [];
+    const list = [ws];
+    const fly = typeof ws.getFlyout === 'function' ? ws.getFlyout() : null;
+    if (fly && typeof fly.getWorkspace === 'function' && fly.getWorkspace()) list.push(fly.getWorkspace());
+    return list;
+}
+
+/** 從畫面上的積木欄位往上找 Blockly.Field（有 register 和 TYPE_MAP_ 的那個類別） */
+function findFieldClass (list) {
+    for (const ws of list) {
+        const blocks = typeof ws.getAllBlocks === 'function' ? ws.getAllBlocks() : [];
+        for (const b of blocks) {
+            for (const input of b.inputList || []) {
+                for (const f of input.fieldRow || []) {
+                    let C = f && f.constructor;
+                    while (C) {
+                        if (typeof C.register === 'function' && C.TYPE_MAP_) return C;
+                        C = C.superClass_ && C.superClass_.constructor;
+                    }
+                }
+            }
+        }
+    }
+    return null;
+}
+
+/** 這個「值」格子前面選的欄位；前面放的不是欄位選單（例如放了變數）時回傳 null */
+function columnOf (field) {
+    const block = field && field.sourceBlock_;
+    const parent = block && typeof block.getParent === 'function' ? block.getParent() : null;
+    if (!parent || typeof parent.getInputTargetBlock !== 'function') return null;
+    const colBlock = parent.getInputTargetBlock('COL');
+    if (!colBlock || colBlock.type !== COLUMN_MENU) return null;
+    return colBlock.getFieldValue('columns');
+}
+
+function optionsFor (field) {
+    const col = columnOf(field);
+    if (col === null || !source) return [];
+    return source.valueOptions(col).map(v => [v, v]);
+}
+
+function makeField (TextDropdown) {
+    const f = new TextDropdown('', function () {
+        return optionsFor(this);
+    });
+    // scratch-blocks 的 FieldTextDropdown 少了這兩個方法（按箭頭時會用到），在這裡補上
+    f.getOptions = function () {
+        return optionsFor(this);
+    };
+    f.onItemSelected = function (menu, menuItem) {
+        let value = menuItem.getValue();
+        if (this.sourceBlock_) value = this.callValidator(value);
+        if (value !== null) this.setValue(value);
+    };
+    // 外觀和一般的白色輸入格一樣（VM 給自訂格子的是插件的紫色）
+    const init = f.init;
+    f.init = function () {
+        init.call(this);
+        const b = this.sourceBlock_;
+        if (b && typeof b.setColour === 'function' && b.isShadow && b.isShadow()) {
+            b.setColour('#FFFFFF', '#FFFFFF', '#FFFFFF');
+        }
+    };
+    const position = f.positionArrow;
+    // 沒有選項（數字欄位）就不顯示箭頭
+    f.positionArrow = function (x) {
+        const has = optionsFor(this).length > 0;
+        if (this.arrow_) this.arrow_.style.display = has ? '' : 'none';
+        return has ? position.call(this, x) : 0;
+    };
+    return f;
+}
+
+function rerender (block) {
+    if (block && typeof block.render === 'function') {
+        try {
+            block.render();
+        } catch (e) { /* 積木還沒放到畫面上 */ }
+    }
+}
+
+/** 換了欄位 → 值換成新欄位的選項 */
+function onChange (ws, e) {
+    if (!e || e.type !== 'change' || e.element !== 'field') return;
+    const block = ws.getBlockById(e.blockId);
+    if (!block || block.type !== COLUMN_MENU) return;
+    const parent = block.getParent();
+    if (!parent) return;
+    VALUE_INPUTS.forEach(name => {
+        const vb = parent.getInput(name) ? parent.getInputTargetBlock(name) : null;
+        if (!vb || vb.type !== SHADOW_TYPE) return;
+        const field = vb.getField(FIELD_TYPE);
+        if (!field) return;
+        const opts = optionsFor(field);
+        const cur = field.getValue();
+        if (opts.length) {
+            if (!opts.some(o => o[1] === cur)) field.setValue(opts[0][1]);
+        } else if (!/^\s*(>=|<=|>|<|=)?\s*-?\d/.test(String(cur))) {
+            field.setValue('');
+        }
+        rerender(vb);
+    });
+}
+
+function listen (list) {
+    list.forEach(ws => {
+        if (ws.__osepDecisionTreeValue || typeof ws.addChangeListener !== 'function') return;
+        ws.__osepDecisionTreeValue = true;
+        ws.addChangeListener(e => onChange(ws, e));
+    });
+}
+
+/**
+ * 註冊「值」格子。
+ * @param {object} ext 插件物件（要有 valueOptions(col)）
+ * @param {object} win window
+ * @returns {boolean} 可以用自訂格子了
+ */
+function setup (ext, win) {
+    source = ext;
+    const list = workspaces(win);
+    if (registered) {
+        listen(list);
+        return true;
+    }
+    const Field = findFieldClass(list);
+    const TextDropdown = Field && Field.TYPE_MAP_.field_textdropdown;
+    if (!TextDropdown) return false;
+    Field.register(FIELD_TYPE, {fromJson: () => makeField(TextDropdown)});
+    registered = true;
+    listen(list);
+    return true;
+}
+
+/** 資料換了：畫面上的值格子重畫（箭頭有沒有要跟著變） */
+function refresh (win) {
+    workspaces(win).forEach(ws => {
+        (ws.getAllBlocks ? ws.getAllBlocks() : []).forEach(b => {
+            if (b.type === SHADOW_TYPE) rerender(b);
+        });
+    });
+}
+
+module.exports = {setup, refresh, KEY, SHADOW_TYPE, FIELD_TYPE};
 
 
 /***/ },
