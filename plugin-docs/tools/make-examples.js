@@ -343,6 +343,13 @@ class Builder {
                 return;
             }
             const type = String(a.type || 'string');
+            const custom = (CUSTOM_VALUE_ARGS[info.id] || {})[op];
+            if (custom && custom.indexOf(name) >= 0) {
+                // 自訂欄位（customFieldTypes）：在 Node 載入時 getInfo 給的是一般文字格，
+                // 但編輯器存檔時是 <id>_value 影子積木，範例檔照編輯器的格式寫
+                this.menuInput(block, name, val === undefined ? '' : val, `${info.id}_value`, `field_${info.id}_value`, 'text');
+                return;
+            }
             if (type === 'Boolean') {
                 if (isNode(val)) block.inputs[name] = [2, this.make(val, block.__id)];
                 return;
@@ -489,6 +496,9 @@ const buildProject = (lang, pluginId, ex, infos) => {
  * 例：new/ 裡的 textSentiment 是原作者的 ml5 舊擴充功能，我們的版本叫 textSentimentTF（積木相同）。
  */
 const NEW_IDS = {textSentiment: 'textSentimentTF'};
+
+/** 用自訂欄位（customFieldTypes 的 value）的參數：擴充功能 id → 積木 → 參數名稱 */
+const CUSTOM_VALUE_ARGS = {decisionTree: {condition: ['YN'], setInput: ['VAL']}};
 
 /** 複製一份專案，把擴充 id（opcode 前綴、選單影子積木、extensions 清單）換成新的 */
 const renameExtensions = (project, map) => {

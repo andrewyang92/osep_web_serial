@@ -53,13 +53,15 @@ window.OSEP_EXAMPLE_FILES = {
       "examples/decisionTree/zh-1.sb3",
       "examples/decisionTree/zh-2.sb3",
       "examples/decisionTree/zh-3.sb3",
-      "examples/decisionTree/zh-4.sb3"
+      "examples/decisionTree/zh-4.sb3",
+      "examples/decisionTree/zh-5.sb3"
     ],
     "en": [
       "examples/decisionTree/en-1.sb3",
       "examples/decisionTree/en-2.sb3",
       "examples/decisionTree/en-3.sb3",
-      "examples/decisionTree/en-4.sb3"
+      "examples/decisionTree/en-4.sb3",
+      "examples/decisionTree/en-5.sb3"
     ]
   },
   "yoloDetection": {
