@@ -203,3 +203,13 @@ export const PoP = {
     'en': 'Rainfall Probability',
     'zh-tw': '降雨機率'
 }
+// 2026-11-27 Andrew Yang：用地點名稱查空氣盒子的設備編號（MAC）
+export const searchDeviceMAC = {
+    'en': 'device ID of AirBox at [name]',
+    'zh-tw': '地點 [name] 空氣盒子的設備編號'
+};
+
+export const deviceNotFound = {
+    'en': 'not found',
+    'zh-tw': '找不到'
+};

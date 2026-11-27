@@ -16,6 +16,11 @@ const WERTHER_URL = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-0
 
 let theLocale = null;
 
+// 比對地點名稱用：去掉空白、英文不分大小寫、「臺」「台」視為相同
+function normalizeName(s) {
+    return String(s || '').replace(/\s+/g, '').replace(/臺/g, '台').toLowerCase();
+}
+
 class gasoLASS {
     constructor(runtime) {
         theLocale = this._setLocale();
@@ -114,6 +119,17 @@ class gasoLASS {
                     opcode: 'openAirBoxDeviceData',
                     blockType: BlockType.COMMAND,
                     text: msg.openAirBoxDeviceData[theLocale]
+                },
+                {
+                    opcode: 'searchDeviceMAC',
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        name: {
+                            type: ArgumentType.STRING,
+                            defaultValue: '竹林國小'
+                        }
+                    },
+                    text: msg.searchDeviceMAC[theLocale]
                 },
                 {
                     opcode: 'fetchLASS',
@@ -286,6 +302,37 @@ class gasoLASS {
                 });
             }
         });
+    }
+
+    // 2026-11-27 Andrew Yang：用地點名稱查設備編號（MAC）。
+    // 讀中繼的全部資料（約 150KB，5 分鐘內重複查詢用快取），
+    // 依序找：名稱完全相同 → 名稱開頭相同 → 名稱包含關鍵字（例：「竹林」先找到「竹林國小」而不是「紫竹林」）。
+    // 不用 async/await（見 claude-notes/extensions-regeneratorRuntime-調查.md）
+    searchDeviceMAC(args) {
+        const keyword = normalizeName(args.name);
+        if (!keyword) return '';
+        return this._loadAllAirbox()
+            .then(feeds => {
+                const hit = feeds.find(f => normalizeName(f.name) === keyword) ||
+                    feeds.find(f => normalizeName(f.name).indexOf(keyword) === 0) ||
+                    feeds.find(f => normalizeName(f.name).indexOf(keyword) !== -1);
+                return hit ? hit.device_id : msg.deviceNotFound[theLocale];
+            })
+            .catch(() => msg.deviceNotFound[theLocale]);
+    }
+
+    _loadAllAirbox() {
+        const now = Date.now();
+        if (this._allAirbox && now - this._allAirboxTime < 5 * 60 * 1000) {
+            return Promise.resolve(this._allAirbox);
+        }
+        return fetch(AIRBOX_RELAY_URL)
+            .then(res => res.json())
+            .then(data => {
+                this._allAirbox = Array.isArray(data.feeds) ? data.feeds : [];
+                this._allAirboxTime = now;
+                return this._allAirbox;
+            });
     }
 
     onLASSReceived() {
