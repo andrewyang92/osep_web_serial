@@ -165006,7 +165006,7 @@ const translationMap = {
     id: "gui.extension.textSentimentTF.title"
   }),
   extensionId: "textSentimentTF",
-  collaborator: "TYiC",
+  collaborator: "Andrew Yang",
   iconURL: "static/osep/textSentiment.png",
   insetIconURL: "static/osep/textSentiment-small.png",
   description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
