@@ -102,6 +102,18 @@ window.OSEP_EXAMPLE_FILES = {
       "examples/gasoLASS/zh-2.sb3",
       "examples/gasoLASS/zh-3.sb3"
     ],
+    "new": {
+      "zh": [
+        "examples/gasoLASS/zh-1-new.sb3",
+        "examples/gasoLASS/zh-2-new.sb3",
+        "examples/gasoLASS/zh-3-new.sb3"
+      ],
+      "en": [
+        "examples/gasoLASS/en-1-new.sb3",
+        "examples/gasoLASS/en-2-new.sb3",
+        "examples/gasoLASS/en-3-new.sb3"
+      ]
+    },
     "en": [
       "examples/gasoLASS/en-1.sb3",
       "examples/gasoLASS/en-2.sb3",

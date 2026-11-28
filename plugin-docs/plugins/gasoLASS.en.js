@@ -1,39 +1,48 @@
 /*
- * LASS plugin: English descriptions.
- * Block text, menus and defaults come from plugins/gasoLASS.js (synced from the plugin source).
+ * LASS extension: English descriptions.
+ * Block text, menus and defaults come from plugins/gasoLASS.js (synced from the extension source).
  */
 OSEP.addText('gasoLASS', 'en', {
   tagline: "Read Taiwan's air quality and weather data: AirBox sensors, environment ministry stations and the weather forecast.",
   tags: ['IoT', 'Environment', 'Open data'],
   needs: ['Internet'],
 
-  overview: `This plugin brings three kinds of Taiwanese open data into Scratch, for projects like an air quality board, a "should I go out?" reminder or a weather reporter:
+  overview: `This extension brings three kinds of Taiwanese open data into Scratch, for projects like an air quality board, a "should I go out?" reminder or a weather reporter:
 
 | Data | Source | You need |
 |---|---|---|
-| PM2.5, temperature and humidity from an AirBox | LASS (Location Aware Sensing System) | The AirBox device ID |
+| PM2.5, temperature and humidity from an AirBox | Edimax AirBox (copied by the OSEP relay) | The AirBox device ID |
 | AQI, PM2.5, PM10 and ozone from monitoring stations | Ministry of Environment air quality network | Nothing |
 | 36-hour forecast for each city and county | Central Weather Administration (CWA) open data | Your own authorization key |
 
 > All data is downloaded live from the internet. If the network is down or a data source is under maintenance, nothing can be read.
 
-> ! As checked on 2026-11-22, LASS AirBox data stopped at **2026-09-01** and has not been updated since, so the "LASS AirBox" blocks currently get no data (empty values). The EdiGreen map still shows live values, but that is Edimax's own data, which the plugin cannot read. The air quality station and weather forecast blocks are not affected.
+### Which card should I use?
+The original AirBox data (LASS) has not been updated since **2026-09-01**. OSEP now uses a relay program that fetches the Edimax AirBox data every 10 minutes and converts it to the original format, so the blocks work exactly the same:
+
+| OSEP version | Extension card | AirBox data |
+|---|---|---|
+| New | **LASS 空氣盒子（即時資料）** (LASS AirBox, live data) | Live (relay) |
+| New | LASS (original author's version) | Stopped at 2026-09-01 |
+| Old | LASS | Stopped at 2026-09-01 |
+
+> ! To read AirBoxes, add "**LASS 空氣盒子（即時資料）**" in the **new** OSEP. The air quality station and weather forecast blocks work with every card.
 
 Station names, city names in the Chinese interface, and the text values from the weather forecast are in Chinese, because the data sources provide them that way.
 
 ### Related websites
-- [LASS (Location Aware Sensing System)](https://pm25.lass-net.org/)
+- [AirBox device ID lookup](https://andrewyang92.github.io/osep_web_serial/airbox/): lists every online AirBox and its device ID by city and district (the site [[openAirboxFinder]] opens)
 - [EdiGreen AirBox map](https://airbox.edimaxcloud.com/): find nearby AirBoxes and their station names
-- [Data of all AirBoxes (JSON)](https://pm25.lass-net.org/data/last-all-airbox.json): look up a device ID by station name
 - [Ministry of Environment air quality network](https://airtw.moenv.gov.tw/): station locations and live AQI
 - [CWA open data platform](https://opendata.cwa.gov.tw/): register; after signing in, get your key on the [authorization key](https://opendata.cwa.gov.tw/user/authkey) page
+- [LASS (Location Aware Sensing System)](https://pm25.lass-net.org/): the original AirBox data source
 
-Original plugin author: gasolin ([scratch3-internet](https://github.com/gasolin/scratch3-internet)).`,
+Original extension author: gasolin ([scratch3-internet](https://github.com/gasolin/scratch3-internet)). Reading AirBoxes from the relay and the device ID lookup were added by Andrew Yang.`,
 
   groups: [
-    {name: 'LASS AirBox', intro: `Read the latest readings from one AirBox. Download with [[fetchLASS]]; when the data arrives, [[onLASSReceived]] fires, and [[parseAttrFromLASS]] reads the values.
+    {name: 'AirBox', intro: `Read the latest readings from one AirBox. Look up the device ID with [[openAirboxFinder]], download with [[fetchLASS]]; when the data arrives, [[onLASSReceived]] fires, and [[parseAttrFromLASS]] reads the values.
 
-> ! LASS AirBox data currently stops at 2026-09-01 (checked 2026-11-22), so these blocks get no data for now.`},
+> These blocks only get data with "LASS 空氣盒子（即時資料）" in the new OSEP (see the top of this page).`},
     {name: 'Air quality stations', intro: "Data from the Ministry of Environment's air quality monitoring stations, about 80 across Taiwan. No setup needed."},
     {name: 'Weather forecast', intro: 'The Central Weather Administration\'s "36-hour weather forecast". First register on the CWA open data platform to get your own authorization key.'}
   ],
@@ -43,29 +52,35 @@ Original plugin author: gasolin ([scratch3-internet](https://github.com/gasolin/
       summary: "Open Edimax's AirBox website in a new tab.",
       detail: `Click an AirBox on the map (a round icon) to see its **station name** (for example 明利國小), latitude and longitude, PM2.5, temperature and humidity.
 
-> The EdiGreen website **does not show device IDs**. Note the station name, then look up the device ID with [[openAirBoxDeviceData]].
+> The EdiGreen website **does not show device IDs**. Note the station name, then search for it on the [[openAirboxFinder]] website to find the device ID.
 
 Diamond icons are Ministry of Environment stations; read them with [[getEPAData]], no device ID needed.`
     },
+    openAirboxFinder: {
+      summary: 'Open the "AirBox device ID lookup" website in a new tab to find an AirBox\'s device ID.',
+      detail: `The website lists every AirBox that has sent data in the last 3 hours:
+
+- Choose a **city or county**, then a **district**, or type a name in the search box (for example 竹林國小)
+- The table shows the name, the **device ID** (with a "copy" button), district, latitude, longitude (click to open Google Maps), PM2.5 and the time of the last reading
+- When several AirBoxes share a name they are marked as duplicates; tell them apart by district or map position
+
+Copy the device ID and paste it into [[fetchLASS]]. You can also open [this address](https://andrewyang92.github.io/osep_web_serial/airbox/) directly. The website is in Chinese.`,
+      tips: 'The website remembers the city you chose last time.'
+    },
     openAirBoxDeviceData: {
-      summary: 'Open the latest data of every AirBox (JSON) in a new tab.',
-      detail: `This opens the data of every AirBox on LASS, one entry per device. To find a device ID by station name:
+      summary: 'Open the latest data of every AirBox (raw JSON) in a new tab.',
+      detail: `This opens the data of every AirBox copied by the relay, one entry per device, in the original LASS format: \`device_id\` is the device ID, \`name\` the station name, \`s_d0\` PM2.5, \`s_t0\` temperature, \`s_h0\` humidity, and \`gps_lat\`, \`gps_lon\` the latitude and longitude.
 
-- On the [[openEdiGreen]] map, click the AirBox you want and note its station name (for example 明利國小)
-- Open the data with this block (or open [this address](https://pm25.lass-net.org/data/last-all-airbox.json) directly)
-- Press **Ctrl+F** (⌘+F on a Mac) and search for the station name to find the entry with \`"name": "明利國小"\`
-- The \`"device_id"\` in the same entry is the device ID, for example \`"device_id": "74DA38ED059C"\`
+> To find a device ID, the [[openAirboxFinder]] website is easier. This block is for looking at the raw data or learning the JSON format.
 
-The same entry also has \`SiteName\` (the full name), \`gps_lat\` and \`gps_lon\` (latitude, longitude), which you can compare with the map to make sure it is the same device.
-
-> The data is long. In Chrome or Edge, tick "Pretty-print" at the top of the page to see one entry at a time more clearly.`
+> In the new OSEP, "LASS 空氣盒子（即時資料）" opens the relay data; the original author's version and the old OSEP still open the LASS data (stopped at 2026-09-01).`
     },
     fetchLASS: {
-      args: {id: 'The AirBox device ID (12 letters or digits, for example `74DA38ED059C`). See [[openAirBoxDeviceData]] for how to find it.'},
+      args: {id: 'The AirBox device ID (12 letters or digits, for example `74DA38F208E2`). Look it up with [[openAirboxFinder]].'},
       summary: "Download this AirBox's latest data.",
-      detail: `When the download finishes, [[onLASSReceived]] fires once.
+      detail: `When the download finishes, [[onLASSReceived]] fires once. The data is updated every 10 minutes, so downloading more often does not give newer values.
 
-> The data may not be downloaded yet when the block finishes, so put the reading blocks under [[onLASSReceived]]. With a wrong device ID, the values are empty.`
+> The data may not be downloaded yet when the block finishes, so put the reading blocks under [[onLASSReceived]]. With a wrong device ID, or if that AirBox has not sent data in the last 3 hours, no values can be read.`
     },
     onLASSReceived: {
       summary: 'Runs the script below when the AirBox data has been downloaded.',
@@ -74,11 +89,12 @@ The same entry also has \`SiteName\` (the full name), \`gps_lat\` and \`gps_lon\
     parseAttrFromLASS: {
       args: {attr: 'PM2.5, temperature, humidity, or the date and time of the reading.'},
       summary: "Read the AirBox's PM2.5, temperature, humidity or time.",
-      returns: 'A number, for example PM2.5 `12` (µg/m³), temperature `26.5` (°C), humidity `70` (%); date and time is text like `2026-11-22 08:30:00`. Before any download: "Error： Data does not exist".'
+      detail: '> The date and time are in **UTC**. Taiwan time is 8 hours ahead: `2026-11-28 02:01:31` is 10:01 a.m. in Taiwan.',
+      returns: 'A number, for example PM2.5 `12` (µg/m³), temperature `26.5` (°C), humidity `70` (%); date and time is text like `2026-11-28 02:01:31` (UTC). Before any download: "Error： Data does not exist"; with a wrong device ID, no value.'
     },
     getEPAData: {
       args: {
-        siteName: 'The station name in Chinese, for example 基隆, 中山 or 臺南. The menu fills with all stations after the plugin loads.',
+        siteName: 'The station name in Chinese, for example 基隆, 中山 or 臺南. The menu fills with all stations after the extension loads.',
         attr: 'AQI, PM2.5, PM10, O3 (ozone) or publish time.'
       },
       summary: "Read a station's air quality.",
@@ -91,7 +107,7 @@ The same entry also has \`SiteName\` (the full name), \`gps_lat\` and \`gps_lon\
 | O3 | Ozone (ppb) |
 | Publish Time | When the reading was published, for example \`2026/11/22 08:00:00\` |`,
       returns: 'Text or a number. Empty if the station name is wrong.',
-      tips: 'At first the menu only has 基隆 (Keelung). The other stations appear once the plugin has downloaded the station list.'
+      tips: 'At first the menu only has 基隆 (Keelung). The other stations appear once the extension has downloaded the station list.'
     },
     EPAStation: {
       summary: 'The names of all stations.',
@@ -145,7 +161,8 @@ Weather phenomenon and comfort are Chinese text from the CWA, also in the Englis
             {t: 'switch costume to [X]', cat: 'looks', args: {X: {v: 'smile', menu: true}}}
           ]}
         ]
-      ]
+      ],
+      explain: '`74DA38F208E2` is the AirBox at 竹林國小 (Zhulin Elementary School) in Luodong, Yilan. Replace it with one near you: look it up with [[openAirboxFinder]]. The example comes in two files, for the new and the old OSEP; AirBoxes only work with the new one.'
     },
     {
       title: 'Do I need an umbrella?',
@@ -174,19 +191,22 @@ Weather phenomenon and comfort are Chinese text from the CWA, also in the Englis
   ],
 
   faq: [
-    {q: 'The AirBox values are empty?', a: `- As checked on 2026-11-22, LASS AirBox data stopped at 2026-09-01, so no AirBox can be read. Open [the data of all AirBoxes](https://pm25.lass-net.org/data/last-all-airbox.json) and check the \`version\` date at the end to see whether it has resumed
-- The device ID is wrong, or that AirBox has not uploaded data for a long time
+    {q: 'The AirBox values are empty?', a: `- Wrong card: add "LASS 空氣盒子（即時資料）" in the new OSEP. The "LASS" card of the original author and of the old OSEP reads data that stopped updating on 2026-09-01
+- The device ID is wrong, or that AirBox has not sent data in the last 3 hours: check that it is listed on the [AirBox device ID lookup](https://andrewyang92.github.io/osep_web_serial/airbox/)
 - The data was not downloaded yet when you read it: put the reading blocks under "When data is received from LASS"`},
-    {q: 'I cannot find the device ID (MAC address) on the EdiGreen map?', a: 'The EdiGreen map only shows station names, not device IDs. Note the station name, then open [the data of all AirBoxes](https://pm25.lass-net.org/data/last-all-airbox.json), press Ctrl+F and search for the name; the `device_id` in that entry is the device ID. See [[openAirBoxDeviceData]] for the full steps.'},
+    {q: 'I cannot find the device ID (MAC address) on the EdiGreen map?', a: 'The EdiGreen map only shows station names, not device IDs. Open the [AirBox device ID lookup](https://andrewyang92.github.io/osep_web_serial/airbox/) with [[openAirboxFinder]], choose a city or search for the name, and copy the device ID.'},
+    {q: 'The time is 8 hours off?', a: 'The AirBox date and time are in UTC. Add 8 hours for Taiwan time.'},
+    {q: 'Where does the AirBox data come from?', a: 'The original LASS data stopped updating on 2026-09-01, so OSEP runs a relay written in Google Apps Script. Every 10 minutes it fetches the Edimax AirBox data and converts it to the original LASS format. Only AirBoxes that have sent data in the last 3 hours are included (about 470). Some AirBoxes occasionally report odd values (for example a PM2.5 of several hundred); that is how the source data is.'},
     {q: 'The weather forecast cannot be read?', a: `- Use your own key from the CWA open data platform
 - Wait a moment (about 2 seconds) after [[authorization]]
 - The network must be able to reach opendata.cwa.gov.tw`},
-    {q: 'The station menu only has 基隆?', a: 'The station list has not been downloaded yet when the plugin first loads. Wait a few seconds and open the menu again; with no network, only 基隆 is there. You can also put text or a variable into the menu slot.'},
+    {q: 'The station menu only has 基隆?', a: 'The station list has not been downloaded yet when the extension first loads. Wait a few seconds and open the menu again; with no network, only 基隆 is there. You can also put text or a variable into the menu slot.'},
     {q: 'What do "next 12 / 24 / 36 hours" mean?', a: 'The CWA 36-hour forecast is split into three 12-hour periods. 12 is the first period (the next 12 hours from now), 24 the second, 36 the third.'}
   ],
 
   changelog: [
     {date: '2026-11-22', text: 'Documentation page created'},
-    {date: '2026-11-22', text: 'Added related website links and steps to look up a device ID by station name; noted that LASS AirBox data has not been updated since 2026-09-01'}
+    {date: '2026-11-22', text: 'Added related website links and steps to look up a device ID by station name; noted that LASS AirBox data has not been updated since 2026-09-01'},
+    {date: '2026-11-28', text: 'AirBoxes are read from the OSEP relay ("LASS 空氣盒子（即時資料）" in the new OSEP); added the "Look up AirBox device IDs" block and website; noted that the date and time are in UTC'}
   ]
 });
