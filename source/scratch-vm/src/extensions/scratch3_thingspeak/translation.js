@@ -4,18 +4,18 @@ export const name = {
 };
 
 export const TS_Writekey = {
-    'en': 'set ThingSpeak write API key [KEY]',
-    'zh-tw': '設定 ThingSpeak 寫入 api key [KEY]'
+    'en': 'obtain ThingSpeak write api key [KEY]',
+    'zh-tw': '取得 ThingSpeak 寫入 api key [KEY]'
 };
 
 export const TS_col = {
-    'en': 'set field [COLUMN] to [VALUE]',
+    'en': 'column name[COLUMN] value [VALUE]',
     'zh-tw': '欄位名稱[COLUMN] 值[VALUE]'
 };
 
 export const TS_Read = {
-    'en': 'read ThingSpeak channel ID [CHANNEL] read API key [KEY]',
-    'zh-tw': '讀取 ThingSpeak 頻道 ID [CHANNEL] 讀取 api key [KEY]'
+    'en': 'obtain ThingSpeak read data api key [KEY] channel ID [CHANNEL]',
+    'zh-tw': '取得 ThingSpeak 讀取 api key [KEY] 頻道 ID [CHANNEL]'
 };
 
 export const Write_TS = {

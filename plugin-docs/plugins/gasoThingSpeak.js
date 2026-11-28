@@ -36,8 +36,8 @@ OSEP.addPlugin({
         {
           "opcode": "TS_Writekey",
           "type": "command",
-          "text": "設定 ThingSpeak 寫入 api key [KEY]",
-          "textEn": "set ThingSpeak write API key [KEY]",
+          "text": "取得 ThingSpeak 寫入 api key [KEY]",
+          "textEn": "obtain ThingSpeak write api key [KEY]",
           "args": {
             "KEY": {
               "type": "string",
@@ -53,7 +53,7 @@ OSEP.addPlugin({
           "opcode": "TS_col",
           "type": "command",
           "text": "欄位名稱[COLUMN] 值[VALUE]",
-          "textEn": "set field [COLUMN] to [VALUE]",
+          "textEn": "column name[COLUMN] value [VALUE]",
           "args": {
             "COLUMN": {
               "type": "menu",
@@ -184,8 +184,8 @@ OSEP.addPlugin({
         {
           "opcode": "TS_Read",
           "type": "command",
-          "text": "讀取 ThingSpeak 頻道 ID [CHANNEL] 讀取 api key [KEY]",
-          "textEn": "read ThingSpeak channel ID [CHANNEL] read API key [KEY]",
+          "text": "取得 ThingSpeak 讀取 api key [KEY] 頻道 ID [CHANNEL]",
+          "textEn": "obtain ThingSpeak read data api key [KEY] channel ID [CHANNEL]",
           "args": {
             "KEY": {
               "type": "string",
