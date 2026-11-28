@@ -74203,7 +74203,8 @@ const builtinExtensions = {
   decisionTree: () => __webpack_require__(/*! ../extensions/scratch3_decisionTree */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/index.js"),
   yoloDetection: () => __webpack_require__(/*! ../extensions/scratch3_yoloDetection */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/index.js"),
   lassAirbox: () => __webpack_require__(/*! ../extensions/scratch3_lassAirbox */ "./node_modules/scratch-vm/src/extensions/scratch3_lassAirbox/index.js"),
-  keywordRisk: () => __webpack_require__(/*! ../extensions/scratch3_keywordRisk */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/index.js")
+  keywordRisk: () => __webpack_require__(/*! ../extensions/scratch3_keywordRisk */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/index.js"),
+  thingSpeakIoT: () => __webpack_require__(/*! ../extensions/scratch3_thingSpeakIoT */ "./node_modules/scratch-vm/src/extensions/scratch3_thingSpeakIoT/index.js")
 };
 builtinExtensions['qrcode'] = () => __webpack_require__(/*! ../extensions/scratch3_qrcode */ "./node_modules/scratch-vm/src/extensions/scratch3_qrcode/index.js");
 builtinExtensions['tmpose2scratch'] = () => __webpack_require__(/*! ../extensions/scratch3_tmpose2scratch */ "./node_modules/scratch-vm/src/extensions/scratch3_tmpose2scratch/index.js");
@@ -92652,6 +92653,456 @@ module.exports = {
     tbl_none: t('(none)', '（沒有）'),
     tbl_noMatch: t('no feature matched: risk score 0', '沒有符合任何特徵：風險分數 0'),
     close: t('Close', '關閉')
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_thingSpeakIoT/index.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// ThingSpeak 擴充功能
+// 原作者：gasolin（https://github.com/gasolin/scratch3-internet），estea8968 修改。
+// 2026-11-28 Andrew Yang 修正：寫入積木用了沒宣告的 ts_key、讀取積木用了沒宣告的 parsed（class 裡是嚴格模式，
+// 兩塊一執行就出錯）；讀取改成等資料下載完才結束；值做網址編碼；新增寫入結果、取欄位值等積木。
+// 舊積木的 opcode、參數都沒改。不用 async/await（見 claude-notes/extensions-regeneratorRuntime-調查.md）。
+const ArgumentType = __webpack_require__(/*! ../../extension-support/argument-type */ "./node_modules/scratch-vm/src/extension-support/argument-type.js");
+const BlockType = __webpack_require__(/*! ../../extension-support/block-type */ "./node_modules/scratch-vm/src/extension-support/block-type.js");
+const msg = __webpack_require__(/*! ./translation */ "./node_modules/scratch-vm/src/extensions/scratch3_thingSpeakIoT/translation.js");
+const formatMessage = __webpack_require__(/*! format-message */ "./node_modules/format-message/index.js");
+const core = __webpack_require__(/*! ./ts-core */ "./node_modules/scratch-vm/src/extensions/scratch3_thingSpeakIoT/ts-core.js");
+
+const menuIconURI = null;
+const blockIconURI = null;
+
+let theLocale = null;
+
+class gasoThingSpeak {
+    constructor (runtime) {
+        theLocale = this._setLocale();
+        this.runtime = runtime;
+        this.writeKey = '';
+        // 要寫入的欄位：[[名稱, 值], …]，同一個欄位只留最後一次的值
+        this.writeFields = [];
+        // 最近一次寫入的結果：新資料的編號，失敗是 0；還沒寫過是空字串
+        this.writeResult = '';
+        // 最近一次讀到的 feeds（陣列）
+        this.feeds = null;
+    }
+
+    _setLocale () {
+        let nowLocale = '';
+        switch (formatMessage.setup().locale) {
+        case 'zh-tw':
+            nowLocale = 'zh-tw';
+            break;
+        default:
+            nowLocale = 'en';
+            break;
+        }
+        return nowLocale;
+    }
+
+    getInfo () {
+        theLocale = this._setLocale();
+
+        return {
+            id: 'thingSpeakIoT',
+            name: 'ThingSpeak IoT',
+            color1: '#4a90e2',
+            color2: '#4a90e2',
+            menuIconURI: menuIconURI,
+            blockIconURI: blockIconURI,
+            blocks: [
+                {
+                    opcode: 'TS_Writekey',
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        KEY: {
+                            type: ArgumentType.STRING,
+                            defaultValue: ' '
+                        }
+                    },
+                    text: msg.TS_Writekey[theLocale]
+                },
+                {
+                    opcode: 'TS_col',
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        COLUMN: {
+                            type: ArgumentType.STRING,
+                            defaultValue: msg.field[theLocale][0],
+                            menu: 'field'
+                        },
+                        VALUE: {
+                            type: ArgumentType.STRING,
+                            defaultValue: ' '
+                        }
+                    },
+                    text: msg.TS_col[theLocale]
+                },
+                {
+                    opcode: 'Write_TS',
+                    blockType: BlockType.COMMAND,
+                    text: msg.Write_TS[theLocale]
+                },
+                {
+                    opcode: 'TS_writeResult',
+                    blockType: BlockType.REPORTER,
+                    text: msg.TS_writeResult[theLocale]
+                },
+                '---',
+                {
+                    opcode: 'TS_Read',
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        KEY: {
+                            type: ArgumentType.STRING,
+                            defaultValue: ' '
+                        },
+                        CHANNEL: {
+                            type: ArgumentType.STRING,
+                            defaultValue: ' '
+                        }
+                    },
+                    text: msg.TS_Read[theLocale]
+                },
+                {
+                    opcode: 'TS_lastValue',
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        COLUMN: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'field1',
+                            menu: 'readField'
+                        }
+                    },
+                    text: msg.TS_lastValue[theLocale]
+                },
+                {
+                    opcode: 'TS_valueAt',
+                    blockType: BlockType.REPORTER,
+                    arguments: {
+                        N: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 1
+                        },
+                        COLUMN: {
+                            type: ArgumentType.STRING,
+                            defaultValue: 'field1',
+                            menu: 'readField'
+                        }
+                    },
+                    text: msg.TS_valueAt[theLocale]
+                },
+                {
+                    opcode: 'TS_count',
+                    blockType: BlockType.REPORTER,
+                    text: msg.TS_count[theLocale]
+                },
+                {
+                    opcode: 'TS_JSON',
+                    blockType: BlockType.REPORTER,
+                    text: msg.readJSON[theLocale]
+                }
+            ],
+            menus: {
+                field: {
+                    acceptReporters: true,
+                    items: msg.field[theLocale]
+                },
+                readField: {
+                    acceptReporters: true,
+                    items: msg.field[theLocale].map((text, i) => ({text, value: 'field' + (i + 1)}))
+                        .concat([{text: msg.timeField[theLocale], value: 'created_at'}])
+                }
+            }
+        };
+    }
+
+    // 設定寫入 key，並清掉之前填的欄位
+    TS_Writekey (args) {
+        this.writeKey = String(args.KEY).trim();
+        this.writeFields = [];
+    }
+
+    TS_col (args) {
+        const name = core.fieldName(args.COLUMN);
+        if (!name || name === 'entry_id') {
+            console.warn('ThingSpeak: 不認得的欄位', args.COLUMN);
+            return;
+        }
+        this.writeFields = this.writeFields.filter(f => f[0] !== name);
+        this.writeFields.push([name, args.VALUE]);
+    }
+
+    // 送出；等 ThingSpeak 回應才結束（免費帳號同一頻道約 15 秒才能寫一次，太快會回 0）
+    Write_TS () {
+        if (!this.writeKey || this.writeFields.length === 0) {
+            console.warn('ThingSpeak: 沒有寫入 key 或沒有欄位');
+            this.writeResult = 0;
+            return;
+        }
+        const url = core.updateUrl(this.writeKey, this.writeFields);
+        return fetch(url)
+            .then(res => res.text())
+            .then(text => {
+                this.writeResult = core.parseUpdate(text);
+            })
+            .catch(error => {
+                console.error('ThingSpeak:', error);
+                this.writeResult = 0;
+            });
+    }
+
+    TS_writeResult () {
+        return this.writeResult;
+    }
+
+    // 讀取頻道資料（最多 100 筆）；等資料下載完才結束
+    TS_Read (args) {
+        const url = core.feedsUrl(args.CHANNEL, args.KEY);
+        if (!url) {
+            console.warn('ThingSpeak: 頻道 ID 要是數字', args.CHANNEL);
+            this.feeds = null;
+            return;
+        }
+        return fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(json => {
+                this.feeds = core.parseFeeds(json);
+                if (!this.feeds) console.warn('ThingSpeak: 讀不到資料（私人頻道要填讀取 key）', json);
+            })
+            .catch(error => {
+                console.error('ThingSpeak:', error);
+                this.feeds = null;
+            });
+    }
+
+    TS_lastValue (args) {
+        return this.feeds ? core.valueAt(this.feeds, this.feeds.length, args.COLUMN) : '';
+    }
+
+    TS_valueAt (args) {
+        return core.valueAt(this.feeds, args.N, args.COLUMN);
+    }
+
+    TS_count () {
+        return this.feeds ? this.feeds.length : 0;
+    }
+
+    // 和原本一樣回傳 feeds 的 JSON 文字
+    TS_JSON () {
+        if (this.feeds) return JSON.stringify(this.feeds);
+        return msg.readJSONErr[theLocale];
+    }
+}
+
+module.exports = gasoThingSpeak;
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_thingSpeakIoT/ts-core.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+// ThingSpeak 擴充功能的計算部分（不依賴 Scratch，可以用 node 測）。
+// 插件原作者：gasolin（https://github.com/gasolin/scratch3-internet），estea8968 修改；2026-11-28 改寫修正。
+
+const API = 'https://api.thingspeak.com';
+
+// 寫入時可用的欄位：field1～field8，以及 ThingSpeak update API 的其他參數
+const EXTRA_PARAMS = ['lat', 'long', 'elevation', 'status', 'created_at'];
+
+/**
+ * 把使用者給的欄位名稱轉成 ThingSpeak 的名稱。
+ * 接受「欄位1」「field1」「Field 1」「1」；時間 → created_at、編號 → entry_id。
+ * @param {*} column 欄位
+ * @returns {string|null} 名稱；不認得時回傳 null
+ */
+const fieldName = function (column) {
+    const s = String(column === undefined || column === null ? '' : column).trim();
+    if (!s) return null;
+    let m = s.match(/^(?:欄位|field)?\s*([1-8])$/i);
+    if (m) return 'field' + m[1];
+    if (s === '時間' || /^time$/i.test(s)) return 'created_at';
+    if (s === '編號' || /^entry[ _]?id$/i.test(s)) return 'entry_id';
+    const lower = s.toLowerCase();
+    if (EXTRA_PARAMS.indexOf(lower) >= 0) return lower;
+    return null;
+};
+
+/**
+ * 寫入網址：https://api.thingspeak.com/update?api_key=…&field1=…
+ * @param {string} key 寫入 API Key
+ * @param {Array<Array<string>>} fields [[名稱, 值], …]
+ * @returns {string} 網址
+ */
+const updateUrl = function (key, fields) {
+    let url = API + '/update?api_key=' + encodeURIComponent(String(key).trim());
+    fields.forEach(f => {
+        url += '&' + f[0] + '=' + encodeURIComponent(String(f[1]).trim());
+    });
+    return url;
+};
+
+/**
+ * 讀取網址：https://api.thingspeak.com/channels/<頻道>/feeds.json[?api_key=…]
+ * 讀取 key 空白時不帶（公開頻道不需要 key）。
+ * @param {string} channel 頻道 ID
+ * @param {string} key 讀取 API Key
+ * @returns {string|null} 網址；頻道 ID 不是數字時回傳 null
+ */
+const feedsUrl = function (channel, key) {
+    const ch = String(channel === undefined || channel === null ? '' : channel).trim();
+    if (!/^\d+$/.test(ch)) return null;
+    const k = String(key === undefined || key === null ? '' : key).trim();
+    return API + '/channels/' + ch + '/feeds.json' + (k ? '?api_key=' + encodeURIComponent(k) : '');
+};
+
+/**
+ * update API 的回應：成功是新資料的編號（1、2、3…），失敗是 0。
+ * @param {string} text 回應文字
+ * @returns {number} 編號或 0
+ */
+const parseUpdate = function (text) {
+    const n = parseInt(String(text).trim(), 10);
+    return isNaN(n) || n < 0 ? 0 : n;
+};
+
+/**
+ * 從 feeds.json 的回應取出資料陣列。
+ * 私人頻道 key 錯誤時 ThingSpeak 回傳 -1。
+ * @param {*} json 回應
+ * @returns {Array|null} feeds；格式不對時回傳 null
+ */
+const parseFeeds = function (json) {
+    if (!json || typeof json !== 'object' || !Array.isArray(json.feeds)) return null;
+    return json.feeds;
+};
+
+const pad = function (n) {
+    return (n < 10 ? '0' : '') + n;
+};
+
+/**
+ * ThingSpeak 的時間是 UTC（2026-11-28T02:32:25Z），轉成電腦所在時區的「YYYY-MM-DD HH:MM:SS」。
+ * @param {string} s 時間
+ * @returns {string} 本地時間；看不懂時原樣回傳
+ */
+const localTime = function (s) {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s;
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
+        pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+};
+
+/**
+ * 取第 n 筆（1 = 最舊；n = 筆數 = 最新）的某個欄位。
+ * @param {Array} feeds 資料
+ * @param {number} n 第幾筆
+ * @param {*} column 欄位
+ * @returns {string} 值；沒有資料、超出範圍或欄位是空的時回傳空字串
+ */
+const valueAt = function (feeds, n, column) {
+    if (!Array.isArray(feeds)) return '';
+    const i = Math.round(Number(n)) - 1;
+    if (!(i >= 0 && i < feeds.length)) return '';
+    const name = fieldName(column);
+    if (!name) return '';
+    const v = feeds[i][name];
+    if (v === undefined || v === null) return '';
+    return name === 'created_at' ? localTime(v) : String(v);
+};
+
+module.exports = {
+    API,
+    fieldName,
+    updateUrl,
+    feedsUrl,
+    parseUpdate,
+    parseFeeds,
+    localTime,
+    valueAt
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_thingSpeakIoT/translation.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+exports.name = {
+    'en': 'ThingSpeak',
+    'zh-tw': 'ThingSpeak'
+};
+
+exports.TS_Writekey = {
+    'en': 'set ThingSpeak write API key [KEY]',
+    'zh-tw': '設定 ThingSpeak 寫入 api key [KEY]'
+};
+
+exports.TS_col = {
+    'en': 'set field [COLUMN] to [VALUE]',
+    'zh-tw': '欄位名稱[COLUMN] 值[VALUE]'
+};
+
+exports.TS_Read = {
+    'en': 'read ThingSpeak channel ID [CHANNEL] read API key [KEY]',
+    'zh-tw': '讀取 ThingSpeak 頻道 ID [CHANNEL] 讀取 api key [KEY]'
+};
+
+exports.Write_TS = {
+    'en': 'send ThingSpeak data',
+    'zh-tw': '送出 ThingSpeak 的資料'
+};
+
+exports.TS_writeResult = {
+    'en': 'ThingSpeak write result',
+    'zh-tw': 'ThingSpeak 寫入結果'
+};
+
+exports.TS_lastValue = {
+    'en': 'latest [COLUMN] value',
+    'zh-tw': '最新一筆的 [COLUMN]'
+};
+
+exports.TS_valueAt = {
+    'en': '[COLUMN] of entry [N]',
+    'zh-tw': '第 [N] 筆的 [COLUMN]'
+};
+
+exports.TS_count = {
+    'en': 'number of ThingSpeak entries',
+    'zh-tw': 'ThingSpeak 資料筆數'
+};
+
+exports.field = {
+    'en': ['field1', 'field2', 'field3', 'field4', 'field5', 'field6', 'field7', 'field8'],
+    'zh-tw': ['欄位1', '欄位2', '欄位3', '欄位4', '欄位5', '欄位6', '欄位7', '欄位8']
+};
+
+exports.timeField = {
+    'en': 'time',
+    'zh-tw': '時間'
+};
+
+exports.readJSON = {
+    'en': 'ThingSpeak data',
+    'zh-tw': '讀取的 ThingSpeak 資料'
+};
+
+exports.readJSONErr = {
+    'en': 'Error: ThingSpeak data does not exist',
+    'zh-tw': '錯誤：ThingSpeak 資料不存在'
 };
 
 
@@ -166107,6 +166558,24 @@ const translationMap = {
   disabled: false,
   internetConnectionRequired: false,
   useAutoScan: false
+}, {
+  name: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "ThingSpeak IoT",
+    id: "gui.extension.thingSpeakIoT.title"
+  }),
+  extensionId: "thingSpeakIoT",
+  collaborator: "gasolin",
+  iconURL: "static/osep/thingSpeakIoT.png",
+  insetIconURL: "static/osep/thingSpeakIoT-small.png",
+  description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "Write data to and read data from ThingSpeak channels.",
+    id: "gui.extension.thingSpeakIoT.description"
+  }),
+  featured: true,
+  disabled: false,
+  internetConnectionRequired: true,
+  useAutoScan: false,
+  helpLink: "https://thingspeak.mathworks.com/"
 }]);
 
 /***/ },
@@ -463195,6 +463664,8 @@ __webpack_require__.r(__webpack_exports__);
     "gui.extension.lassAirbox.description":"空氣盒子（Edimax 即時資料）、環境部空品與氣象署預報",
     "gui.extension.keywordRisk.title":"關鍵字風險偵測",
     "gui.extension.keywordRisk.description":"用關鍵字特徵和已標記的訊息算出風險分數，判斷訊息是否疑似詐騙",
+    "gui.extension.thingSpeakIoT.title":"ThingSpeak 物聯網",
+    "gui.extension.thingSpeakIoT.description":"寫入、讀取 ThingSpeak 頻道的資料（修正版）",
     "gui.extension.llmstudio.description":"使用LLM Studio AI的人工智慧模型進行自然語言處理任務",
     "gui.extension.llmstudio.title":"LLM Studio AI",
     "gui.extension.urltxt.description": "訪問網站和取得文字檔內容",
