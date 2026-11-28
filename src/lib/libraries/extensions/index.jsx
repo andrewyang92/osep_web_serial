@@ -162,6 +162,8 @@ import decisionTreeImage from "./decisionTree/decisionTree.png";
 import decisionTreeIconURL from "./decisionTree/decisionTree-small.svg";
 import yoloDetectionImage from "./yoloDetection/yoloDetection.png";
 import yoloDetectionIconURL from "./yoloDetection/yoloDetection-small.svg";
+import keywordRiskImage from "./keywordRisk/keywordRisk.png";
+import keywordRiskIconURL from "./keywordRisk/keywordRisk-small.svg";
 
 const version = "v2-0.2.4";
 
@@ -1445,6 +1447,30 @@ const extensions = [
     featured: true,
     disabled: false,
     internetConnectionRequired: true,
+    useAutoScan: false,
+  },
+  {
+    name: (
+      <FormattedMessage
+        defaultMessage="Keyword Risk Detector"
+        description="Keyword risk detector"
+        id="gui.extension.keywordRisk.title"
+      />
+    ),
+    extensionId: "keywordRisk",
+    collaborator: "Andrew Yang",
+    iconURL: keywordRiskImage,
+    insetIconURL: keywordRiskIconURL,
+    description: (
+      <FormattedMessage
+        defaultMessage="Score messages with keyword features learned from labeled examples, e.g. to spot scam texts."
+        description="Keyword feature risk scoring, e.g. scam message detection."
+        id="gui.extension.keywordRisk.description"
+      />
+    ),
+    featured: true,
+    disabled: false,
+    internetConnectionRequired: false,
     useAutoScan: false,
   },
 ];

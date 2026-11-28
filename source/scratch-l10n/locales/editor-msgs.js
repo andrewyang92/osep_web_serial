@@ -60596,6 +60596,8 @@ export default {
     "gui.extension.decisionTree.description":"用 Google 試算表的資料訓練決策樹，畫出樹狀圖並進行預測",
     "gui.extension.yoloDetection.title":"YOLO 物件辨識",
     "gui.extension.yoloDetection.description":"用 YOLO 辨識圖片、舞台或攝影機畫面中的人、動物和物品",
+    "gui.extension.keywordRisk.title":"關鍵字風險偵測",
+    "gui.extension.keywordRisk.description":"用關鍵字特徵和已標記的訊息算出風險分數，判斷訊息是否疑似詐騙",
     "gui.extension.claude.description":"使用 Claude 的人工智慧模型進行自然語言處理任務",
   }
 };

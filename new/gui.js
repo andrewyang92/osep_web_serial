@@ -74202,7 +74202,8 @@ const builtinExtensions = {
   faceExpressionMediapipe: () => __webpack_require__(/*! ../extensions/scratch3_faceExpressionMediapipe */ "./node_modules/scratch-vm/src/extensions/scratch3_faceExpressionMediapipe/index.js"),
   decisionTree: () => __webpack_require__(/*! ../extensions/scratch3_decisionTree */ "./node_modules/scratch-vm/src/extensions/scratch3_decisionTree/index.js"),
   yoloDetection: () => __webpack_require__(/*! ../extensions/scratch3_yoloDetection */ "./node_modules/scratch-vm/src/extensions/scratch3_yoloDetection/index.js"),
-  lassAirbox: () => __webpack_require__(/*! ../extensions/scratch3_lassAirbox */ "./node_modules/scratch-vm/src/extensions/scratch3_lassAirbox/index.js")
+  lassAirbox: () => __webpack_require__(/*! ../extensions/scratch3_lassAirbox */ "./node_modules/scratch-vm/src/extensions/scratch3_lassAirbox/index.js"),
+  keywordRisk: () => __webpack_require__(/*! ../extensions/scratch3_keywordRisk */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/index.js")
 };
 builtinExtensions['qrcode'] = () => __webpack_require__(/*! ../extensions/scratch3_qrcode */ "./node_modules/scratch-vm/src/extensions/scratch3_qrcode/index.js");
 builtinExtensions['tmpose2scratch'] = () => __webpack_require__(/*! ../extensions/scratch3_tmpose2scratch */ "./node_modules/scratch-vm/src/extensions/scratch3_tmpose2scratch/index.js");
@@ -90954,6 +90955,8 @@ const blockIconURI = null;
 // 原本：https://pm25.lass-net.org/data/last.php?device_id=
 const AIRBOX_RELAY_URL = 'https://script.google.com/macros/s/AKfycbxT8a0laP6bOTx7q0skV8eOCgNOjrmiJ04kmdwlt7fGVu0qHxaHslPb7rL7Vi5CvcLw/exec';
 const LASS_URI = AIRBOX_RELAY_URL + '?device_id=';
+// 空氣盒子設備編號查詢網站（repo 的 airbox/index.html，由 myfork 的 GitHub Pages 提供）
+const AIRBOX_FINDER_URL = 'https://andrewyang92.github.io/osep_web_serial/airbox/';
 const AQI_URI = 'https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=0ef90d4c-45c1-4b11-b8cc-b9a28b142096';
 const WERTHER_URL = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?format=JSON&Authorization=';
 
@@ -91064,8 +91067,16 @@ class gasoLASS {
                     text: msg.openAirBoxDeviceData[theLocale]
                 },
                 {
+                    opcode: 'openAirboxFinder',
+                    blockType: BlockType.COMMAND,
+                    text: msg.openAirboxFinder[theLocale]
+                },
+                {
+                    // 2026-11-28 起改用上面的「空氣盒子設備編號查詢」網站（同名的盒子用名稱分不出來）。
+                    // opcode 保留、功能照舊，只是不顯示在積木區（舊專案仍可使用）
                     opcode: 'searchDeviceMAC',
                     blockType: BlockType.REPORTER,
+                    hideFromPalette: true,
                     arguments: {
                         name: {
                             type: ArgumentType.STRING,
@@ -91247,7 +91258,12 @@ class gasoLASS {
         });
     }
 
-    // 2026-11-27 Andrew Yang：用地點名稱查設備編號（MAC）。
+    // 2026-11-28 Andrew Yang：打開空氣盒子設備編號查詢網站（依縣市列出名稱、設備編號、GPS 位置）
+    openAirboxFinder() {
+        window.open(AIRBOX_FINDER_URL);
+    }
+
+    // 2026-11-27 Andrew Yang：用地點名稱查設備編號（MAC）。（2026-11-28 起隱藏，保留給舊專案）
     // 讀中繼的全部資料（約 150KB，5 分鐘內重複查詢用快取），
     // 依序找：名稱完全相同 → 名稱開頭相同 → 名稱包含關鍵字（例：「竹林」先找到「竹林國小」而不是「紫竹林」）。
     // 不用 async/await（見 claude-notes/extensions-regeneratorRuntime-調查.md）
@@ -91649,6 +91665,993 @@ exports.searchDeviceMAC = {
 exports.deviceNotFound = {
     'en': 'not found',
     'zh-tw': '找不到'
+};
+
+// 2026-11-28 Andrew Yang：打開空氣盒子設備編號查詢網站
+exports.openAirboxFinder = {
+    'en': 'Look up AirBox device IDs',
+    'zh-tw': '空氣盒子設備編號查詢'
+};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/index.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * 關鍵字風險偵測插件（keywordRisk）
+ *
+ * 用「訊息是否包含某類關鍵字」當特徵（F1、F2…，0 / 1），從已標記的訓練訊息算出每個特徵的風險值，
+ * 再用新訊息符合的特徵風險值平均當風險分數，≥ 門檻就判斷為有風險（例：疑似詐騙）。
+ * 內建範例是貓咪盃「智慧防詐訊息偵測員」題目的設定（samples.js）。
+ *
+ * - 計算：risk-core.js（純計算，可在 Node 測）
+ * - 風險值表：risk-view.js 產生 HTML，用 window.open 在新視窗顯示；被擋住時改在本頁浮動視窗顯示
+ * - 特徵、訓練資料改變時風險值自動重算（「計算風險值」積木只是明確地算一次並更新狀態）
+ *
+ * 重要：不可使用 async/await（專案 babel 會產生需要 regeneratorRuntime 的程式，GUI 沒有載入它）。
+ * 本插件全部是同步運算，不連網路。
+ */
+const ArgumentType = __webpack_require__(/*! ../../extension-support/argument-type */ "./node_modules/scratch-vm/src/extension-support/argument-type.js");
+const BlockType = __webpack_require__(/*! ../../extension-support/block-type */ "./node_modules/scratch-vm/src/extension-support/block-type.js");
+const formatMessage = __webpack_require__(/*! format-message */ "./node_modules/format-message/index.js");
+const msg = __webpack_require__(/*! ./translation */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/translation.js");
+const core = __webpack_require__(/*! ./risk-core */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/risk-core.js");
+const view = __webpack_require__(/*! ./risk-view */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/risk-view.js");
+const samples = __webpack_require__(/*! ./samples */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/samples.js");
+
+// 原創圖示：紫底、白色簡訊對話框、黃色驚嘆號
+const iconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">' +
+    '<circle cx="20" cy="20" r="19" fill="#6230B8"/>' +
+    '<path d="M9 11 h22 a3 3 0 0 1 3 3 v11 a3 3 0 0 1 -3 3 h-13 l-6 5 v-5 h-3 a3 3 0 0 1 -3 -3 v-11 ' +
+    'a3 3 0 0 1 3 -3 z" fill="#FFFFFF"/>' +
+    '<rect x="11" y="15" width="11" height="2.4" rx="1.2" fill="#C9A2FF"/>' +
+    '<rect x="11" y="20" width="8" height="2.4" rx="1.2" fill="#C9A2FF"/>' +
+    '<circle cx="28" cy="19.5" r="5.5" fill="#FFBD00"/>' +
+    '<rect x="27" y="15.5" width="2" height="5" rx="1" fill="#6B3A1E"/>' +
+    '<circle cx="28" cy="22.6" r="1.1" fill="#6B3A1E"/>' +
+    '</svg>';
+const menuIconURI = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+const blockIconURI = menuIconURI;
+
+const WINDOW_NAME = 'osepKeywordRisk';
+const OVERLAY_ID = 'osep-keyword-risk-overlay';
+const DEFAULT_IDS = ['F1', 'F2', 'F3', 'F4'];
+
+let theLocale = 'en';
+
+class Scratch3KeywordRisk {
+    /**
+     * @param {Runtime} runtime
+     * @param {object} [deps] 測試用：{win: 取代 window, doc: 取代 document}
+     */
+    constructor (runtime, deps = {}) {
+        this.runtime = runtime;
+        this._deps = deps;
+        theLocale = this._setLocale();
+        this._features = [];
+        this._data = [];
+        this._riskLabel = this._t('defRisk');
+        this._safeLabel = this._t('defSafe');
+        this._threshold = 0.5;
+        this._stats = null; // 風險值快取；null = 要重算
+        this._last = null; // 最後判斷的訊息
+        this._win = null;
+        this._status = {key: 'st_ready'};
+    }
+
+    _setLocale () {
+        const locale = formatMessage.setup().locale;
+        return locale === 'zh-tw' ? 'zh-tw' : 'en';
+    }
+
+    /** 文字（{risk}、{safe} 換成目前的標記名稱） */
+    _t (key) {
+        const m = msg[key];
+        const s = m ? (m[theLocale] || m.en) : key;
+        return s.split('{risk}').join(this._riskLabel === undefined ? '' : this._riskLabel)
+            .split('{safe}').join(this._safeLabel === undefined ? '' : this._safeLabel);
+    }
+
+    _fmt (key, params) {
+        let s = this._t(key);
+        Object.keys(params || {}).forEach(k => {
+            s = s.split(`{${k}}`).join(params[k]);
+        });
+        return s;
+    }
+
+    _setStatus (key, params) {
+        this._status = {key, params: params || {}};
+    }
+
+    _window () {
+        return this._deps.win || (typeof window === 'undefined' ? null : window);
+    }
+
+    _document () {
+        return this._deps.doc || (typeof document === 'undefined' ? null : document);
+    }
+
+    _refreshToolbox () {
+        if (this.runtime && typeof this.runtime.requestToolboxExtensionsUpdate === 'function') {
+            this.runtime.requestToolboxExtensionsUpdate();
+        }
+    }
+
+    getInfo () {
+        theLocale = this._setLocale();
+        const s = k => this._t(k);
+        const text = {type: ArgumentType.STRING, defaultValue: s('defText')};
+        const feat = {type: ArgumentType.STRING, menu: 'features', defaultValue: this._firstId()};
+        const setup = [
+            {opcode: 'loadSample', blockType: BlockType.COMMAND, text: s('loadSample')},
+            {opcode: 'clearFeatures', blockType: BlockType.COMMAND, text: s('clearFeatures')},
+            {
+                opcode: 'setFeature', blockType: BlockType.COMMAND, text: s('setFeature'),
+                arguments: {
+                    FEAT: feat,
+                    NAME: {type: ArgumentType.STRING, defaultValue: s('defName')},
+                    KEYWORDS: {type: ArgumentType.STRING, defaultValue: s('defKeywords')}
+                }
+            },
+            {
+                opcode: 'setReminder', blockType: BlockType.COMMAND, text: s('setReminder'),
+                arguments: {FEAT: feat, TEXT: {type: ArgumentType.STRING, defaultValue: s('defReminder')}}
+            },
+            {
+                opcode: 'setLabels', blockType: BlockType.COMMAND, text: s('setLabels'),
+                arguments: {
+                    RISK: {type: ArgumentType.STRING, defaultValue: this._riskLabel},
+                    SAFE: {type: ArgumentType.STRING, defaultValue: this._safeLabel}
+                }
+            },
+            {
+                opcode: 'setThreshold', blockType: BlockType.COMMAND, text: s('setThreshold'),
+                arguments: {T: {type: ArgumentType.NUMBER, defaultValue: 0.5}}
+            }
+        ];
+        const data = [
+            {opcode: 'clearData', blockType: BlockType.COMMAND, text: s('clearData')},
+            {
+                opcode: 'addMessage', blockType: BlockType.COMMAND, text: s('addMessage'),
+                arguments: {
+                    TEXT: text,
+                    LABEL: {type: ArgumentType.STRING, menu: 'labels', defaultValue: this._riskLabel}
+                }
+            },
+            {
+                opcode: 'loadFromLists', blockType: BlockType.COMMAND, text: s('loadFromLists'),
+                arguments: {
+                    TEXTS: {type: ArgumentType.STRING, menu: 'lists', defaultValue: s('textsList')},
+                    LABELS: {type: ArgumentType.STRING, menu: 'lists', defaultValue: s('labelsList')}
+                }
+            },
+            {opcode: 'train', blockType: BlockType.COMMAND, text: s('train')},
+            {opcode: 'dataCount', blockType: BlockType.REPORTER, text: s('dataCount')},
+            {
+                opcode: 'dataProp', blockType: BlockType.REPORTER, text: s('dataProp'),
+                arguments: {
+                    N: {type: ArgumentType.NUMBER, defaultValue: 1},
+                    PROP: {type: ArgumentType.STRING, menu: 'dataProps', defaultValue: 'text'}
+                }
+            },
+            {opcode: 'riskValue', blockType: BlockType.REPORTER, text: s('riskValue'), arguments: {FEAT: feat}},
+            {
+                opcode: 'featureInfo', blockType: BlockType.REPORTER, text: s('featureInfo'),
+                arguments: {FEAT: feat, INFO: {type: ArgumentType.STRING, menu: 'infos', defaultValue: 'hit'}}
+            }
+        ];
+        const judge = [
+            {opcode: 'verdict', blockType: BlockType.REPORTER, text: s('verdict'), arguments: {TEXT: text}},
+            {opcode: 'isRisky', blockType: BlockType.BOOLEAN, text: s('isRisky'), arguments: {TEXT: text}},
+            {opcode: 'riskScore', blockType: BlockType.REPORTER, text: s('riskScore'), arguments: {TEXT: text}},
+            {
+                opcode: 'matchedFeatures', blockType: BlockType.REPORTER, text: s('matchedFeatures'),
+                arguments: {TEXT: text}
+            },
+            {opcode: 'reminders', blockType: BlockType.REPORTER, text: s('reminders'), arguments: {TEXT: text}}
+        ];
+        const tools = [
+            {
+                opcode: 'featureOf', blockType: BlockType.REPORTER, text: s('featureOf'),
+                arguments: {TEXT: text, FEAT: feat}
+            },
+            {
+                opcode: 'keywordsFound', blockType: BlockType.REPORTER, text: s('keywordsFound'),
+                arguments: {TEXT: text, FEAT: feat}
+            },
+            {
+                opcode: 'containsAny', blockType: BlockType.BOOLEAN, text: s('containsAny'),
+                arguments: {TEXT: text, KEYWORDS: {type: ArgumentType.STRING, defaultValue: s('defKeywords')}}
+            }
+        ];
+        const show = [
+            {opcode: 'showTable', blockType: BlockType.COMMAND, text: s('showTable')},
+            {opcode: 'closeTable', blockType: BlockType.COMMAND, text: s('closeTable')},
+            {opcode: 'getStatus', blockType: BlockType.REPORTER, text: s('status')}
+        ];
+        return {
+            id: 'keywordRisk',
+            name: s('title'),
+            color1: '#7B3FD9',
+            color2: '#6230B8',
+            color3: '#4E2696',
+            menuIconURI,
+            blockIconURI,
+            blocks: setup.concat(['---'], data, ['---'], judge, ['---'], tools, ['---'], show),
+            menus: {
+                features: {acceptReporters: true, items: 'featureMenu'},
+                labels: {acceptReporters: true, items: 'labelMenu'},
+                lists: {acceptReporters: true, items: 'listMenu'},
+                dataProps: {acceptReporters: true, items: 'dataPropMenu'},
+                infos: {
+                    acceptReporters: false,
+                    items: ['name', 'keywords', 'reminder', 'hit', 'risky']
+                        .map(v => ({text: s(`info_${v}`), value: v}))
+                }
+            }
+        };
+    }
+
+    /* ---------- 選單 ---------- */
+
+    _firstId () {
+        return this._features.length ? this._features[0].id : 'F1';
+    }
+
+    featureMenu () {
+        return this._features.length ? this._features.map(f => f.id) : DEFAULT_IDS.slice();
+    }
+
+    labelMenu () {
+        const items = [String(this._riskLabel), String(this._safeLabel)].filter(x => x);
+        return items.length ? items : [' '];
+    }
+
+    dataPropMenu () {
+        return [{text: this._t('prop_text'), value: 'text'}, {text: this._t('prop_label'), value: 'label'}]
+            .concat(this.featureMenu().map(id => ({text: id, value: id})));
+    }
+
+    /** 角色自己的清單和舞台（所有角色共用）的清單 */
+    listMenu () {
+        const names = [];
+        const add = target => {
+            if (!target || typeof target.getAllVariableNamesInScopeByType !== 'function') return;
+            target.getAllVariableNamesInScopeByType('list').forEach(n => {
+                if (names.indexOf(n) < 0) names.push(n);
+            });
+        };
+        const rt = this.runtime;
+        if (rt) {
+            if (typeof rt.getEditingTarget === 'function') add(rt.getEditingTarget());
+            if (typeof rt.getTargetForStage === 'function') add(rt.getTargetForStage());
+        }
+        return names.length ? names : [this._t('noList')];
+    }
+
+    /* ---------- 內部 ---------- */
+
+    _findFeature (id) {
+        const key = core.norm(String(id === undefined || id === null ? '' : id).trim());
+        return this._features.filter(f => core.norm(f.id) === key)[0] || null;
+    }
+
+    _changed () {
+        this._stats = null;
+        this._last = null;
+        this._render();
+    }
+
+    _getStats () {
+        if (!this._stats) this._stats = core.train(this._features, this._data, this._riskLabel);
+        return this._stats;
+    }
+
+    _judge (text) {
+        const t = String(text === undefined || text === null ? '' : text);
+        const r = core.judge(t, this._features, this._getStats(), this._threshold);
+        r.text = t;
+        r.verdict = r.risky ? this._t('verdictRisk') : String(this._safeLabel);
+        const same = this._last && this._last.text === t;
+        this._last = r;
+        if (!this._features.length) {
+            this._setStatus('st_noFeature');
+        } else {
+            this._setStatus('st_judged', {verdict: r.verdict, score: core.round4(r.score)});
+        }
+        if (!same) this._render();
+        return r;
+    }
+
+    /* ---------- 特徵設定 ---------- */
+
+    loadSample () {
+        const s = samples.scam();
+        this._features = s.features;
+        this._data = s.data;
+        this._riskLabel = s.riskLabel;
+        this._safeLabel = s.safeLabel;
+        this._threshold = s.threshold;
+        this._changed();
+        this._setStatus('st_sample', {f: this._features.length, n: this._data.length});
+        this._refreshToolbox();
+    }
+
+    clearFeatures () {
+        this._features = [];
+        this._changed();
+        this._setStatus('st_noFeature');
+        this._refreshToolbox();
+    }
+
+    setFeature (args) {
+        const id = String(args.FEAT === undefined ? '' : args.FEAT).trim();
+        if (!id) return;
+        const keywords = core.parseKeywords(args.KEYWORDS);
+        const name = String(args.NAME === undefined ? '' : args.NAME).trim();
+        const f = this._findFeature(id);
+        if (f) {
+            f.name = name;
+            f.keywords = keywords;
+        } else {
+            this._features.push({id, name, keywords, reminder: ''});
+        }
+        this._changed();
+        this._setStatus('st_ready');
+        if (!f) this._refreshToolbox();
+    }
+
+    setReminder (args) {
+        const f = this._findFeature(args.FEAT);
+        if (!f) return;
+        f.reminder = String(args.TEXT === undefined ? '' : args.TEXT).trim();
+        this._render();
+    }
+
+    setLabels (args) {
+        const risk = String(args.RISK === undefined ? '' : args.RISK).trim();
+        const safe = String(args.SAFE === undefined ? '' : args.SAFE).trim();
+        if (risk) this._riskLabel = risk;
+        if (safe) this._safeLabel = safe;
+        this._changed();
+        this._refreshToolbox();
+    }
+
+    setThreshold (args) {
+        const t = Number(args.T);
+        if (!isFinite(t)) return;
+        this._threshold = Math.max(0, Math.min(1, t));
+        this._last = null;
+        this._render();
+    }
+
+    /* ---------- 訓練資料 ---------- */
+
+    clearData () {
+        this._data = [];
+        this._changed();
+        this._setStatus('st_noData');
+    }
+
+    addMessage (args) {
+        const text = String(args.TEXT === undefined ? '' : args.TEXT);
+        if (!text.trim()) return;
+        this._data.push({text, label: String(args.LABEL === undefined ? '' : args.LABEL).trim()});
+        this._changed();
+    }
+
+    _readList (util, name) {
+        const n = String(name === undefined ? '' : name);
+        const target = util && util.target;
+        let v = null;
+        if (target && typeof target.lookupVariableByNameAndType === 'function') {
+            v = target.lookupVariableByNameAndType(n, 'list');
+        }
+        if (!v && this.runtime && typeof this.runtime.getTargetForStage === 'function') {
+            const stage = this.runtime.getTargetForStage();
+            if (stage && typeof stage.lookupVariableByNameAndType === 'function') {
+                v = stage.lookupVariableByNameAndType(n, 'list');
+            }
+        }
+        return v && Array.isArray(v.value) ? v.value : null;
+    }
+
+    loadFromLists (args, util) {
+        const texts = this._readList(util, args.TEXTS);
+        const labels = this._readList(util, args.LABELS);
+        if (!texts || !labels) {
+            this._setStatus('st_noList', {name: !texts ? args.TEXTS : args.LABELS});
+            return;
+        }
+        const n = Math.min(texts.length, labels.length);
+        const data = [];
+        for (let i = 0; i < n; i++) {
+            const text = String(texts[i]);
+            if (text.trim()) data.push({text, label: String(labels[i]).trim()});
+        }
+        this._data = data;
+        this._changed();
+        this._setStatus('st_loaded', {n: data.length});
+    }
+
+    train () {
+        this._stats = null;
+        this._getStats();
+        if (!this._features.length) this._setStatus('st_noFeature');
+        else if (!this._data.length) this._setStatus('st_noData');
+        else this._setStatus('st_trained', {n: this._data.length});
+        this._render();
+    }
+
+    dataCount () {
+        return this._data.length;
+    }
+
+    dataProp (args) {
+        const i = Math.floor(Number(args.N)) - 1;
+        const d = this._data[i];
+        if (!d) return '';
+        const prop = String(args.PROP);
+        if (prop === 'text') return d.text;
+        if (prop === 'label') return d.label;
+        const f = this._findFeature(prop);
+        if (!f) return '';
+        return core.containsAny(d.text, f.keywords) ? 1 : 0;
+    }
+
+    riskValue (args) {
+        const f = this._findFeature(args.FEAT);
+        if (!f) return '';
+        return core.round4(this._getStats()[f.id].value);
+    }
+
+    featureInfo (args) {
+        const f = this._findFeature(args.FEAT);
+        if (!f) return '';
+        const info = String(args.INFO);
+        if (info === 'name') return f.name;
+        if (info === 'keywords') return f.keywords.join('、');
+        if (info === 'reminder') return f.reminder;
+        const s = this._getStats()[f.id];
+        if (info === 'hit') return s.hit;
+        if (info === 'risky') return s.risky;
+        return '';
+    }
+
+    /* ---------- 判斷新訊息 ---------- */
+
+    verdict (args) {
+        if (!this._features.length) {
+            this._setStatus('st_noFeature');
+            return '';
+        }
+        return this._judge(args.TEXT).verdict;
+    }
+
+    isRisky (args) {
+        if (!this._features.length) return false;
+        return this._judge(args.TEXT).risky;
+    }
+
+    riskScore (args) {
+        return core.round4(this._judge(args.TEXT).score);
+    }
+
+    matchedFeatures (args) {
+        return this._judge(args.TEXT).matched.join('、');
+    }
+
+    /** 判斷為有風險時，列出符合的特徵的提醒；正常時是空的 */
+    reminders (args) {
+        const r = this._judge(args.TEXT);
+        if (!r.risky) return '';
+        return r.matched.map(id => this._findFeature(id))
+            .filter(f => f && f.reminder)
+            .map(f => f.reminder)
+            .join(' ');
+    }
+
+    /* ---------- 工具 ---------- */
+
+    featureOf (args) {
+        const f = this._findFeature(args.FEAT);
+        if (!f) return '';
+        return core.containsAny(args.TEXT, f.keywords) ? 1 : 0;
+    }
+
+    keywordsFound (args) {
+        const f = this._findFeature(args.FEAT);
+        if (!f) return '';
+        return core.foundKeywords(args.TEXT, f.keywords).join('、');
+    }
+
+    containsAny (args) {
+        return core.containsAny(args.TEXT, core.parseKeywords(args.KEYWORDS));
+    }
+
+    getStatus () {
+        return this._fmt(this._status.key, this._status.params);
+    }
+
+    /* ---------- 風險值表 ---------- */
+
+    _html () {
+        const stats = this._getStats();
+        const rows = this._data.map(d => ({
+            text: d.text,
+            label: d.label,
+            vector: core.featureVector(d.text, this._features),
+            risky: core.sameLabel(d.label, this._riskLabel)
+        }));
+        return view.html({
+            t: k => this._fmt(k, {t: this._threshold}),
+            features: this._features,
+            stats,
+            rows,
+            threshold: this._threshold,
+            riskLabel: this._riskLabel,
+            last: this._last
+        });
+    }
+
+    _overlay () {
+        const doc = this._document();
+        return doc ? doc.getElementById(OVERLAY_ID) : null;
+    }
+
+    showTable () {
+        const win = this._window();
+        let w = this._win && !this._win.closed ? this._win : null;
+        if (!w && win && win.open) {
+            const sw = (win.screen && win.screen.availWidth) || 1280;
+            const sh = (win.screen && win.screen.availHeight) || 800;
+            const width = Math.round(Math.min(1100, sw * 0.7));
+            const height = Math.round(Math.min(860, sh * 0.8));
+            try {
+                w = win.open('', WINDOW_NAME, `width=${width},height=${height},resizable=yes,scrollbars=yes`);
+            } catch (e) {
+                w = null;
+            }
+        }
+        if (w && w.document) {
+            this._win = w;
+            this._removeOverlay();
+            this._writeWindow(w);
+            if (w.focus) w.focus();
+            return;
+        }
+        this._win = null;
+        this._showOverlay();
+        this._setStatus('st_popup');
+    }
+
+    _writeWindow (w) {
+        w.document.open();
+        w.document.write(this._html());
+        w.document.close();
+    }
+
+    /** 視窗開著時重畫（資料、特徵改變或判斷新訊息後） */
+    _render () {
+        if (this._win && !this._win.closed) {
+            this._writeWindow(this._win);
+        } else if (this._overlay()) {
+            this._showOverlay();
+        }
+    }
+
+    _showOverlay () {
+        const doc = this._document();
+        if (!doc || !doc.body) return;
+        let ov = this._overlay();
+        if (!ov) {
+            ov = doc.createElement('div');
+            ov.id = OVERLAY_ID;
+            ov.style.cssText = 'position:fixed;inset:0;z-index:5000;background:rgba(30,15,85,.45);' +
+                'display:flex;align-items:center;justify-content:center;';
+            const panel = doc.createElement('div');
+            panel.style.cssText = 'width:88vw;height:84vh;background:#fff;border-radius:12px;overflow:hidden;' +
+                'display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.35);';
+            const bar = doc.createElement('div');
+            bar.style.cssText = 'display:flex;justify-content:flex-end;padding:4px 8px;background:#2E1A78;';
+            const btn = doc.createElement('button');
+            btn.textContent = `✕ ${this._t('close')}`;
+            btn.style.cssText = 'border:0;border-radius:14px;padding:4px 12px;cursor:pointer;' +
+                'background:rgba(255,255,255,.2);color:#fff;font-size:13px;';
+            btn.onclick = () => this._removeOverlay();
+            bar.appendChild(btn);
+            const frame = doc.createElement('iframe');
+            frame.style.cssText = 'flex:1;border:0;width:100%;';
+            panel.appendChild(bar);
+            panel.appendChild(frame);
+            ov.appendChild(panel);
+            ov.onclick = e => {
+                if (e.target === ov) this._removeOverlay();
+            };
+            doc.body.appendChild(ov);
+        }
+        ov.querySelector('iframe').srcdoc = this._html();
+    }
+
+    _removeOverlay () {
+        const ov = this._overlay();
+        if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+    }
+
+    closeTable () {
+        if (this._win && !this._win.closed) this._win.close();
+        this._win = null;
+        this._removeOverlay();
+    }
+}
+
+module.exports = Scratch3KeywordRisk;
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/risk-core.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * 關鍵字風險偵測：純計算（不依賴 Scratch，可在 Node 測）
+ *
+ * - 特徵：{id: 'F1', name, keywords: [...], reminder}
+ *   訊息包含任一關鍵字 → 該特徵為 1，否則 0
+ * - 訓練資料：[{text, label}]；label 等於「風險標記」（預設「詐騙」）就算有風險
+ * - 特徵風險值 ＝ 符合且有風險的則數 ÷ 符合的總則數（沒有任何訊息符合時算 0）
+ * - 風險分數 ＝ 新訊息符合的特徵風險值的平均（一個都沒符合時算 0）
+ * - 風險分數 ≥ 門檻（預設 0.5）→ 有風險
+ */
+'use strict';
+
+/** 比對用：全形轉半形（NFKC）、英文轉小寫 */
+const norm = s => {
+    let t = String(s === undefined || s === null ? '' : s);
+    if (typeof t.normalize === 'function') t = t.normalize('NFKC');
+    return t.toLowerCase();
+};
+
+/** 「連結、網址, 點擊」→ ['連結', '網址', '點擊']（頓號、逗號、分號、換行都可分隔；不重複） */
+const parseKeywords = s => {
+    const out = [];
+    String(s === undefined || s === null ? '' : s).split(/[、,，;；\n\r]+/).forEach(k => {
+        const w = k.trim();
+        if (w && out.indexOf(w) < 0) out.push(w);
+    });
+    return out;
+};
+
+/** 訊息裡找到的關鍵字（依關鍵字順序） */
+const foundKeywords = (text, keywords) => {
+    const t = norm(text);
+    return (keywords || []).filter(k => norm(k) && t.indexOf(norm(k)) >= 0);
+};
+
+const containsAny = (text, keywords) => foundKeywords(text, keywords).length > 0;
+
+/** 訊息每個特徵的 0 / 1：{F1: 1, F2: 0, ...} */
+const featureVector = (text, features) => {
+    const v = {};
+    features.forEach(f => {
+        v[f.id] = containsAny(text, f.keywords) ? 1 : 0;
+    });
+    return v;
+};
+
+const sameLabel = (a, b) => norm(a).trim() === norm(b).trim();
+
+/**
+ * 計算每個特徵的風險值
+ * @returns {{[id]: {hit, risky, value}}} hit = 符合則數、risky = 符合且有風險的則數
+ */
+const train = (features, data, riskLabel) => {
+    const stats = {};
+    features.forEach(f => {
+        stats[f.id] = {hit: 0, risky: 0, value: 0};
+    });
+    data.forEach(d => {
+        const v = featureVector(d.text, features);
+        const isRisky = sameLabel(d.label, riskLabel);
+        features.forEach(f => {
+            if (!v[f.id]) return;
+            stats[f.id].hit++;
+            if (isRisky) stats[f.id].risky++;
+        });
+    });
+    features.forEach(f => {
+        const s = stats[f.id];
+        s.value = s.hit ? s.risky / s.hit : 0;
+    });
+    return stats;
+};
+
+/**
+ * 判斷一則訊息
+ * @returns {{vector, matched: [id], score, risky: boolean}}
+ */
+const judge = (text, features, stats, threshold) => {
+    const vector = featureVector(text, features);
+    const matched = features.filter(f => vector[f.id]).map(f => f.id);
+    let score = 0;
+    if (matched.length) {
+        score = matched.reduce((sum, id) => sum + (stats[id] ? stats[id].value : 0), 0) / matched.length;
+    }
+    // 1e-9：避免 (0.3 + 0.7) / 2 這類小數誤差剛好落在門檻下面
+    return {vector, matched, score, risky: score + 1e-9 >= threshold};
+};
+
+/** 顯示用：最多 4 位小數（0.75、1、0.8、0.7667） */
+const round4 = x => Math.round(x * 10000) / 10000;
+
+module.exports = {norm, parseKeywords, foundKeywords, containsAny, featureVector, sameLabel, train, judge, round4};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/risk-view.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * 風險值表：產生一頁 HTML（在新視窗或本頁浮動視窗顯示）
+ * m = {t(key), features, stats, rows: [{text, label, vector, risky}], threshold, riskLabel, last}
+ */
+'use strict';
+
+const core = __webpack_require__(/*! ./risk-core */ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/risk-core.js");
+
+const esc = s => String(s === undefined || s === null ? '' : s)
+    .replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+const CSS = [
+    'body{margin:0;font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",Helvetica,Arial,sans-serif;',
+    'background:#F5F1FF;color:#2A2140;}',
+    'header{background:linear-gradient(120deg,#2E1A78,#8A2BE2);color:#fff;padding:14px 20px;font-size:20px;',
+    'font-weight:700;}',
+    'main{padding:12px 20px 24px;}',
+    'h2{font-size:16px;margin:18px 0 6px;color:#4E2696;}',
+    'p.note{margin:4px 0 8px;font-size:13px;color:#5A4E78;}',
+    'table{border-collapse:collapse;width:100%;background:#fff;font-size:14px;}',
+    'th,td{border:1px solid #DCD2F2;padding:5px 8px;text-align:left;vertical-align:top;}',
+    'th{background:#EDE5FF;color:#3A2470;white-space:nowrap;}',
+    'td.n{text-align:center;white-space:nowrap;}',
+    'td.one{background:#FFF1C2;font-weight:700;}',
+    'tr.risk td.lab{color:#C0262D;font-weight:700;}',
+    '.big{font-size:18px;font-weight:700;}',
+    '.risk{color:#C0262D;}.safe{color:#1F8A3B;}'
+].join('');
+
+const html = m => {
+    const t = m.t;
+    const ids = m.features.map(f => f.id);
+    const r4 = core.round4;
+    const out = [];
+    out.push(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(t('tbl_title'))}</title>`,
+        `<style>${CSS}</style></head><body><header>${esc(t('tbl_title'))}</header><main>`);
+
+    // 特徵與風險值
+    out.push(`<h2>${esc(t('tbl_features'))}</h2><p class="note">${esc(t('tbl_formula'))}</p>`,
+        `<table><tr><th>${esc(t('tbl_feature'))}</th><th>${esc(t('tbl_name'))}</th>`,
+        `<th>${esc(t('tbl_keywords'))}</th><th>${esc(t('tbl_hit'))}</th><th>${esc(t('tbl_risky'))}</th>`,
+        `<th>${esc(t('tbl_value'))}</th></tr>`);
+    m.features.forEach(f => {
+        const s = m.stats[f.id] || {hit: 0, risky: 0, value: 0};
+        out.push(`<tr><td class="n">${esc(f.id)}</td><td>${esc(f.name)}</td><td>${esc(f.keywords.join('、'))}</td>`,
+            `<td class="n">${s.hit}</td><td class="n">${s.risky}</td>`,
+            `<td class="n">${s.risky} ÷ ${s.hit} = <b>${r4(s.value)}</b></td></tr>`);
+    });
+    if (!m.features.length) out.push(`<tr><td colspan="6">${esc(t('tbl_none'))}</td></tr>`);
+    out.push('</table>');
+    out.push(`<p class="note">${esc(t('tbl_threshold'))}</p>`);
+
+    // 最後判斷的訊息
+    if (m.last) {
+        const L = m.last;
+        const cls = L.risky ? 'risk' : 'safe';
+        const detail = L.matched.length ?
+            `(${L.matched.map(id => r4(m.stats[id] ? m.stats[id].value : 0)).join(' + ')}) ÷ ${L.matched.length}` :
+            esc(t('tbl_noMatch'));
+        out.push(`<h2>${esc(t('tbl_last'))}</h2><table><tr><th>${esc(t('tbl_text'))}</th>`,
+            ids.map(id => `<th>${esc(id)}</th>`).join(''),
+            `<th>${esc(t('tbl_score'))}</th><th>${esc(t('tbl_result'))}</th></tr><tr><td>${esc(L.text)}</td>`,
+            ids.map(id => `<td class="n${L.vector[id] ? ' one' : ''}">${L.vector[id] ? 1 : 0}</td>`).join(''),
+            `<td class="n">${detail} = <b>${r4(L.score)}</b></td>`,
+            `<td class="n big ${cls}">${esc(L.verdict)}</td></tr></table>`);
+    }
+
+    // 訓練訊息
+    out.push(`<h2>${esc(t('tbl_data'))}</h2><table><tr><th>${esc(t('tbl_no'))}</th><th>${esc(t('tbl_text'))}</th>`,
+        ids.map(id => `<th>${esc(id)}</th>`).join(''), `<th>${esc(t('tbl_label'))}</th></tr>`);
+    m.rows.forEach((d, i) => {
+        out.push(`<tr${d.risky ? ' class="risk"' : ''}><td class="n">${i + 1}</td><td>${esc(d.text)}</td>`,
+            ids.map(id => `<td class="n${d.vector[id] ? ' one' : ''}">${d.vector[id] ? 1 : 0}</td>`).join(''),
+            `<td class="n lab">${esc(d.label)}</td></tr>`);
+    });
+    if (!m.rows.length) out.push(`<tr><td colspan="${ids.length + 3}">${esc(t('tbl_none'))}</td></tr>`);
+    out.push('</table></main></body></html>');
+    return out.join('');
+};
+
+module.exports = {html, esc};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/samples.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/**
+ * 範例：防詐簡訊（116 年度新北市貓咪盃 國中生活 AI 互動組初賽題目「智慧防詐訊息偵測員」的設定）
+ * 特徵 F1～F4 的關鍵字與 10 則已標記的訓練簡訊；提醒文字是本插件自己寫的
+ */
+'use strict';
+
+const RISK = '詐騙';
+const SAFE = '正常';
+
+const FEATURES = [
+    {
+        id: 'F1', name: '連結／網址', keywords: ['連結', '網址', '點擊'],
+        reminder: '不要點擊不明的連結或網址，可以先向官方管道確認。'
+    },
+    {
+        id: 'F2', name: '要求提供個資或金錢', keywords: ['密碼', '帳號', '身分證字號', '匯款', '轉帳'],
+        reminder: '切勿提供密碼、帳號、身分證字號，也不要依照訊息匯款或轉帳。'
+    },
+    {
+        id: 'F3', name: '緊急／威脅語氣', keywords: ['立即', '否則', '逾期', '盡快'],
+        reminder: '遇到催促或威脅的語氣先冷靜下來，不要急著照做。'
+    },
+    {
+        id: 'F4', name: '自稱機構／權威身分', keywords: ['銀行', '客服中心', '警察局', '法院'],
+        reminder: '自稱銀行、客服、警察或法院時，請自己撥打官方電話查證，或撥 165 反詐騙專線。'
+    }
+];
+
+const MESSAGES = [
+    ['銀行客服中心通知：您的帳戶異常，請立即點擊連結並提供密碼，否則帳戶將被凍結。', RISK],
+    ['警察局來電通知您涉入刑案，要求立即匯款以撤銷通緝，否則將依法逮捕。', RISK],
+    ['法院通知您的罰單已逾期，請立即點擊連結繳納，否則將強制執行。', RISK],
+    ['您的網路帳單已逾期，請盡快提供身分證字號以核對身分。', RISK],
+    ['提醒您，圖書館借閱的書籍已逾期，請盡快歸還。', SAFE],
+    ['媽，我今天晚上會晚點回家，先跟妳說一聲，晚餐不用等我。', SAFE],
+    ['這是我最近發現的好康連結，點擊連結看看吧，你一定會喜歡！', RISK],
+    ['同學會的活動相簿連結在這裡，點擊連結就能看到大家的照片。', SAFE],
+    ['老師說明天要交作業，記得先把作業寫完再出門喔。', SAFE],
+    ['銀行APP更新通知：新版介面上線，操作更方便，歡迎多加使用。', SAFE]
+];
+
+/** 每次回傳新的複本（插件會修改） */
+const scam = () => ({
+    riskLabel: RISK,
+    safeLabel: SAFE,
+    threshold: 0.5,
+    features: FEATURES.map(f => Object.assign({}, f, {keywords: f.keywords.slice()})),
+    data: MESSAGES.map(m => ({text: m[0], label: m[1]}))
+});
+
+module.exports = {scam};
+
+
+/***/ },
+
+/***/ "./node_modules/scratch-vm/src/extensions/scratch3_keywordRisk/translation.js"
+/*! //osep add (claude/textSentiment/faceExpressionMediapipe) */
+(module, exports, __webpack_require__) {
+
+// Copyright (c) 2026 Andrew Yang
+// SPDX-License-Identifier: BSD-3-Clause
+/* 中英文字（CommonJS，可直接在 Node 測試）；{risk}、{safe} 會換成目前的標記名稱 */
+const t = (en, zh) => ({'en': en, 'zh-tw': zh});
+
+module.exports = {
+    title: t('Keyword Risk Detector', '關鍵字風險偵測'),
+
+    // 積木：特徵設定
+    loadSample: t('load sample: scam messages', '載入範例：防詐簡訊'),
+    clearFeatures: t('clear all features', '清除所有特徵'),
+    setFeature: t('set feature [FEAT] name [NAME] keywords [KEYWORDS]', '設定特徵 [FEAT] 名稱 [NAME] 關鍵字 [KEYWORDS]'),
+    setReminder: t('set reminder of feature [FEAT] to [TEXT]', '設定特徵 [FEAT] 的提醒 [TEXT]'),
+    setLabels: t('set labels: risky [RISK] normal [SAFE]', '標記名稱設為 有風險 [RISK] 正常 [SAFE]'),
+    setThreshold: t('set threshold to [T]', '判斷門檻設為 [T]'),
+
+    // 積木：訓練資料
+    clearData: t('clear training data', '清除訓練資料'),
+    addMessage: t('add training message [TEXT] label [LABEL]', '加入訓練訊息 [TEXT] 標記 [LABEL]'),
+    loadFromLists: t('load training data from list [TEXTS] with labels in list [LABELS]',
+        '從清單 [TEXTS] 和標記清單 [LABELS] 讀入訓練資料'),
+    train: t('calculate risk values', '計算風險值'),
+    dataCount: t('number of training messages', '訓練訊息數量'),
+    dataProp: t('training message [N] [PROP]', '第 [N] 則訓練訊息的 [PROP]'),
+    riskValue: t('risk value of feature [FEAT]', '特徵 [FEAT] 的風險值'),
+    featureInfo: t('feature [FEAT] [INFO]', '特徵 [FEAT] 的 [INFO]'),
+
+    // 積木：判斷新訊息
+    featureOf: t('[TEXT] feature [FEAT]', '[TEXT] 的特徵 [FEAT]'),
+    matchedFeatures: t('features matched by [TEXT]', '[TEXT] 符合的特徵'),
+    riskScore: t('risk score of [TEXT]', '[TEXT] 的風險分數'),
+    verdict: t('result of [TEXT]', '[TEXT] 的判斷結果'),
+    isRisky: t('[TEXT] is likely {risk}?', '[TEXT] 疑似{risk}？'),
+    reminders: t('reminders for [TEXT]', '[TEXT] 的提醒'),
+
+    // 積木：工具
+    containsAny: t('[TEXT] contains any of [KEYWORDS]?', '[TEXT] 包含 [KEYWORDS] 其中一個？'),
+    keywordsFound: t('keywords found in [TEXT] for feature [FEAT]', '[TEXT] 中特徵 [FEAT] 找到的關鍵字'),
+    showTable: t('show risk table', '顯示風險值表'),
+    closeTable: t('close risk table', '關閉風險值表'),
+    status: t('detector status', '偵測狀態'),
+
+    // 預設值
+    defText: t('Click the link now', '請立即點擊連結'),
+    defName: t('links / URLs', '連結／網址'),
+    defKeywords: t('連結、網址、點擊', '連結、網址、點擊'),
+    defReminder: t('Do not click unknown links.', '不要點擊不明的連結或網址。'),
+    defRisk: t('scam', '詐騙'),
+    defSafe: t('normal', '正常'),
+    textsList: t('messages', '訊息'),
+    labelsList: t('labels', '標記'),
+
+    // 選單
+    prop_text: t('text', '內容'),
+    prop_label: t('label', '標記'),
+    info_name: t('name', '名稱'),
+    info_keywords: t('keywords', '關鍵字'),
+    info_reminder: t('reminder', '提醒'),
+    info_hit: t('number of matching messages', '符合則數'),
+    info_risky: t('number of matching {risk} messages', '符合且{risk}的則數'),
+    noList: t('(no list)', '（沒有清單）'),
+
+    // 結果
+    verdictRisk: t('likely {risk}', '疑似{risk}'),
+
+    // 狀態
+    st_ready: t('ready', '準備好了'),
+    st_sample: t('sample loaded: {f} features, {n} messages', '已載入範例：{f} 個特徵、{n} 則訊息'),
+    st_trained: t('risk values calculated from {n} messages', '已用 {n} 則訊息計算風險值'),
+    st_noFeature: t('no features yet: set a feature first', '還沒有特徵：請先設定特徵'),
+    st_noData: t('no training data yet', '還沒有訓練資料'),
+    st_loaded: t('loaded {n} training messages from lists', '從清單讀入 {n} 則訓練訊息'),
+    st_noList: t('cannot find list "{name}"', '找不到清單「{name}」'),
+    st_judged: t('{verdict} (risk score {score})', '{verdict}（風險分數 {score}）'),
+    st_popup: t('pop-up blocked: showing the table on this page', '彈出視窗被擋住，改在本頁顯示'),
+
+    // 風險值表視窗
+    tbl_title: t('Risk table', '風險值表'),
+    tbl_features: t('Features and risk values', '特徵與風險值'),
+    tbl_formula: t('risk value = matching {risk} messages ÷ matching messages',
+        '風險值 ＝ 符合且{risk}的則數 ÷ 符合的總則數'),
+    tbl_feature: t('Feature', '特徵'),
+    tbl_name: t('Name', '名稱'),
+    tbl_keywords: t('Keywords', '關鍵字'),
+    tbl_hit: t('Matching', '符合則數'),
+    tbl_risky: t('{risk}', '{risk}則數'),
+    tbl_value: t('Risk value', '風險值'),
+    tbl_data: t('Training messages', '訓練訊息'),
+    tbl_no: t('No.', '編號'),
+    tbl_text: t('Message', '簡訊內容'),
+    tbl_label: t('Label', '標記'),
+    tbl_last: t('Last judged message', '最後判斷的訊息'),
+    tbl_score: t('Risk score', '風險分數'),
+    tbl_result: t('Result', '判斷結果'),
+    tbl_threshold: t('Threshold: risk score ≥ {t} → {risk}', '判斷門檻：風險分數 ≥ {t} → 疑似{risk}'),
+    tbl_none: t('(none)', '（沒有）'),
+    tbl_noMatch: t('no feature matched: risk score 0', '沒有符合任何特徵：風險分數 0'),
+    close: t('Close', '關閉')
 };
 
 
@@ -165087,6 +166090,23 @@ const translationMap = {
   internetConnectionRequired: true,
   useAutoScan: false,
   helpLink: "https://github.com/gasolin/scratch3-internet"
+}, {
+  name: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "Keyword Risk Detector",
+    id: "gui.extension.keywordRisk.title"
+  }),
+  extensionId: "keywordRisk",
+  collaborator: "Andrew Yang",
+  iconURL: "static/osep/keywordRisk.png",
+  insetIconURL: "static/osep/keywordRisk-small.svg",
+  description: /*#__PURE__*/react__WEBPACK_IMPORTED_MODULE_0__.createElement(react_intl__WEBPACK_IMPORTED_MODULE_1__.FormattedMessage, {
+    defaultMessage: "Score messages with keyword features learned from labeled examples, e.g. to spot scam texts.",
+    id: "gui.extension.keywordRisk.description"
+  }),
+  featured: true,
+  disabled: false,
+  internetConnectionRequired: false,
+  useAutoScan: false
 }]);
 
 /***/ },
@@ -462173,6 +463193,8 @@ __webpack_require__.r(__webpack_exports__);
     "gui.extension.yoloDetection.description":"用 YOLO 辨識圖片、舞台或攝影機畫面中的人、動物和物品",
     "gui.extension.lassAirbox.title":"LASS 空氣盒子（即時資料）",
     "gui.extension.lassAirbox.description":"空氣盒子（Edimax 即時資料）、環境部空品與氣象署預報",
+    "gui.extension.keywordRisk.title":"關鍵字風險偵測",
+    "gui.extension.keywordRisk.description":"用關鍵字特徵和已標記的訊息算出風險分數，判斷訊息是否疑似詐騙",
     "gui.extension.llmstudio.description":"使用LLM Studio AI的人工智慧模型進行自然語言處理任務",
     "gui.extension.llmstudio.title":"LLM Studio AI",
     "gui.extension.urltxt.description": "訪問網站和取得文字檔內容",
