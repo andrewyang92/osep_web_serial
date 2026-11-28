@@ -495,7 +495,7 @@ const buildProject = (lang, pluginId, ex, infos) => {
  * 新版 OSEP（new/）和舊版（app/）擴充 id 不同的擴充功能：舊版 id → 新版 id。
  * 例：new/ 裡的 textSentiment 是原作者的 ml5 舊擴充功能，我們的版本叫 textSentimentTF（積木相同）。
  */
-const NEW_IDS = {textSentiment: 'textSentimentTF', gasoLASS: 'lassAirbox'};
+const NEW_IDS = {textSentiment: 'textSentimentTF', gasoLASS: 'lassAirbox', gasoThingSpeak: 'thingSpeakIoT'};
 
 /** 用自訂欄位（customFieldTypes 的 value）的參數：擴充功能 id → 積木 → 參數名稱 */
 const CUSTOM_VALUE_ARGS = {decisionTree: {condition: ['YN'], setInput: ['VAL']}};

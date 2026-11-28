@@ -89,11 +89,25 @@ window.OSEP_EXAMPLE_FILES = {
   "gasoThingSpeak": {
     "zh": [
       "examples/gasoThingSpeak/zh-1.sb3",
-      "examples/gasoThingSpeak/zh-2.sb3"
+      "examples/gasoThingSpeak/zh-2.sb3",
+      "examples/gasoThingSpeak/zh-3.sb3"
     ],
+    "new": {
+      "zh": [
+        "examples/gasoThingSpeak/zh-1-new.sb3",
+        "examples/gasoThingSpeak/zh-2-new.sb3",
+        "examples/gasoThingSpeak/zh-3-new.sb3"
+      ],
+      "en": [
+        "examples/gasoThingSpeak/en-1-new.sb3",
+        "examples/gasoThingSpeak/en-2-new.sb3",
+        "examples/gasoThingSpeak/en-3-new.sb3"
+      ]
+    },
     "en": [
       "examples/gasoThingSpeak/en-1.sb3",
-      "examples/gasoThingSpeak/en-2.sb3"
+      "examples/gasoThingSpeak/en-2.sb3",
+      "examples/gasoThingSpeak/en-3.sb3"
     ]
   },
   "gasoLASS": {
