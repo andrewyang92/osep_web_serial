@@ -109,6 +109,64 @@ const valueAt = function (feeds, n, column) {
     return name === 'created_at' ? localTime(v) : String(v);
 };
 
+const FIELDS = ['field1', 'field2', 'field3', 'field4', 'field5', 'field6', 'field7', 'field8'];
+
+/**
+ * 圖表上的時間：電腦所在時區的「MM-DD HH:MM」（100 筆時 X 軸才放得下）。
+ * @param {string} s ThingSpeak 的時間（UTC）
+ * @returns {string} 時間；看不懂時原樣回傳
+ */
+const shortTime = function (s) {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return String(s);
+    return pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+};
+
+// 圖表擴充功能把名稱直接寫進 JavaScript 字串，引號、反斜線、換行會讓圖表壞掉
+const cleanLabel = function (s) {
+    return String(s).replace(/['"`\\\r\n]/g, '')
+        .trim();
+};
+
+/**
+ * 轉成圖表擴充功能「讀取資料 [data] 顯示 [折線圖]」可以用的資料：
+ * [{"時間":"11-28 10:32","Light":"240","Outside Temperature":"38"}, …]
+ * 第一個欄位是 X 軸（時間），後面每個欄位畫一條線；名稱用頻道設定的欄位名稱（沒有時用「欄位1」）。
+ * 只放頻道有啟用的欄位（沒有頻道資訊時，放資料裡出現過的欄位）。值一律是文字，空的欄位是 ""。
+ * @param {Array} feeds 資料
+ * @param {object} channel feeds.json 的 channel（可以沒有）
+ * @param {string} lang 'zh-tw' 或 'en'
+ * @returns {Array} 每筆一個物件
+ */
+const chartRows = function (feeds, channel, lang) {
+    if (!Array.isArray(feeds)) return [];
+    const zh = lang === 'zh-tw';
+    const timeKey = zh ? '時間' : 'time';
+    let fields = FIELDS.filter(f => channel && channel[f]);
+    if (fields.length === 0) {
+        fields = FIELDS.filter(f => feeds.some(row => row[f] !== undefined && row[f] !== null));
+    }
+    const used = [timeKey];
+    const labels = fields.map((f, i) => {
+        const fallback = (zh ? '欄位' : 'field') + f.slice(5);
+        let label = cleanLabel((channel && channel[f]) || '') || fallback;
+        // 數字名稱會被 JavaScript 排到物件最前面，加上欄位編號
+        if (/^\d+$/.test(label)) label = fallback + ' ' + label;
+        if (used.indexOf(label) >= 0) label = label + ' (' + fallback + ')';
+        used.push(label);
+        return label;
+    });
+    return feeds.map(row => {
+        const out = {};
+        out[timeKey] = shortTime(row.created_at);
+        fields.forEach((f, i) => {
+            const v = row[f];
+            out[labels[i]] = v === undefined || v === null ? '' : String(v).trim();
+        });
+        return out;
+    });
+};
+
 module.exports = {
     API,
     fieldName,
@@ -117,5 +175,7 @@ module.exports = {
     parseUpdate,
     parseFeeds,
     localTime,
-    valueAt
+    valueAt,
+    shortTime,
+    chartRows
 };

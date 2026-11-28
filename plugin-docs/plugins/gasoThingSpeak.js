@@ -26,8 +26,8 @@ OSEP.addPlugin({
   "icon": "images/gasoThingSpeak/small.png",
   "blockIcon": "",
   "source": "../node_modules/scratch-vm/src/extensions/scratch3_thingspeak",
-  "tagline": "把數值存到 ThingSpeak 物聯網平台畫成圖表，也能把資料讀回 Scratch、直接取出某一筆的欄位。",
-  "overview": "ThingSpeak 是 MathWorks 的物聯網資料平台：把感測器或遊戲的數值送上去，網站會自動畫成折線圖，也可以讓別的程式讀回來。\n\nThingSpeak 的資料放在「頻道（channel）」裡，一個頻道有 8 個欄位（field1～field8）。這個擴充功能可以：\n\n- **寫入**：設定寫入 key → 填好要送的欄位 → 送出，再用 [[TS_writeResult]] 看有沒有成功\n- **讀取**：用頻道 ID（私人頻道再加讀取 key）下載最近 100 筆資料，用 [[TS_lastValue]]、[[TS_valueAt]] 直接取出欄位的值\n\n### 要用哪一張卡片？\n原作者版本的寫入、讀取積木一執行就會出錯（程式裡用了沒有宣告的變數），完全不能用。OSEP 修好後放在新版的另一張卡片：\n\n| OSEP 版本 | 擴充功能卡片 | 狀態 |\n|---|---|---|\n| 新版 | **ThingSpeak 物聯網**（積木分類「ThingSpeak IoT」） | 正常，本頁介紹的 9 塊積木 |\n| 新版 | ThingSpeak（原作者版） | 寫入、讀取都會出錯 |\n| 舊版 | ThingSpeak | 寫入、讀取都會出錯（舊版還沒更新） |\n\n> ! 請在 OSEP **新版**加入「**ThingSpeak 物聯網**」。原本 5 塊積木的用法不變，舊專案換到新卡片時要把積木重新拖一次。\n\n### 事前準備（在 [ThingSpeak 網站](https://thingspeak.mathworks.com/)）\n- 按 **Sign Up** 註冊 MathWorks 帳號（免費），收到驗證信後啟用、登入\n- 到 [My Channels](https://thingspeak.mathworks.com/channels) 按 **New Channel**：填 Name，勾選要用的欄位（Field 1～8，可以取名，例如「溫度」），最下面按 **Save Channel**\n- 頻道頁面上方的 **Channel ID** 是頻道 ID；**API Keys** 分頁有 **Write API Key** 和 **Read API Keys**\n- **Sharing** 分頁：預設是私人頻道（讀取要 Read API Key）；選 **Share channel view with everyone** 變成公開頻道，讀取 key 可以留空。寫入一定要 Write API Key\n\n> 免費帳號同一個頻道大約每 15 秒才能寫入一次，送太快會失敗（[[TS_writeResult]] 是 0）。限制以 ThingSpeak 網站目前的規定為準。\n\n> ! Write API Key 等於寫入權限，不要放在公開分享的專案裡（可以用「詢問並等待」讓使用的人自己貼上）。不小心外流時，在 API Keys 分頁按 **Generate New Write API Key** 換一把。\n\n### 沒有帳號也能先試讀取\nThingSpeak 官方的示範頻道 **9**（my_house，欄位1＝光線、欄位2＝室外溫度）是公開的，頻道 ID 填 9、讀取 key 留空就能讀，見範例 2、3。\n\n### 相關網站\n- [ThingSpeak 首頁](https://thingspeak.mathworks.com/)：註冊、登入\n- [My Channels](https://thingspeak.mathworks.com/channels)：自己的頻道清單，點進頻道可以看圖表和 API Keys（要先登入）\n- [建立新頻道](https://thingspeak.mathworks.com/channels/new)（要先登入）\n- [示範頻道 9](https://thingspeak.mathworks.com/channels/9)：公開頻道的圖表\n\n擴充功能原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)），OSEP 修正讀寫錯誤並加上取值積木。",
+  "tagline": "把數值存到 ThingSpeak 物聯網平台畫成圖表，也能把資料讀回 Scratch、取出欄位的值或交給圖表擴充功能畫折線圖。",
+  "overview": "ThingSpeak 是 MathWorks 的物聯網資料平台：把感測器或遊戲的數值送上去，網站會自動畫成折線圖，也可以讓別的程式讀回來。\n\nThingSpeak 的資料放在「頻道（channel）」裡，一個頻道有 8 個欄位（field1～field8）。這個擴充功能可以：\n\n- **寫入**：設定寫入 key → 填好要送的欄位 → 送出，再用 [[TS_writeResult]] 看有沒有成功\n- **讀取**：用頻道 ID（私人頻道再加讀取 key）下載最近 100 筆資料，用 [[TS_lastValue]]、[[TS_valueAt]] 直接取出欄位的值，或把 [[TS_JSON]] 交給「圖表」擴充功能畫折線圖\n\n### 要用哪一張卡片？\n原作者版本的寫入、讀取積木一執行就會出錯（程式裡用了沒有宣告的變數），完全不能用。OSEP 修好後放在新版的另一張卡片：\n\n| OSEP 版本 | 擴充功能卡片 | 狀態 |\n|---|---|---|\n| 新版 | **ThingSpeak 物聯網**（積木分類「ThingSpeak IoT」） | 正常，本頁介紹的 9 塊積木 |\n| 新版 | ThingSpeak（原作者版） | 寫入、讀取都會出錯 |\n| 舊版 | ThingSpeak | 寫入、讀取都會出錯（舊版還沒更新） |\n\n> ! 請在 OSEP **新版**加入「**ThingSpeak 物聯網**」。原本 5 塊積木的用法不變，舊專案換到新卡片時要把積木重新拖一次。\n\n### 事前準備（在 [ThingSpeak 網站](https://thingspeak.mathworks.com/)）\n- 按 **Sign Up** 註冊 MathWorks 帳號（免費），收到驗證信後啟用、登入\n- 到 [My Channels](https://thingspeak.mathworks.com/channels) 按 **New Channel**：填 Name，勾選要用的欄位（Field 1～8，可以取名，例如「溫度」），最下面按 **Save Channel**\n- 頻道頁面上方的 **Channel ID** 是頻道 ID；**API Keys** 分頁有 **Write API Key** 和 **Read API Keys**\n- **Sharing** 分頁：預設是私人頻道（讀取要 Read API Key）；選 **Share channel view with everyone** 變成公開頻道，讀取 key 可以留空。寫入一定要 Write API Key\n\n> 免費帳號同一個頻道大約每 15 秒才能寫入一次，送太快會失敗（[[TS_writeResult]] 是 0）。限制以 ThingSpeak 網站目前的規定為準。\n\n> ! Write API Key 等於寫入權限，不要放在公開分享的專案裡（可以用「詢問並等待」讓使用的人自己貼上）。不小心外流時，在 API Keys 分頁按 **Generate New Write API Key** 換一把。\n\n### 沒有帳號也能先試讀取\nThingSpeak 官方的示範頻道 **9**（my_house，欄位1＝光線、欄位2＝室外溫度）是公開的，頻道 ID 填 9、讀取 key 留空就能讀，見範例 2～4。\n\n### 相關網站\n- [ThingSpeak 首頁](https://thingspeak.mathworks.com/)：註冊、登入\n- [My Channels](https://thingspeak.mathworks.com/channels)：自己的頻道清單，點進頻道可以看圖表和 API Keys（要先登入）\n- [建立新頻道](https://thingspeak.mathworks.com/channels/new)（要先登入）\n- [示範頻道 9](https://thingspeak.mathworks.com/channels/9)：公開頻道的圖表\n\n擴充功能原始作者：gasolin（[scratch3-internet](https://github.com/gasolin/scratch3-internet)），OSEP 修正讀寫錯誤並加上取值積木。",
   "groups": [
     {
       "name": "寫入",
@@ -155,7 +155,7 @@ OSEP.addPlugin({
                   "cat": "operators",
                   "type": "reporter",
                   "args": {
-                    "A": "寫入結果：",
+                    "A": "寫入筆數：",
                     "B": {
                       "use": "TS_writeResult"
                     }
@@ -168,18 +168,18 @@ OSEP.addPlugin({
         {
           "opcode": "TS_writeResult",
           "type": "reporter",
-          "text": "ThingSpeak 寫入結果",
-          "textEn": "ThingSpeak write result",
-          "summary": "最近一次 [[Write_TS]] 的結果。",
+          "text": "ThingSpeak 寫入筆數",
+          "textEn": "ThingSpeak entries written",
+          "summary": "最近一次 [[Write_TS]] 寫入的是頻道的第幾筆資料。",
           "detail": "",
-          "returns": "成功時是這筆資料在頻道裡的編號（1、2、3…）；失敗時是 0（key 錯了、離上次寫入不到 15 秒、網路斷線，或沒有欄位）。還沒送過時是空的。",
-          "tips": "用「[[TS_writeResult]] > 0」判斷有沒有寫入成功。"
+          "returns": "成功時是這筆資料的編號，也就是頻道裡目前共有幾筆（1、2、3…）；失敗時是 0（key 錯了、離上次寫入不到 15 秒、網路斷線，或沒有欄位）。還沒送過時是空的。",
+          "tips": "用「[[TS_writeResult]] > 0」判斷有沒有寫入成功。勾選積木旁的方框，舞台上會顯示「ThingSpeak 寫入筆數」。"
         }
       ]
     },
     {
       "name": "讀取",
-      "intro": "先用 [[TS_Read]] 下載資料，再用 [[TS_lastValue]]、[[TS_valueAt]]、[[TS_count]] 取值。[[TS_Read]] 會等資料下載完才往下執行，後面不用加等待。",
+      "intro": "先用 [[TS_Read]] 下載資料，再用 [[TS_lastValue]]、[[TS_valueAt]]、[[TS_count]] 取值；要畫折線圖時把 [[TS_JSON]] 交給圖表擴充功能。[[TS_Read]] 會等資料下載完才往下執行，後面不用加等待。",
       "blocks": [
         {
           "opcode": "TS_Read",
@@ -199,7 +199,7 @@ OSEP.addPlugin({
             }
           },
           "summary": "下載頻道最近 100 筆資料，下載完才往下執行。",
-          "detail": "下載完成後，用 [[TS_lastValue]]、[[TS_valueAt]] 取值，[[TS_count]] 是筆數；[[TS_JSON]] 是原始的 JSON 文字。\n\n下載失敗時（頻道 ID 錯、私人頻道沒給讀取 key、網路斷線），之前讀到的資料會清掉，[[TS_count]] 變成 0。\n\n讀取的網址是 `https://api.thingspeak.com/channels/<頻道 ID>/feeds.json`，可以直接用瀏覽器打開看。",
+          "detail": "下載完成後，用 [[TS_lastValue]]、[[TS_valueAt]] 取值，[[TS_count]] 是筆數；[[TS_JSON]] 可以交給圖表擴充功能畫折線圖。\n\n下載失敗時（頻道 ID 錯、私人頻道沒給讀取 key、網路斷線），之前讀到的資料會清掉，[[TS_count]] 變成 0。\n\n讀取的網址是 `https://api.thingspeak.com/channels/<頻道 ID>/feeds.json`，可以直接用瀏覽器打開看。",
           "example": [
             {
               "use": "TS_Read",
@@ -346,10 +346,32 @@ OSEP.addPlugin({
           "type": "reporter",
           "text": "讀取的 ThingSpeak 資料",
           "textEn": "ThingSpeak data",
-          "summary": "最近一次 [[TS_Read]] 下載的原始資料。",
-          "detail": "",
-          "returns": "JSON 文字，例如 `[{\"created_at\":\"2026-11-28T02:32:25Z\",\"entry_id\":1,\"field1\":\"25\"}, …]`（時間是 UTC）。還沒讀取或讀取失敗時是「錯誤：ThingSpeak 資料不存在」。",
-          "tips": "一般用 [[TS_lastValue]]、[[TS_valueAt]] 就夠了；要用 JSON 擴充功能自己拆的時候才需要這塊。"
+          "summary": "把最近一次 [[TS_Read]] 讀到的資料，整理成「圖表」擴充功能可以畫折線圖的格式。",
+          "detail": "每一筆資料是一個物件：\n\n- 第一個是「時間」（電腦所在時區的 月-日 時:分），當 X 軸\n- 後面是頻道啟用的每個欄位，名稱用頻道設定（Channel Settings）裡的欄位名稱，例如 `Light`；沒有取名時是「欄位1」。每個欄位畫一條線\n- 值都是文字；那一筆沒有值時是空的（折線會斷開）\n\n把這塊放進圖表擴充功能的「讀取資料 [data] 顯示 [折線圖]」就能畫圖，見範例 4。也可以選長條圖。",
+          "returns": "JSON 文字，例如 `[{\"時間\":\"11-28 10:32\",\"Light\":\"240\",\"Outside Temperature\":\"38\"}, …]`。還沒讀取或讀取失敗時是「錯誤：ThingSpeak 資料不存在」。",
+          "tips": "想讓圖例顯示中文，就在 ThingSpeak 的 Channel Settings 把欄位名稱改成中文（例如「溫度」）。",
+          "example": [
+            {
+              "use": "TS_Read",
+              "args": {
+                "CHANNEL": "9",
+                "KEY": " "
+              }
+            },
+            {
+              "t": "讀取資料 [D] 顯示 [C]",
+              "color": "#83251B",
+              "args": {
+                "D": {
+                  "use": "TS_JSON"
+                },
+                "C": {
+                  "v": "折線圖",
+                  "menu": true
+                }
+              }
+            }
+          ]
         }
       ]
     }
@@ -401,7 +423,7 @@ OSEP.addPlugin({
                   "cat": "operators",
                   "type": "reporter",
                   "args": {
-                    "A": "寫入結果：",
+                    "A": "寫入筆數：",
                     "B": {
                       "use": "TS_writeResult"
                     }
@@ -421,7 +443,7 @@ OSEP.addPlugin({
           ]
         }
       ],
-      "explain": "寫入結果是數字（資料編號）表示成功，0 表示失敗。免費帳號約 15 秒才能寫一次，所以等 20 秒比較保險。"
+      "explain": "寫入筆數是數字（這筆是頻道的第幾筆）表示成功，0 表示失敗。免費帳號約 15 秒才能寫一次，所以等 20 秒比較保險。"
     },
     {
       "title": "讀回最新一筆資料",
@@ -579,6 +601,53 @@ OSEP.addPlugin({
         }
       ],
       "explain": "第 1 筆是最舊的，最後一筆（第「資料筆數」筆）是最新的。"
+    },
+    {
+      "title": "用折線圖看頻道資料",
+      "intro": "讀示範頻道 9，用「圖表」擴充功能畫出光線和室外溫度的折線圖（會開一個新視窗）。要另外加入「圖表」擴充功能。",
+      "script": [
+        {
+          "t": "當 🏁 被點擊",
+          "cat": "events",
+          "type": "hat"
+        },
+        {
+          "use": "TS_Read",
+          "args": {
+            "CHANNEL": "9",
+            "KEY": " "
+          }
+        },
+        {
+          "t": "圖表標題 [T]",
+          "color": "#83251B",
+          "args": {
+            "T": "ThingSpeak 頻道 9"
+          }
+        },
+        {
+          "t": "座標軸標題：X軸 [X] Y軸 [Y]",
+          "color": "#83251B",
+          "args": {
+            "X": "時間",
+            "Y": "數值"
+          }
+        },
+        {
+          "t": "讀取資料 [D] 顯示 [C]",
+          "color": "#83251B",
+          "args": {
+            "D": {
+              "use": "TS_JSON"
+            },
+            "C": {
+              "v": "折線圖",
+              "menu": true
+            }
+          }
+        }
+      ],
+      "explain": "每個欄位一條線，線的名稱是頻道設定的欄位名稱（頻道 9 是 Light、Outside Temperature）。換成自己的頻道 ID 就能畫自己的資料。"
     }
   ],
   "faq": [
@@ -604,13 +673,17 @@ OSEP.addPlugin({
     },
     {
       "q": "時間跟 ThingSpeak 網站上的差 8 小時？",
-      "a": "[[TS_lastValue]]、[[TS_valueAt]] 的「時間」已經換成電腦所在的時區（台灣時間）；[[TS_JSON]] 裡的 `created_at` 和網址直接看到的是 UTC，差 8 小時。"
+      "a": "積木回傳的時間（[[TS_lastValue]]、[[TS_valueAt]] 的「時間」和 [[TS_JSON]]）已經換成電腦所在的時區（台灣時間）；ThingSpeak 網址直接看到的 `created_at` 是 UTC，差 8 小時。"
+    },
+    {
+      "q": "折線圖沒有出現，或跳出「資料格式錯誤」？",
+      "a": "- 先確認 [[TS_count]] 不是 0（讀取成功了）\n- 圖表會開一個新視窗，瀏覽器擋下彈出視窗時，在網址列旁允許這個網站顯示彈出視窗\n- 「讀取資料」裡要放 [[TS_JSON]]，不是 [[TS_count]]"
     }
   ],
   "changelog": [
     {
       "date": "2026-11-28",
-      "text": "修正版：寫入、讀取積木不再出錯；讀取、寫入都等完成才往下執行；值自動網址編碼；新增寫入結果、最新一筆、第 N 筆、資料筆數積木。新版 OSEP 的卡片是「ThingSpeak 物聯網」"
+      "text": "修正版：寫入、讀取積木不再出錯；讀取、寫入都等完成才往下執行；值自動網址編碼；新增寫入結果、最新一筆、第 N 筆、資料筆數積木。新版 OSEP 的卡片是「ThingSpeak 物聯網」。「讀取的 ThingSpeak 資料」改成圖表擴充功能可以畫折線圖的格式；「寫入結果」改名「寫入筆數」"
     },
     {
       "date": "2026-11-22",

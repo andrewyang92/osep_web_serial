@@ -3,7 +3,7 @@
  * Block text, menus and defaults come from plugins/gasoThingSpeak.js (synced from the plugin source).
  */
 OSEP.addText('gasoThingSpeak', 'en', {
-  tagline: 'Store values on the ThingSpeak IoT platform as charts, read the data back into Scratch and get any field of any entry.',
+  tagline: 'Store values on the ThingSpeak IoT platform as charts, read the data back into Scratch, get field values, or draw a line chart with the Chart extension.',
   tags: ['IoT', 'Web services'],
   needs: ['Internet', 'ThingSpeak account'],
 
@@ -12,7 +12,7 @@ OSEP.addText('gasoThingSpeak', 'en', {
 ThingSpeak keeps data in "channels", and each channel has 8 fields (field1 to field8). This plugin can:
 
 - **Write**: set the write key → fill in the fields to send → send, then check [[TS_writeResult]]
-- **Read**: download the latest 100 entries with the channel ID (plus the read key for a private channel), then get values with [[TS_lastValue]] and [[TS_valueAt]]
+- **Read**: download the latest 100 entries with the channel ID (plus the read key for a private channel), then get values with [[TS_lastValue]] and [[TS_valueAt]], or give [[TS_JSON]] to the Chart extension to draw a line chart
 
 ### Which card should I use?
 In the original author's version, the write and read blocks fail as soon as they run (the code uses undeclared variables), so they do not work at all. OSEP fixed them and put the fixed version on a separate card in the new OSEP:
@@ -36,7 +36,7 @@ In the original author's version, the write and read blocks fail as soon as they
 > ! The Write API Key gives write access. Do not put it in a project you share publicly (you can use "ask and wait" so users paste their own). If it leaks, click **Generate New Write API Key** on the API Keys tab.
 
 ### Try reading without an account
-ThingSpeak's official demo channel **9** (my_house, field1 = light, field2 = outside temperature) is public: use channel ID 9 and leave the read key blank. See examples 2 and 3.
+ThingSpeak's official demo channel **9** (my_house, field1 = light, field2 = outside temperature) is public: use channel ID 9 and leave the read key blank. See examples 2 to 4.
 
 ### Related websites
 - [ThingSpeak home](https://thingspeak.mathworks.com/): sign up, sign in
@@ -48,7 +48,7 @@ Original plugin author: gasolin ([scratch3-internet](https://github.com/gasolin/
 
   groups: [
     {name: 'Write', intro: 'Writing always goes: [[TS_Writekey]] → one or more [[TS_col]] → [[Write_TS]]. Then check [[TS_writeResult]].'},
-    {name: 'Read', intro: 'Download the data with [[TS_Read]], then use [[TS_lastValue]], [[TS_valueAt]] and [[TS_count]]. [[TS_Read]] waits until the download finishes, so no wait block is needed after it.'}
+    {name: 'Read', intro: 'Download the data with [[TS_Read]], then use [[TS_lastValue]], [[TS_valueAt]] and [[TS_count]]; to draw a line chart, give [[TS_JSON]] to the Chart extension. [[TS_Read]] waits until the download finishes, so no wait block is needed after it.'}
   ],
 
   blocks: {
@@ -80,13 +80,13 @@ The fields are not cleared after sending; run [[TS_Writekey]] before the next se
         {use: 'TS_col', args: {COLUMN: {v: 'field1', menu: true}, VALUE: {t: 'temperature', cat: 'data', type: 'reporter'}}},
         {use: 'TS_col', args: {COLUMN: {v: 'field2', menu: true}, VALUE: {t: 'humidity', cat: 'data', type: 'reporter'}}},
         {use: 'Write_TS'},
-        {t: 'say [M]', cat: 'looks', args: {M: {t: 'join [A] [B]', cat: 'operators', type: 'reporter', args: {A: 'write result: ', B: {use: 'TS_writeResult'}}}}}
+        {t: 'say [M]', cat: 'looks', args: {M: {t: 'join [A] [B]', cat: 'operators', type: 'reporter', args: {A: 'entries written: ', B: {use: 'TS_writeResult'}}}}}
       ]
     },
     TS_writeResult: {
-      summary: 'The result of the latest [[Write_TS]].',
-      returns: 'On success, the number of the new entry in the channel (1, 2, 3…); on failure, 0 (wrong key, less than 15 seconds since the last write, no network, or no fields). Empty before anything is sent.',
-      tips: 'Use "[[TS_writeResult]] > 0" to check whether the write succeeded.'
+      summary: 'Which entry of the channel the latest [[Write_TS]] wrote.',
+      returns: 'On success, the number of the new entry, which is also how many entries the channel now has (1, 2, 3…); on failure, 0 (wrong key, less than 15 seconds since the last write, no network, or no fields). Empty before anything is sent.',
+      tips: 'Use "[[TS_writeResult]] > 0" to check whether the write succeeded. Tick the box next to the block to show "ThingSpeak entries written" on the stage.'
     },
     TS_Read: {
       args: {
@@ -94,7 +94,7 @@ The fields are not cleared after sending; run [[TS_Writekey]] before the next se
         KEY: "The channel's Read API Key; leave blank for a public channel."
       },
       summary: 'Download the latest 100 entries of a channel and wait until the download finishes.',
-      detail: `Then use [[TS_lastValue]] and [[TS_valueAt]] to get values; [[TS_count]] is the number of entries; [[TS_JSON]] is the raw JSON text.
+      detail: `Then use [[TS_lastValue]] and [[TS_valueAt]] to get values; [[TS_count]] is the number of entries; [[TS_JSON]] can be given to the Chart extension to draw a line chart.
 
 If the download fails (wrong channel ID, private channel without a read key, no network), the previous data is cleared and [[TS_count]] becomes 0.
 
@@ -123,9 +123,20 @@ It reads \`https://api.thingspeak.com/channels/<channel ID>/feeds.json\`, which 
       returns: 'A number, at most 100. 0 before reading or after a failed read.'
     },
     TS_JSON: {
-      summary: 'The raw data from the latest [[TS_Read]].',
-      returns: 'JSON text, for example `[{"created_at":"2026-11-28T02:32:25Z","entry_id":1,"field1":"25"}, …]` (times in UTC). "Error: ThingSpeak data does not exist" before reading or after a failed read.',
-      tips: '[[TS_lastValue]] and [[TS_valueAt]] are usually enough; use this block only when you want to take the data apart with the JSON plugin.'
+      summary: 'The data from the latest [[TS_Read]], arranged so the Chart extension can draw a line chart.',
+      returns: 'JSON text, for example `[{"time":"11-28 10:32","Light":"240","Outside Temperature":"38"}, …]`. "Error: ThingSpeak data does not exist" before reading or after a failed read.',
+      detail: `Each entry is an object:
+
+- First comes "time" (month-day hour:minute in the computer's time zone), used as the x axis
+- Then every enabled field of the channel, named as in the channel's Channel Settings, e.g. \`Light\`; unnamed fields are "field1" and so on. Each field becomes one line
+- Values are text; an empty value in an entry is "" (the line has a gap)
+
+Put this block in the Chart extension's "read data [data] show [line chart]" to draw it. See example 4. A bar chart works too.`,
+      tips: 'Rename the fields in ThingSpeak\'s Channel Settings to change the names shown in the chart legend.',
+      example: [
+        {use: 'TS_Read', args: {CHANNEL: '9', KEY: ' '}},
+        {t: 'read data [D] show [C]', color: '#83251B', args: {D: {use: 'TS_JSON'}, C: {v: 'line chart', menu: true}}}
+      ]
     }
   },
 
@@ -139,11 +150,11 @@ It reads \`https://api.thingspeak.com/channels/<channel ID>/feeds.json\`, which 
           {use: 'TS_Writekey', args: {KEY: 'your write key'}},
           {use: 'TS_col', args: {COLUMN: {v: 'field1', menu: true}, VALUE: {t: 'temperature', cat: 'data', type: 'reporter'}}},
           {use: 'Write_TS'},
-          {t: 'say [M]', cat: 'looks', args: {M: {t: 'join [A] [B]', cat: 'operators', type: 'reporter', args: {A: 'write result: ', B: {use: 'TS_writeResult'}}}}},
+          {t: 'say [M]', cat: 'looks', args: {M: {t: 'join [A] [B]', cat: 'operators', type: 'reporter', args: {A: 'entries written: ', B: {use: 'TS_writeResult'}}}}},
           {t: 'wait [S] seconds', cat: 'control', args: {S: {num: '20'}}}
         ]}
       ],
-      explain: 'A number (the entry number) means success; 0 means failure. Free accounts can write only about once every 15 seconds, so waiting 20 seconds is safer.'
+      explain: 'A number (which entry of the channel this is) means success; 0 means failure. Free accounts can write only about once every 15 seconds, so waiting 20 seconds is safer.'
     },
     {
       title: 'Read back the latest entry',
@@ -173,6 +184,18 @@ It reads \`https://api.thingspeak.com/channels/<channel ID>/feeds.json\`, which 
         ]}
       ],
       explain: 'Entry 1 is the oldest; the last one (entry "number of entries") is the newest.'
+    },
+    {
+      title: 'See the channel data as a line chart',
+      intro: 'Read demo channel 9 and use the Chart extension to draw the light and outside temperature as a line chart (it opens a new window). Add the Chart extension too.',
+      script: [
+        {t: 'when 🏁 clicked', cat: 'events', type: 'hat'},
+        {use: 'TS_Read', args: {CHANNEL: '9', KEY: ' '}},
+        {t: 'chart title [T]', color: '#83251B', args: {T: 'ThingSpeak channel 9'}},
+        {t: 'axis titles: x axis [X] y axis [Y]', color: '#83251B', args: {X: 'time', Y: 'value'}},
+        {t: 'read data [D] show [C]', color: '#83251B', args: {D: {use: 'TS_JSON'}, C: {v: 'line chart', menu: true}}}
+      ],
+      explain: 'Each field is one line, named after the channel\'s field names (Light and Outside Temperature for channel 9). Change the channel ID to chart your own data.'
     }
   ],
 
@@ -184,11 +207,14 @@ It reads \`https://api.thingspeak.com/channels/<channel ID>/feeds.json\`, which 
     {q: 'The write succeeded, but the chart does not show that field?', a: 'The field must be enabled in Channel Settings before the chart shows it.'},
     {q: 'Why are the values I read text?', a: 'ThingSpeak returns field values as text (for example "25"). Scratch converts them to numbers automatically when you calculate.'},
     {q: 'The number of entries is 0, or I get "Error: ThingSpeak data does not exist"?', a: 'The download failed. Check the channel ID (it must be a number); a private channel needs the Read API Key, or make it public on the Sharing tab. Try demo channel 9 to check the network.'},
-    {q: 'The time is different from the ThingSpeak website?', a: '"time" in [[TS_lastValue]] and [[TS_valueAt]] is converted to the computer\'s time zone; `created_at` in [[TS_JSON]] and in the raw address is UTC.'}
+    {q: 'The time is different from the ThingSpeak website?', a: 'Times from the blocks ("time" in [[TS_lastValue]] and [[TS_valueAt]], and [[TS_JSON]]) are converted to the computer\'s time zone; `created_at` in the raw ThingSpeak address is UTC.'},
+    {q: 'The line chart does not appear, or I get "資料格式錯誤" (data format error)?', a: `- Check that [[TS_count]] is not 0 (the read succeeded)
+- The chart opens a new window; if the browser blocks pop-ups, allow pop-ups for this site
+- Put [[TS_JSON]] in "read data", not [[TS_count]]`}
   ],
 
   changelog: [
-    {date: '2026-11-28', text: 'Fixed version: the write and read blocks no longer fail; reading and writing wait until done; values are URL-encoded; new write result, latest value, entry N value and number of entries blocks. In the new OSEP the card is "ThingSpeak IoT"'},
+    {date: '2026-11-28', text: 'Fixed version: the write and read blocks no longer fail; reading and writing wait until done; values are URL-encoded; new write result, latest value, entry N value and number of entries blocks. In the new OSEP the card is "ThingSpeak IoT". "ThingSpeak data" now gives data the Chart extension can draw as a line chart; "write result" is renamed "entries written"'},
     {date: '2026-11-22', text: 'Documentation page created'}
   ]
 });

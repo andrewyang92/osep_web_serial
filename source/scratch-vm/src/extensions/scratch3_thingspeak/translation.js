@@ -24,8 +24,8 @@ export const Write_TS = {
 };
 
 export const TS_writeResult = {
-    'en': 'ThingSpeak write result',
-    'zh-tw': 'ThingSpeak 寫入結果'
+    'en': 'ThingSpeak entries written',
+    'zh-tw': 'ThingSpeak 寫入筆數'
 };
 
 export const TS_lastValue = {

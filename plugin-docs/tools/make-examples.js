@@ -173,7 +173,13 @@ core(['詢問的答案', 'answer'], {op: 'sensing_answer'});
 // Google 試算表擴充功能（範例裡用 color 畫的積木）
 core(['取得 Google 試算表共用連結 [U]', 'get data from Google Sheet URL [U]'], {op: 'rwGoogle_googleJSON', ext: 'rwGoogle', inputs: {U: 'url:text'}});
 core(['讀取的 Google 資料', 'Google data'], {op: 'rwGoogle_readFromJSON', ext: 'rwGoogle', inputs: {}, extraInputs: {id: 'text:id'}});
+// 圖表擴充功能（範例裡用 color 畫的積木；選單值 1～5 = 折線圖、長條圖、圓餅圖、環形圖、雷達圖）
+core(['圖表標題 [T]', 'chart title [T]'], {op: 'chart_showChartTitle', ext: 'chart', inputs: {T: 'title:text'}});
+core(['座標軸標題：X軸 [X] Y軸 [Y]', 'axis titles: x axis [X] y axis [Y]'], {op: 'chart_showAxisTitle', ext: 'chart', inputs: {X: 'X_axis:text', Y: 'Y_axis:text'}});
+core(['讀取資料 [D] 顯示 [C]', 'read data [D] show [C]'], {op: 'chart_showChart', ext: 'chart', inputs: {D: 'data:text'}, menus: {C: 'chart:chart_menu_chartSelectField:chartSelectField:chart'}});
 
+const CHART_TYPES = {折線圖: '1', 'line chart': '1', 長條圖: '2', 'bar chart': '2', 圓餅圖: '3', 'pie chart': '3',
+    環形圖: '4', 'donut chart': '4', 雷達圖: '5', 'radar chart': '5'};
 const PRIM = {num: 4, pos: 5, whole: 6, int: 7, angle: 8, color: 9, text: 10};
 const KEYS = {空白: 'space', space: 'space', 上: 'up arrow', 下: 'down arrow', 左: 'left arrow', 右: 'right arrow'};
 const EFFECTS = {亮度: 'BRIGHTNESS', brightness: 'BRIGHTNESS', 顏色: 'COLOR', color: 'COLOR', 幽靈: 'GHOST', ghost: 'GHOST'};
@@ -252,7 +258,8 @@ class Builder {
 
     /** 內建積木的選單（造型、音效），以影子積木表示 */
     menuInput (block, name, val, shadowOp, field, kind) {
-        const value = this.text(val);
+        let value = this.text(val);
+        if (kind === 'chart') value = CHART_TYPES[value] || value;
         if (kind === 'costume' && this.costumes.indexOf(value) < 0) this.costumes.push(value);
         if (kind === 'sound' && this.sounds.indexOf(value) < 0) this.sounds.push(value);
         const sid = this.id('m');

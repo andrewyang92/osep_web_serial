@@ -2,6 +2,7 @@
 // 原作者：gasolin（https://github.com/gasolin/scratch3-internet），estea8968 修改。
 // 2026-11-28 Andrew Yang 修正：寫入積木用了沒宣告的 ts_key、讀取積木用了沒宣告的 parsed（class 裡是嚴格模式，
 // 兩塊一執行就出錯）；讀取改成等資料下載完才結束；值做網址編碼；新增寫入結果、取欄位值等積木。
+// 2026-11-28：「讀取的 ThingSpeak 資料」改成輸出圖表擴充功能可以畫折線圖的格式（原作者版從來沒成功回傳過，沒有舊專案依賴原格式）。
 // 舊積木的 opcode、參數都沒改。不用 async/await（見 claude-notes/extensions-regeneratorRuntime-調查.md）。
 const ArgumentType = require('../../extension-support/argument-type');
 const BlockType = require('../../extension-support/block-type');
@@ -23,8 +24,9 @@ class gasoThingSpeak {
         this.writeFields = [];
         // 最近一次寫入的結果：新資料的編號，失敗是 0；還沒寫過是空字串
         this.writeResult = '';
-        // 最近一次讀到的 feeds（陣列）
+        // 最近一次讀到的 feeds（陣列）與頻道資訊（欄位名稱）
         this.feeds = null;
+        this.channel = null;
     }
 
     _setLocale () {
@@ -202,6 +204,7 @@ class gasoThingSpeak {
         if (!url) {
             console.warn('ThingSpeak: 頻道 ID 要是數字', args.CHANNEL);
             this.feeds = null;
+            this.channel = null;
             return;
         }
         return fetch(url)
@@ -211,11 +214,13 @@ class gasoThingSpeak {
             })
             .then(json => {
                 this.feeds = core.parseFeeds(json);
+                this.channel = this.feeds && json.channel ? json.channel : null;
                 if (!this.feeds) console.warn('ThingSpeak: 讀不到資料（私人頻道要填讀取 key）', json);
             })
             .catch(error => {
                 console.error('ThingSpeak:', error);
                 this.feeds = null;
+                this.channel = null;
             });
     }
 
@@ -231,9 +236,9 @@ class gasoThingSpeak {
         return this.feeds ? this.feeds.length : 0;
     }
 
-    // 和原本一樣回傳 feeds 的 JSON 文字
+    // 圖表擴充功能可以用的 JSON 文字：[{"時間":"11-28 10:32","Light":"240"}, …]
     TS_JSON () {
-        if (this.feeds) return JSON.stringify(this.feeds);
+        if (this.feeds) return JSON.stringify(core.chartRows(this.feeds, this.channel, theLocale));
         return msg.readJSONErr[theLocale];
     }
 }
