@@ -11,6 +11,8 @@ const blockIconURI = null;
 // 原本：https://pm25.lass-net.org/data/last.php?device_id=
 const AIRBOX_RELAY_URL = 'https://script.google.com/macros/s/AKfycbxT8a0laP6bOTx7q0skV8eOCgNOjrmiJ04kmdwlt7fGVu0qHxaHslPb7rL7Vi5CvcLw/exec';
 const LASS_URI = AIRBOX_RELAY_URL + '?device_id=';
+// 空氣盒子設備編號查詢網站（repo 的 airbox/index.html，由 myfork 的 GitHub Pages 提供）
+const AIRBOX_FINDER_URL = 'https://andrewyang92.github.io/osep_web_serial/airbox/';
 const AQI_URI = 'https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=0ef90d4c-45c1-4b11-b8cc-b9a28b142096';
 const WERTHER_URL = 'https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-C0032-001?format=JSON&Authorization=';
 
@@ -121,8 +123,16 @@ class gasoLASS {
                     text: msg.openAirBoxDeviceData[theLocale]
                 },
                 {
+                    opcode: 'openAirboxFinder',
+                    blockType: BlockType.COMMAND,
+                    text: msg.openAirboxFinder[theLocale]
+                },
+                {
+                    // 2026-11-28 起改用上面的「空氣盒子設備編號查詢」網站（同名的盒子用名稱分不出來）。
+                    // opcode 保留、功能照舊，只是不顯示在積木區（舊專案仍可使用）
                     opcode: 'searchDeviceMAC',
                     blockType: BlockType.REPORTER,
+                    hideFromPalette: true,
                     arguments: {
                         name: {
                             type: ArgumentType.STRING,
@@ -304,7 +314,12 @@ class gasoLASS {
         });
     }
 
-    // 2026-11-27 Andrew Yang：用地點名稱查設備編號（MAC）。
+    // 2026-11-28 Andrew Yang：打開空氣盒子設備編號查詢網站（依縣市列出名稱、設備編號、GPS 位置）
+    openAirboxFinder() {
+        window.open(AIRBOX_FINDER_URL);
+    }
+
+    // 2026-11-27 Andrew Yang：用地點名稱查設備編號（MAC）。（2026-11-28 起隱藏，保留給舊專案）
     // 讀中繼的全部資料（約 150KB，5 分鐘內重複查詢用快取），
     // 依序找：名稱完全相同 → 名稱開頭相同 → 名稱包含關鍵字（例：「竹林」先找到「竹林國小」而不是「紫竹林」）。
     // 不用 async/await（見 claude-notes/extensions-regeneratorRuntime-調查.md）

@@ -213,3 +213,9 @@ export const deviceNotFound = {
     'en': 'not found',
     'zh-tw': '找不到'
 };
+
+// 2026-11-28 Andrew Yang：打開空氣盒子設備編號查詢網站
+export const openAirboxFinder = {
+    'en': 'Look up AirBox device IDs',
+    'zh-tw': '空氣盒子設備編號查詢'
+};

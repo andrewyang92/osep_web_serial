@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<!-- Copyright (c) 2026 Andrew Yang
+     SPDX-License-Identifier: BSD-3-Clause
+     縣市、鄉鎮邊界：taiwan-atlas（MIT，資料源自內政部村里界圖），topojson-client（ISC） -->
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空氣盒子設備編號查詢</title>
+<meta name="description" content="依縣市列出目前有回傳資料的空氣盒子，查名稱、設備編號（MAC）與 GPS 位置，給 OSEP Scratch 的 LASS 擴充功能使用。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234C97FF'/%3E%3Cpath d='M9 20a5 5 0 0 1 1-9.9A7 7 0 0 1 23 12a4 4 0 0 1 0 8z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+    --ink: #1D2A3F;
+    --ink-2: #48566C;
+    --ink-3: #758197;
+    --line: #DFE6F0;
+    --paper: #F6F8FC;
+    --card: #FFFFFF;
+    --blue-deep: #1F5BB8;
+    --blue: #4C97FF;
+    --blue-soft: #EAF2FF;
+    --warn: #B4570A;
+    --warn-soft: #FFF1E0;
+    --ok: #1E7B47;
+    --radius: 14px;
+    --font: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+    --mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.6;
+}
+header {
+    background: var(--blue-soft);
+    border-bottom: 1px solid var(--line);
+}
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+header .wrap { padding-top: 28px; padding-bottom: 22px; }
+h1 { margin: 0 0 6px; font-size: 26px; color: var(--blue-deep); }
+header p { margin: 0; color: var(--ink-2); max-width: 760px; }
+main .wrap { padding-top: 20px; padding-bottom: 40px; }
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    align-items: flex-end;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+}
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field label { font-size: 13px; color: var(--ink-3); font-weight: 500; }
+select, input[type="search"] {
+    font: inherit;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink);
+    min-width: 150px;
+}
+input[type="search"] { min-width: 220px; }
+select:focus, input:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+.status {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--ink-3);
+    text-align: right;
+}
+
+.summary { margin: 18px 2px 10px; color: var(--ink-2); font-size: 15px; }
+.summary strong { color: var(--ink); }
+
+.table-box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow-x: auto;
+}
+table { width: 100%; border-collapse: collapse; min-width: 760px; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th {
+    position: sticky; top: 0;
+    background: #F9FBFE;
+    font-size: 13px; font-weight: 700; color: var(--ink-2);
+    white-space: nowrap; cursor: pointer; user-select: none;
+}
+th[aria-sort="ascending"]::after { content: " ▲"; color: var(--blue); }
+th[aria-sort="descending"]::after { content: " ▼"; color: var(--blue); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #FAFCFF; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.id { white-space: nowrap; }
+.mac {
+    font-family: var(--mono);
+    font-size: 14px;
+    white-space: nowrap;
+}
+.copy {
+    margin-left: 6px;
+    font: inherit; font-size: 12px;
+    padding: 2px 8px;
+    border: 1px solid #A9CBFF;
+    border-radius: 999px;
+    background: var(--blue-soft);
+    color: var(--blue-deep);
+    cursor: pointer;
+}
+.copy:hover { background: #DCEAFF; }
+.copy.done { background: #E3F5EA; border-color: #A8DDBE; color: var(--ok); }
+.dup {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--warn-soft);
+    color: var(--warn);
+    font-size: 12px;
+    white-space: nowrap;
+}
+a { color: var(--blue-deep); }
+.empty { padding: 28px; text-align: center; color: var(--ink-3); }
+.note {
+    margin-top: 22px;
+    font-size: 14px;
+    color: var(--ink-2);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+}
+.note ul { margin: 6px 0 0; padding-left: 20px; }
+.note code { font-family: var(--mono); font-size: .9em; background: var(--blue-soft); padding: 1px 5px; border-radius: 5px; }
+.error { color: #B3261E; }
+
+@media (max-width: 640px) {
+    h1 { font-size: 22px; }
+    .status { margin-left: 0; text-align: left; width: 100%; }
+    select, input[type="search"] { min-width: 0; width: 100%; }
+    .field { flex: 1 1 100%; }
+}
+</style>
+</head>
+<body>
+<header>
+    <div class="wrap">
+        <h1>空氣盒子設備編號查詢</h1>
+        <p>選擇縣市，依照 GPS 位置列出該縣市的空氣盒子。名稱相同的盒子可以用鄉鎮市區和經緯度分辨，
+            再把「設備編號」填進 OSEP Scratch「LASS」擴充功能的「下載設備 [ ] 的資料」積木。</p>
+    </div>
+</header>
+
+<main>
+    <div class="wrap">
+        <div class="controls">
+            <div class="field">
+                <label for="county">縣市</label>
+                <select id="county" disabled><option>載入中…</option></select>
+            </div>
+            <div class="field">
+                <label for="town">鄉鎮市區</label>
+                <select id="town" disabled><option value="">全部</option></select>
+            </div>
+            <div class="field">
+                <label for="q">名稱或編號搜尋</label>
+                <input id="q" type="search" placeholder="例：竹林國小" disabled>
+            </div>
+            <div class="status" id="status">正在讀取資料…</div>
+        </div>
+
+        <div class="summary" id="summary"></div>
+
+        <div class="table-box">
+            <table>
+                <thead>
+                    <tr>
+                        <th data-key="name">名稱</th>
+                        <th data-key="device_id">設備編號（MAC）</th>
+                        <th data-key="town">鄉鎮市區</th>
+                        <th data-key="gps_lat">緯度</th>
+                        <th data-key="gps_lon">經度</th>
+                        <th data-key="s_d0">PM2.5</th>
+                        <th data-key="timestamp">最後回傳（台灣時間）</th>
+                    </tr>
+                </thead>
+                <tbody id="rows"><tr><td colspan="7" class="empty">載入中…</td></tr></tbody>
+            </table>
+        </div>
+
+        <div class="note">
+            <strong>說明</strong>
+            <ul>
+                <li>只列出最近 3 小時內有回傳資料的空氣盒子，離線的盒子不會出現（插件也讀不到它們的資料）。</li>
+                <li>資料來源：Edimax 空氣盒子網站，由 OSEP 的中繼程式每 10 分鐘轉存一次。</li>
+                <li>縣市與鄉鎮市區是用盒子回報的 GPS 經緯度，對照內政部鄉鎮市區界線判斷的。盒子設定的位置不準時，分區也會跟著不準。</li>
+                <li>「名稱重複」表示全部資料裡還有其他盒子用同一個名稱，請用設備編號區分。</li>
+                <li>經緯度可點開 Google 地圖確認位置。</li>
+            </ul>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var RELAY_URL = 'https://script.google.com/macros/s/AKfycbxT8a0laP6bOTx7q0skV8eOCgNOjrmiJ04kmdwlt7fGVu0qHxaHslPb7rL7Vi5CvcLw/exec';
+    var ATLAS_URL = 'https://cdn.jsdelivr.net/npm/taiwan-atlas@2021.9.20/towns-10t.json';
+    var NEAR_KM = 3;                 // 落在邊界外（海邊、簡化誤差）但 3 公里內，歸到最近的鄉鎮
+    var OTHER = '其他（台灣以外或位置不明）';
+    // 由北到南、離島最後
+    var COUNTY_ORDER = ['基隆市', '台北市', '新北市', '桃園市', '新竹市', '新竹縣', '苗栗縣', '台中市', '彰化縣',
+        '南投縣', '雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣', '宜蘭縣', '花蓮縣', '台東縣',
+        '澎湖縣', '金門縣', '連江縣'];
+    var STORE_KEY = 'osep-airbox-county';
+    var COLLATOR = new Intl.Collator('zh-Hant-TW', { numeric: true, sensitivity: 'base' });
+    var HAN = /^[㐀-鿿豈-﫿]/;
+
+    var $county = document.getElementById('county');
+    var $town = document.getElementById('town');
+    var $q = document.getElementById('q');
+    var $rows = document.getElementById('rows');
+    var $status = document.getElementById('status');
+    var $summary = document.getElementById('summary');
+
+    var devices = [];
+    var sortKey = 'name';
+    var sortDir = 1;
+
+    /* ---------- 幾何：點在多邊形內、點到線段距離 ---------- */
+    function inRing(x, y, ring) {
+        var inside = false;
+        for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            var xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+            if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+    }
+    function polygonsOf(f) {
+        return f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates;
+    }
+    function contains(f, x, y) {
+        var b = f.bbox;
+        if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) return false;
+        return polygonsOf(f).some(function (p) {
+            if (!inRing(x, y, p[0])) return false;
+            for (var k = 1; k < p.length; k++) if (inRing(x, y, p[k])) return false;
+            return true;
+        });
+    }
+    function segKm(px, py, a, b) {
+        var k = Math.cos(py * Math.PI / 180);
+        var dx = (b[0] - a[0]) * k, dy = b[1] - a[1];
+        var len = dx * dx + dy * dy || 1;
+        var t = Math.max(0, Math.min(1, ((px - a[0]) * k * dx + (py - a[1]) * dy) / len));
+        var ex = (a[0] + t * (b[0] - a[0]) - px) * k, ey = a[1] + t * (b[1] - a[1]) - py;
+        return Math.sqrt(ex * ex + ey * ey) * 111.2;
+    }
+    function nearestTown(towns, x, y) {
+        var best = null, bestKm = Infinity;
+        towns.forEach(function (f) {
+            var b = f.bbox;
+            // 粗略排除太遠的（約 0.1 度 ≈ 10 公里）
+            if (x < b[0] - 0.1 || x > b[2] + 0.1 || y < b[1] - 0.1 || y > b[3] + 0.1) return;
+            polygonsOf(f).forEach(function (p) {
+                p.forEach(function (ring) {
+                    for (var i = 1; i < ring.length; i++) {
+                        var d = segKm(x, y, ring[i - 1], ring[i]);
+                        if (d < bestKm) { bestKm = d; best = f; }
+                    }
+                });
+            });
+        });
+        return bestKm <= NEAR_KM ? best : null;
+    }
+    function bboxOf(f) {
+        var b = [Infinity, Infinity, -Infinity, -Infinity];
+        polygonsOf(f).forEach(function (p) {
+            p[0].forEach(function (c) {
+                if (c[0] < b[0]) b[0] = c[0];
+                if (c[1] < b[1]) b[1] = c[1];
+                if (c[0] > b[2]) b[2] = c[0];
+                if (c[1] > b[3]) b[3] = c[1];
+            });
+        });
+        return b;
+    }
+
+    /* ---------- 工具 ---------- */
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    function twTime(iso) {
+        var d = new Date(iso);
+        if (isNaN(d)) return '';
+        var t = new Date(d.getTime() + 8 * 3600 * 1000).toISOString();
+        return t.substring(5, 10).replace('-', '/') + ' ' + t.substring(11, 16);
+    }
+    function norm(s) {
+        return String(s || '').replace(/\s+/g, '').replace(/臺/g, '台').toLowerCase();
+    }
+    function store(v) {
+        try { localStorage.setItem(STORE_KEY, v); } catch (e) { /* 無法儲存也沒關係 */ }
+    }
+    function restore() {
+        try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; }
+    }
+    function fetchJson(url) {
+        return fetch(url).then(function (r) {
+            if (!r.ok) throw new Error(url + ' HTTP ' + r.status);
+            return r.json();
+        });
+    }
+
+    /* ---------- 畫面 ---------- */
+    function counts(key, list) {
+        var m = {};
+        list.forEach(function (d) { m[d[key]] = (m[d[key]] || 0) + 1; });
+        return m;
+    }
+
+    function fillCounty(saved) {
+        var c = counts('county', devices);
+        var opts = COUNTY_ORDER.filter(function (n) { return c[n]; })
+            .map(function (n) { return '<option value="' + n + '">' + n + '（' + c[n] + '）</option>'; });
+        if (c[OTHER]) opts.push('<option value="' + OTHER + '">' + OTHER + '（' + c[OTHER] + '）</option>');
+        $county.innerHTML = '<option value="">請選擇縣市</option>' + opts.join('');
+        if (saved && c[saved]) $county.value = saved;
+    }
+
+    function fillTown() {
+        var list = devices.filter(function (d) { return d.county === $county.value; });
+        var c = counts('town', list);
+        var names = Object.keys(c).filter(Boolean).sort(function (a, b) { return a.localeCompare(b, 'zh-Hant-TW'); });
+        $town.innerHTML = '<option value="">全部</option>' + names.map(function (n) {
+            return '<option value="' + esc(n) + '">' + esc(n) + '（' + c[n] + '）</option>';
+        }).join('');
+        $town.disabled = names.length === 0;
+    }
+
+    function render() {
+        var county = $county.value;
+        if (!county) {
+            $summary.textContent = '';
+            $rows.innerHTML = '<tr><td colspan="7" class="empty">請先選擇縣市</td></tr>';
+            return;
+        }
+        var town = $town.value;
+        var q = norm($q.value);
+        var list = devices.filter(function (d) {
+            return d.county === county && (!town || d.town === town) &&
+                (!q || norm(d.name).indexOf(q) !== -1 || norm(d.device_id).indexOf(q) !== -1);
+        });
+        list.sort(function (a, b) {
+            var x = a[sortKey], y = b[sortKey];
+            if (typeof x === 'number' && typeof y === 'number') return (x - y) * sortDir;
+            x = String(x == null ? '' : x);
+            y = String(y == null ? '' : y);
+            // 數字、英文開頭的排前面，中文開頭的照筆畫排在後面
+            var gx = HAN.test(x) ? 1 : 0, gy = HAN.test(y) ? 1 : 0;
+            return (gx - gy || COLLATOR.compare(x, y)) * sortDir;
+        });
+
+        var total = devices.filter(function (d) { return d.county === county; }).length;
+        $summary.innerHTML = '<strong>' + esc(county) + (town ? ' ' + esc(town) : '') + '</strong>：' +
+            (list.length === total ? '共 ' + total + ' 台' : '顯示 ' + list.length + ' 台（全縣市 ' + total + ' 台）');
+
+        if (!list.length) {
+            $rows.innerHTML = '<tr><td colspan="7" class="empty">沒有符合的空氣盒子</td></tr>';
+            return;
+        }
+        $rows.innerHTML = list.map(function (d) {
+            var map = 'https://www.google.com/maps?q=' + d.gps_lat + ',' + d.gps_lon;
+            return '<tr>' +
+                '<td>' + esc(d.name || '（未命名）') + (d.dupName ? '<span class="dup">名稱重複</span>' : '') + '</td>' +
+                '<td class="id"><span class="mac">' + esc(d.device_id) + '</span>' +
+                '<button class="copy" type="button" data-mac="' + esc(d.device_id) + '">複製</button></td>' +
+                '<td>' + esc(d.town || '—') + '</td>' +
+                '<td class="num"><a href="' + map + '" target="_blank" rel="noopener">' + d.gps_lat + '</a></td>' +
+                '<td class="num"><a href="' + map + '" target="_blank" rel="noopener">' + d.gps_lon + '</a></td>' +
+                '<td class="num">' + (d.s_d0 == null ? '—' : esc(d.s_d0)) + '</td>' +
+                '<td class="num">' + esc(twTime(d.timestamp)) + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    function updateSortHeaders() {
+        document.querySelectorAll('th[data-key]').forEach(function (th) {
+            if (th.dataset.key === sortKey) th.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending');
+            else th.removeAttribute('aria-sort');
+        });
+    }
+
+    /* ---------- 事件 ---------- */
+    $county.addEventListener('change', function () {
+        store($county.value);
+        $q.value = '';
+        fillTown();
+        render();
+    });
+    $town.addEventListener('change', render);
+    $q.addEventListener('input', render);
+    document.querySelectorAll('th[data-key]').forEach(function (th) {
+        th.addEventListener('click', function () {
+            if (sortKey === th.dataset.key) sortDir = -sortDir;
+            else { sortKey = th.dataset.key; sortDir = 1; }
+            updateSortHeaders();
+            render();
+        });
+    });
+    $rows.addEventListener('click', function (e) {
+        var btn = e.target.closest('.copy');
+        if (!btn) return;
+        var mac = btn.getAttribute('data-mac');
+        var done = function () {
+            btn.textContent = '已複製';
+            btn.classList.add('done');
+            setTimeout(function () { btn.textContent = '複製'; btn.classList.remove('done'); }, 1500);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(mac).then(done, function () { window.prompt('請複製設備編號：', mac); });
+        } else {
+            window.prompt('請複製設備編號：', mac);
+        }
+    });
+
+    /* ---------- 載入 ---------- */
+    Promise.all([fetchJson(RELAY_URL), fetchJson(ATLAS_URL)]).then(function (res) {
+        var data = res[0], topo = res[1];
+        var towns = topojson.feature(topo, topo.objects.towns).features;
+        towns.forEach(function (f) { f.bbox = bboxOf(f); });
+
+        var feeds = Array.isArray(data.feeds) ? data.feeds : [];
+        // 有些名稱前後有空白（例：" 幸福32"），比對和排序前先去掉
+        feeds.forEach(function (d) { d.name = String(d.name || '').trim(); });
+        var nameCount = counts('name', feeds);
+        devices = feeds.map(function (d) {
+            var x = Number(d.gps_lon), y = Number(d.gps_lat);
+            var f = null;
+            if (isFinite(x) && isFinite(y)) {
+                for (var i = 0; i < towns.length && !f; i++) if (contains(towns[i], x, y)) f = towns[i];
+                if (!f) f = nearestTown(towns, x, y);
+            }
+            return {
+                name: d.name || '',
+                device_id: d.device_id,
+                gps_lat: y,
+                gps_lon: x,
+                s_d0: d.s_d0,
+                timestamp: d.timestamp,
+                county: f ? f.properties.COUNTYNAME : OTHER,
+                town: f ? f.properties.TOWNNAME : '',
+                dupName: nameCount[d.name || ''] > 1
+            };
+        });
+
+        $status.innerHTML = '資料更新：' + esc(twTime(data.updated || data.version)) + '<br>共 ' + devices.length + ' 台在線';
+        fillCounty(restore());
+        $county.disabled = false;
+        $q.disabled = false;
+        fillTown();
+        updateSortHeaders();
+        render();
+    }).catch(function (err) {
+        $status.innerHTML = '<span class="error">讀取失敗，請稍後重新整理</span>';
+        $rows.innerHTML = '<tr><td colspan="7" class="empty error">無法讀取資料：' + esc(err && err.message) + '</td></tr>';
+        $county.innerHTML = '<option>讀取失敗</option>';
+    });
+})();
+</script>
+</body>
+</html>
